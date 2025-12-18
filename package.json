@@ -1,0 +1,18 @@
+{
+  "name": "my-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/web-client",
+    "apps/web-server",
+    "shared"
+  ],
+  "scripts": {
+    "client": "npm run dev --workspace=apps/web-client",
+    "server": "npm run dev --workspace=apps/web-server",
+    "trip-builder": "npm run dev --workspace=apps/trip-builder",
+    "services": "concurrently \"npm run start --prefix apps/flight-service\" \"npm run start --prefix apps/hotel-service\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
