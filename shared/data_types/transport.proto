@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package vacation.transport;
+
+import "shared/data_types/common.proto";
+
+// ===== REQUEST =====
+
+message TransportSearchRequest {
+  vacation.common.Location origin = 1;
+  vacation.common.Location destination = 2;
+  string date = 3;  // ISO 8601: YYYY-MM-DD
+  string time = 4;  // ISO 8601: HH:MM (optional)
+  int32 passengers = 5;
+  repeated TransportMode preferred_modes = 6;
+  
+  // Filters
+  int32 max_results = 7;
+  double max_price = 8;
+  int32 max_duration_minutes = 9;
+}
+
+enum TransportMode {
+  MODE_UNKNOWN = 0;
+  RENTAL_CAR = 1;
+  TAXI = 2;
+  RIDESHARE = 3;
+  TRAIN = 4;
+  BUS = 5;
+  FERRY = 6;
+  PRIVATE_TRANSFER = 7;
+  PUBLIC_TRANSIT = 8;
+}
+
+// ===== RESPONSE =====
+
+message TransportSearchResponse {
+  repeated TransportOption options = 1;
+  SearchMetadata metadata = 2;
+}
+
+message TransportOption {
+  string id = 1;
+  
+  TransportMode mode = 2;
+  string provider = 3;  // Uber, Hertz, Amtrak, etc.
+  
+  // Route
+  vacation.common.Location origin = 4;
+  vacation.common.Location destination = 5;
+  double distance_km = 6;
+  
+  // Timing
+  string departure_time = 7;  // ISO 8601
+  string arrival_time = 8;
+  int32 duration_minutes = 9;
+  
+  // Pricing
+  vacation.common.Money total_price = 10;
+  vacation.common.Money price_per_person = 11;
+  
+  // Details
+  TransportDetails details = 12;
+  
+  // Scores
+  vacation.common.ComponentScores scores = 13;
+  
+  // Booking
+  string booking_url = 14;
+  bool available = 15;
+}
+
+message TransportDetails {
+  oneof details {
+    RentalCarDetails rental_car = 1;
+    RideDetails ride = 2;
+    PublicTransitDetails transit = 3;
+  }
+}
+
+message RentalCarDetails {
+  string vehicle_class = 1;  // economy, compact, suv, etc.
+  string vehicle_model = 2;
+  int32 seats = 3;
+  int32 luggage = 4;
+  string transmission = 5;  // automatic, manual
+  bool air_conditioning = 6;
+  bool unlimited_mileage = 7;
+  repeated string included_features = 8;
+  vacation.common.Money daily_rate = 9;
+  vacation.common.Money insurance_cost = 10;
+}
+
+message RideDetails {
+  string vehicle_type = 1;  // sedan, suv, van, etc.
+  int32 seats = 2;
+  bool shared = 3;
+  int32 estimated_wait_minutes = 4;
+}
+
+message PublicTransitDetails {
+  string line = 1;  // train line, bus number, etc.
+  int32 stops = 2;
+  repeated string transfer_points = 3;
+  string service_class = 4;  // standard, first class, etc.
+  bool wifi = 5;
+  bool food_service = 6;
+}
+
+message SearchMetadata {
+  int32 total_results = 1;
+  string search_id = 2;
+  string timestamp = 3;
+  string data_source = 4;
+}
