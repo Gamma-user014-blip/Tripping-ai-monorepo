@@ -16,32 +16,21 @@ hotels_packet = {
          "price_per_night": 200.0, "currency": "EUR", "free_cancellation": True, "check_in_time": "14:00",
          "check_out_time": "12:00", "latitude": 48.8610, "longitude": 2.3350},
 
-        # London
-        {"name": "London Royal Inn", "city": "London", "country": "UK", "address": "10 Baker Street",
-         "rating": 4.3, "review_count": 150, "all_inclusive": True, "amenities": ["wifi", "spa"], "room_type": "standard",
-         "price_per_night": 180.0, "currency": "GBP", "free_cancellation": True, "check_in_time": "14:00",
-         "check_out_time": "12:00", "latitude": 51.5200, "longitude": -0.1550},
+        # Other French cities
+        {"name": "Nice Beach Resort", "city": "Nice", "country": "France", "address": "50 Promenade des Anglais",
+         "rating": 4.4, "review_count": 110, "all_inclusive": True, "amenities": ["wifi", "pool"], "room_type": "deluxe",
+         "price_per_night": 180.0, "currency": "EUR", "free_cancellation": True, "check_in_time": "15:00",
+         "check_out_time": "12:00", "latitude": 43.6950, "longitude": 7.2700},
 
-        {"name": "Budget London Stay", "city": "London", "country": "UK", "address": "22 King’s Road",
-         "rating": 3.8, "review_count": 60, "all_inclusive": False, "amenities": ["wifi"], "room_type": "standard",
-         "price_per_night": 90.0, "currency": "GBP", "free_cancellation": False, "check_in_time": "14:00",
-         "check_out_time": "12:00", "latitude": 51.5150, "longitude": -0.1400},
+        {"name": "Lyon Central Hotel", "city": "Lyon", "country": "France", "address": "10 Rue de la République",
+         "rating": 4.1, "review_count": 75, "all_inclusive": False, "amenities": ["wifi"], "room_type": "standard",
+         "price_per_night": 130.0, "currency": "EUR", "free_cancellation": False, "check_in_time": "14:00",
+         "check_out_time": "12:00", "latitude": 45.7640, "longitude": 4.8357},
 
-        {"name": "The Savoy Hotel", "city": "London", "country": "UK", "address": "Strand",
-         "rating": 4.8, "review_count": 200, "all_inclusive": True, "amenities": ["wifi", "pool", "spa"], "room_type": "suite",
-         "price_per_night": 350.0, "currency": "GBP", "free_cancellation": True, "check_in_time": "15:00",
-         "check_out_time": "12:00", "latitude": 51.5100, "longitude": -0.1200},
-
-        # New York
-        {"name": "NY Downtown Hotel", "city": "New York", "country": "USA", "address": "1 Wall Street",
-         "rating": 4.6, "review_count": 130, "all_inclusive": True, "amenities": ["wifi", "gym"], "room_type": "standard",
-         "price_per_night": 220.0, "currency": "USD", "free_cancellation": True, "check_in_time": "15:00",
-         "check_out_time": "12:00", "latitude": 40.7070, "longitude": -74.0113},
-
-        {"name": "Midtown Comfort Inn", "city": "New York", "country": "USA", "address": "500 5th Ave",
-         "rating": 4.1, "review_count": 95, "all_inclusive": False, "amenities": ["wifi"], "room_type": "standard",
-         "price_per_night": 180.0, "currency": "USD", "free_cancellation": False, "check_in_time": "14:00",
-         "check_out_time": "12:00", "latitude": 40.7530, "longitude": -73.9800}
+        {"name": "Marseille Seaside Hotel", "city": "Marseille", "country": "France", "address": "22 Vieux-Port",
+         "rating": 4.3, "review_count": 85, "all_inclusive": True, "amenities": ["wifi", "pool"], "room_type": "suite",
+         "price_per_night": 160.0, "currency": "EUR", "free_cancellation": True, "check_in_time": "14:00",
+         "check_out_time": "12:00", "latitude": 43.2965, "longitude": 5.3698}
     ]
 }
 
