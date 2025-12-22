@@ -11,9 +11,9 @@ from google.protobuf.descriptor import FieldDescriptor
 from google.protobuf.json_format import ParseDict
 from dotenv import load_dotenv
 
-from apps.data_collectors.llm_provider import LLMProvider
-from apps.data_collectors.gemini_generator import _generate_with_gemini
-from apps.data_collectors.perplexity_generator import _generate_with_perplexity
+from apps.data_collectors.llm_retreiver.llm_provider import LLMProvider
+from apps.data_collectors.llm_retreiver.gemini_generator import _generate_with_gemini
+from apps.data_collectors.llm_retreiver.perplexity_generator import _generate_with_perplexity
 
 # Import your proto files
 try:

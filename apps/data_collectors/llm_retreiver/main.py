@@ -15,9 +15,9 @@ import shared.data_types.common_pb2 as common_types
 import shared.data_types.hotel_pb2 as hotel_types
 import shared.data_types.transport_pb2 as transport_types
 
-from apps.data_collectors.llm_data_retriever import generate_json_from_proto
+from apps.data_collectors.llm_retreiver.llm_data_retriever import generate_json_from_proto
 
-from apps.data_collectors.llm_provider import LLMProvider
+from apps.data_collectors.llm_retreiver.llm_provider import LLMProvider
 
 app = FastAPI(
     title="Vacation Planning Service",
