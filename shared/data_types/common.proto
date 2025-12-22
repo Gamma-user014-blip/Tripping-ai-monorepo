@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package vacation.common;
+
+// Common types used across services
+
+message Money {
+  string currency = 1;  // ISO 4217 code (USD, EUR, etc.)
+  double amount = 2;
+}
+
+message Location {
+  string city = 1;
+  string country = 2;
+  string airport_code = 3;  // IATA code (optional)
+  double latitude = 4;
+  double longitude = 5;
+}
+
+message DateRange {
+  string start_date = 1;  // ISO 8601 format: YYYY-MM-DD
+  string end_date = 2;
+}
+
+message TimeRange {
+  string start_time = 1;  // ISO 8601 format: HH:MM
+  string end_time = 2;
+}
+
+// Normalized score components (0.0 to 1.0)
+message ComponentScores {
+  double price_score = 1;      // Lower price = higher score
+  double quality_score = 2;    // Rating, comfort, etc.
+  double convenience_score = 3; // Duration, location, etc.
+  double preference_score = 4;  // Match to user preferences
+}
+
+enum PreferenceType {
+  PREFERENCE_UNKNOWN = 0;
+  LUXURY = 1;
+  BUDGET = 2;
+  ROMANTIC = 3;
+  FAMILY = 4;
+  ADVENTURE = 5;
+  CULTURE = 6;
+  FOOD = 7;
+  NATURE = 8;
+  BEACH = 9;
+  CITY = 10;
+}
