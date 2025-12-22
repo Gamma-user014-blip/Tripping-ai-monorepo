@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package travel;
+
+// -----------------------------
+// Hotels
+// -----------------------------
+message Hotel {
+  string name = 1;
+  string city = 2;
+  string country = 3;
+  string address = 4;
+
+  float rating = 5;              // 0–5
+  int32 review_count = 6;
+
+  bool all_inclusive = 7;
+  repeated string amenities = 8; // wifi, pool, spa, gym
+
+  string room_type = 9;          // standard, deluxe, suite
+  float price_per_night = 10;
+  string currency = 11;
+
+  bool free_cancellation = 12;
+  string check_in_time = 13;     // HH:mm
+  string check_out_time = 14;    // HH:mm
+  float latitude = 15;
+  float longitude = 16;
+}
+
+message Hotels {
+  repeated Hotel hotels = 1;
+}
+
+// -----------------------------
+// Flights
+// -----------------------------
+message FlightRoute {
+  string from_airport = 1;
+  string from_city = 2;
+  string from_country = 3;
+  string from_address = 4;
+
+  string to_airport = 5;
+  string to_city = 6;
+  string to_country = 7;
+  string to_address = 8;
+
+  string depart_time = 9;   // ISO 8601
+  string arrival_time = 10; // ISO 8601
+
+  string airline = 11;
+}
+
+message Flight {
+  FlightRoute route = 1;    // single route (NOT repeated)
+  int32 connections = 2;
+  float price = 3;
+}
+
+message Flights {
+  repeated Flight flights = 1;
+}
+
+
+// -----------------------------
+// Transportation
+// -----------------------------
+message TransportationOption {
+  string provider = 1;
+  string type = 2;               // car, scooter, shuttle
+  string car_model = 3;
+
+  int32 seats = 4;
+  string transmission = 5;       // manual / automatic
+  string fuel_type = 6;          // electric, petrol
+
+  string pickup_time = 7;        // ISO 8601
+  string dropoff_time = 8;       // ISO 8601
+
+  string city = 9;
+  string country = 10;
+
+  float price_per_day = 11;
+  string currency = 12;
+
+  int32 daily_km_limit = 13;     // 0 = unlimited
+}
+
+message Transportation {
+  repeated TransportationOption options = 1;
+}
+
+// -----------------------------
+// Attractions
+// -----------------------------
+message OpeningHours {
+  string day = 1;                // default / monday / etc
+  string open = 2;               // HH:mm
+  string close = 3;              // HH:mm
+  bool is_closed = 4;
+}
+
+message Attraction {
+  string name = 1;
+  string type = 2;               // museum, park, landmark
+
+  string city = 3;
+  string country = 4;
+  string address = 5;
+
+  double latitude = 6;
+  double longitude = 7;
+
+  repeated OpeningHours opening_hours = 8;
+
+  string recommended_duration = 9; // HH:mm
+  float price = 10;
+  string currency = 11;
+
+  bool requires_booking = 12;
+  float popularity_score = 13;   // 0–1 for ranking
+
+  string notes = 14;
+}
+
+message Attractions {
+  repeated Attraction attractions = 1;
+}
+
+// -----------------------------
+// Root container
+// -----------------------------
+message TravelData {
+  Hotels hotels = 1;
+  Flights flights = 2;
+  Transportation transportation = 3;
+  Attractions attractions = 4;
+}

@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package vacation.flight;
+
+import "shared/data_types/common.proto";
+
+// ===== REQUEST =====
+
+message FlightSearchRequest {
+  vacation.common.Location origin = 1;
+  vacation.common.Location destination = 2;
+  string departure_date = 3;  // ISO 8601: YYYY-MM-DD
+  string return_date = 4;     // Optional for one-way
+  int32 passengers = 5;
+  string cabin_class = 6;     // economy, premium_economy, business, first
+  repeated vacation.common.PreferenceType preferences = 7;
+  
+  // Search constraints
+  int32 max_results = 8;      // Default: 20
+  double max_price = 9;       // Optional price filter
+  int32 max_stops = 10;       // 0=direct, 1=one stop, etc.
+}
+
+// ===== RESPONSE =====
+
+message FlightSearchResponse {
+  repeated FlightOption options = 1;
+  SearchMetadata metadata = 2;
+}
+
+message FlightOption {
+  string id = 1;  // Unique identifier for caching
+  
+  // Outbound flight
+  FlightSegment outbound = 2;
+  
+  // Return flight (if round-trip)
+  FlightSegment return = 3;
+  
+  // Pricing
+  vacation.common.Money total_price = 4;
+  vacation.common.Money price_per_person = 5;
+  
+  // Scores
+  vacation.common.ComponentScores scores = 6;
+  
+  // Booking info
+  string booking_url = 7;
+  string provider = 8;  // airline or booking platform
+  bool available = 9;
+}
+
+message FlightSegment {
+  vacation.common.Location origin = 1;
+  vacation.common.Location destination = 2;
+  
+  string departure_time = 3;  // ISO 8601: YYYY-MM-DDTHH:MM:SS
+  string arrival_time = 4;
+  
+  int32 duration_minutes = 5;
+  int32 stops = 6;
+  repeated Layover layovers = 7;
+  
+  string airline = 8;
+  string flight_number = 9;
+  string aircraft = 10;
+  string cabin_class = 11;
+  
+  AmenityInfo amenities = 12;
+}
+
+message Layover {
+  vacation.common.Location airport = 1;
+  int32 duration_minutes = 2;
+}
+
+message AmenityInfo {
+  bool wifi = 1;
+  bool meal = 2;
+  bool entertainment = 3;
+  bool power_outlet = 4;
+  int32 legroom_inches = 5;
+}
+
+message SearchMetadata {
+  int32 total_results = 1;
+  string search_id = 2;
+  string timestamp = 3;
+  string data_source = 4;  // "llm_generated" or "amadeus_api" etc.
+}
