@@ -17,7 +17,7 @@ message HotelSearchRequest {
   int32 max_results = 6;
   double max_price_per_night = 7;
   double min_rating = 8;  // 0-5 scale
-  repeated string amenities = 9;  // wifi, pool, gym, etc.
+  repeated int32 amenities = 9;  // wifi, pool, gym, etc.
 }
 
 // ===== RESPONSE =====
@@ -32,37 +32,35 @@ message HotelOption {
   
   // Basic info
   string name = 2;
-  vacation.common.Location location = 3;
-  double distance_to_center_km = 4;
+  string description = 3;
+  vacation.common.Location location = 4;
+  double distance_to_center_km = 5;
   
   // Rating
-  double rating = 5;  // 0-5 scale
-  int32 review_count = 6;
-  string rating_category = 7;  // e.g., "Excellent", "Very Good"
+  double rating = 6;  // 0-5 scale
+  int32 review_count = 7;
+  string rating_category = 8;  // e.g., "Excellent", "Very Good"
   
   // Pricing
-  vacation.common.Money price_per_night = 8;
-  vacation.common.Money total_price = 9;
-  repeated Fee additional_fees = 10;
+  vacation.common.Money price_per_night = 9;
+  vacation.common.Money total_price = 10;
+  repeated Fee additional_fees = 11;
   
   // Room details
-  RoomInfo room = 11;
+  RoomInfo room = 12;
   
   // Hotel features
-  repeated string amenities = 12;
-  string category = 13;  // budget, midscale, upscale, luxury
-  int32 star_rating = 14;  // 1-5 stars
+  repeated string amenities = 13;
+  string category = 14;  // budget, midscale, upscale, luxury
+  int32 star_rating = 15;  // 1-5 stars
   
   // Scores
-  vacation.common.ComponentScores scores = 15;
+  vacation.common.ComponentScores scores = 16;
   
   // Booking
-  string booking_url = 16;
-  string provider = 17;
-  bool available = 18;
-  
-  // Images
-  repeated string image_urls = 19;
+  string booking_url = 17;
+  string provider = 18;
+  bool available = 19;
 }
 
 message RoomInfo {
