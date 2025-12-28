@@ -4,9 +4,9 @@ import numpy as np
 
 
 
-def flights_to_closest_airport(flights, closest_airport_code):
+def flights_to_airport(flights, closest_airport_code):
     """
-    Returns all flights arriving at the closest airport for a hotel.
+    Returns flights that arrive in the airport
     """
     return [
         flight for flight in flights
@@ -16,15 +16,19 @@ def flights_to_closest_airport(flights, closest_airport_code):
 
 
 def add_cheapest_flight(pairs):
+    """
+    Add cheapest flight field to the hotel-airport pair
+    """
     for pair in pairs:
         pair["cheapest_flight"] = pair["flights"][0]
 
+
 def find_closest_airports(hotels, airport_list, flights):
     """
-    Vectorized computation: returns list of dicts with closest airport info.
+    Pairs every hotel with its closest airport
     """
-    airport_coords = np.array([[a["lat"], a["lon"]] for a in airport_list])
-    airport_codes = [a["code"] for a in airport_list]
+    airport_coords = np.array([[airport["lat"], airport["lon"]] for airport in airport_list])
+    airport_codes = [airport["code"] for airport in airport_list]
 
     results = []
     for hotel in hotels:
@@ -40,11 +44,11 @@ def find_closest_airports(hotels, airport_list, flights):
             "distance_km": distances[idx_min],
             "flight": {}
         })
-
+    # Matches flights with hotel-airport
     for pair in results[:]:
         closest_airport = pair["closest_airport"]
 
-        relevant_flights = sorted(flights_to_closest_airport(flights, closest_airport), key=lambda flight: flight["price"])
+        relevant_flights = sorted(flights_to_airport(flights, closest_airport), key=lambda flight: flight["price"])
 
         if not relevant_flights:
             results.remove(pair)

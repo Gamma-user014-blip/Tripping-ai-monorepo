@@ -1,10 +1,12 @@
 # data_loader.py
 from sample import hotels_packet, flights_packet
-
+import json
 def get_hotels():
     """
     Returns the list of hotels from the packet
     """
+
+    #return json.loads(hotels_packet)
     return hotels_packet["hotels"]
 
 def get_flights():
