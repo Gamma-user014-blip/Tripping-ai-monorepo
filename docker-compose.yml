@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  hotel_retriever:
+    build:
+      context: .
+      dockerfile: ./apps/data_collectors/hotel_retriever/Dockerfile
+    container_name: hotel_retriever
+    environment:
+      REDIS_URL: redis://hotel_redis:6379/0
+    depends_on:
+      - hotel_redis
+    networks:
+      - shared_network
+      - hotel_private_network
+    ports:
+      - "8001:8000"   # optional – expose only if needed
+
+  hotel_redis:
+    image: redis:7-alpine
+    container_name: hotel_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - hotel_redis_data:/data
+    networks:
+      - hotel_private_network
+    expose:
+      - "6379"        # internal only
+
+  llm_retriever:
+    build:
+      context: .
+      dockerfile: ./apps/data_collectors/llm_retreiver/Dockerfile
+    container_name: llm_retreiver
+    networks:
+      - shared_network
+      - llm_private_network
+    ports:
+      - "8002:8000"   # optional – expose only if needed
+
+networks:
+  shared_network:
+    driver: bridge
+
+  hotel_private_network:
+    driver: bridge
+    internal: true
+
+  llm_private_network:
+    driver: bridge
+    internal: true
+
+volumes:
+  hotel_redis_data:
