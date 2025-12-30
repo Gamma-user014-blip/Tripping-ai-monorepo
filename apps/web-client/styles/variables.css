@@ -1,0 +1,63 @@
+/* Global CSS variables shared across the app */
+:root {
+  /* Neutrals */
+  --color-black: #000000;
+  --color-white: #ffffff;
+  --color-gray-100: #f5f5f5;
+  --color-gray-200: #e5e7eb;
+  --color-gray-400: #9ca3af;
+  --color-gray-700: #374151;
+
+  /* Blues */
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+
+  /* Accent colors */
+  --color-accent-600: #2563eb;
+
+  /* Reds */
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+
+  /* Semantic helpers */
+  --color-text-primary: var(--color-white);
+  --color-text-secondary: var(--color-gray-200);
+  --color-bg-primary: var(--color-black);
+  --color-accent: var(--color-blue-500);
+  --color-danger: var(--color-red-500);
+
+  --color-gray-50: #f9fafb;
+  --color-gray-300: #d1d5db;
+  --color-gray-500: #6b7280;
+
+  --btn-primary-bg: #39999f;
+  --btn-primary-foreground: #ffffff;
+  --btn-secondary-bg: #1e90ff;
+  --btn-secondary-foreground: #ffffff;
+
+  --color-teal-400: #39999f;
+  --color-teal-400-translucent: rgba(110, 191, 211, 0.23);
+  --color-blue-400-translucent: rgba(59, 130, 246, 0.1);
+  --color-blue-400-translucent-strong: rgba(59, 130, 246, 0.2);
+  --color-white-translucent: rgba(255, 255, 255, 0.9);
+  --color-white-gradient-translucent: rgba(255, 255, 255, 0.6);
+  --color-blue-400-focus: rgba(59, 130, 246, 0.08);
+  --border-muted: rgba(15, 23, 42, 0.06);
+  --color-accent-200: #5da0b1;
+  --color-accent-600: #528b98;
+  --color-people-accent: #5fa4b5;
+  --color-people-btn-bg: rgba(152, 176, 183, 0.21);
+  --color-people-btn-bg-hover: rgba(144, 176, 184, 0.33);
+
+  --shadow-faint: rgba(2, 36, 46, 0.08);
+  --shadow-medium: rgba(0, 0, 0, 0.15);
+  --shadow-light: rgba(0, 0, 0, 0.04);
+
+  --color-placeholder: rgba(107, 114, 128, 0.5);
+  --color-placeholder-strong: rgba(107, 114, 128, 0.7);
+
+  --widget-background-primary: rgba(0, 0, 0, 0.35);
+  --widget-background-secondary: #f3f4f4;
+}
