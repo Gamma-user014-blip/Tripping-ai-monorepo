@@ -2,8 +2,8 @@ import Image from "next/image";
 import styles from "./home-page.module.css";
 import React from "react";
 import TextLabel from "../../common/text-label";
-import Widget from "common/search-widget/widget";
-import { Navbar } from "../../common";
+import Widget from "common/search-widget";
+import Navbar from "../../common/navbar";
 
 const HomePage: React.FC = (): JSX.Element => {
   return (

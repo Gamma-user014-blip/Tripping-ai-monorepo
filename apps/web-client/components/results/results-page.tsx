@@ -1,6 +1,5 @@
 import React from "react";
 import { useRouter } from "next/router";
-import Widget from "common/search-widget";
 import styles from "./results-page.module.css";
 
 const ResultsPage: React.FC = (): JSX.Element => {
