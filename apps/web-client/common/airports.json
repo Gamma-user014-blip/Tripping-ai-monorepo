@@ -1,0 +1,42 @@
+[
+  {
+    "iata": "JFK",
+    "name": "JFK International Airport"
+  },
+  {
+    "iata": "TLV",
+    "name": "Tel Aviv Ben Gurion Airport"
+  },
+  {
+    "iata": "LHR",
+    "name": "London Heathrow Airport"
+  },
+  {
+    "iata": "CDG",
+    "name": "Paris Charles de Gaulle Airport"
+  },
+  {
+    "iata": "FRA",
+    "name": "Frankfurt Airport"
+  },
+  {
+    "iata": "DXB",
+    "name": "Dubai International Airport"
+  },
+  {
+    "iata": "HND",
+    "name": "Tokyo Haneda Airport"
+  },
+  {
+    "iata": "AMS",
+    "name": "Amsterdam Airport Schiphol"
+  },
+  {
+    "iata": "SIN",
+    "name": "Singapore Changi Airport"
+  },
+  {
+    "iata": "ICN",
+    "name": "Seoul Incheon International Airport"
+  }
+]

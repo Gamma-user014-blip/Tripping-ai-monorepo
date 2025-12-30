@@ -1,0 +1,60 @@
+.homeContainer {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.backgroundImage {
+  position: absolute;
+  inset: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+
+.navBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  padding-top: 35px;
+}
+
+.backgroundImage::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 240px;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0));
+  background: linear-gradient(to top, var(--color-white-gradient-translucent), rgba(255, 255, 255, 0));
+}
+
+.centerOverlay {
+  text-align: center;
+  z-index: 1;
+  width: 70%;
+  margin-bottom: 80px;
+}
+
+.title {
+  margin: 0 0 16px;
+  text-align: center;
+  width: 100%;
+  letter-spacing: -1px;
+}
+
+.subtitle {
+  font-size: 18px;
+  line-height: 26px;
+  margin: 0;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
