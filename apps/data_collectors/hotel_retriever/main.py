@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from shared.data_types import hotel_pb2
 from google.protobuf.json_format import MessageToDict, ParseDict
 
-from liteapi import LiteApi 
+from .custom_liteapi import CustomLiteApi
 
 app = FastAPI(title="Hotel Data Service")
 
@@ -21,12 +21,14 @@ load_dotenv()
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 redis_client = None
 
-# Initialize Hotels API SDK
+# Initialize Custom Hotels API SDK
 API_KEY = os.getenv("LITE_API_KEY", "")
-api = LiteApi(api_key=API_KEY)
 
-# Cache TTL (1 hour)
-CACHE_TTL = 3600
+api = CustomLiteApi(api_key=API_KEY)
+
+# Cache TTL (1 hour for hotel data, 30 minutes for availability)
+HOTEL_CACHE_TTL = 3600
+AVAILABILITY_CACHE_TTL = 1800
 
 # Redis operations
 async def get_redis_client():
@@ -47,13 +49,203 @@ async def cache_get(key: str) -> Optional[Dict]:
         return None
 
 
-async def cache_set(key: str, value: Dict, ttl: int = CACHE_TTL):
+async def cache_set(key: str, value: Dict, ttl: int = HOTEL_CACHE_TTL):
     """Set data in Redis cache"""
     try:
         client = await get_redis_client()
         await client.setex(key, ttl, json.dumps(value))
     except Exception as e:
         print(f"Cache set error: {e}")
+
+
+def build_occupancies(guests: int, rooms: int, children_ages: List[int] = None) -> List[Dict]:
+    """Build occupancy structure for API request"""
+    if children_ages is None:
+        children_ages = []
+    
+    occupancies = []
+    adults_per_room = max(1, guests // rooms)
+    
+    for i in range(rooms):
+        occupancy = {
+            "rooms": 1,
+            "adults": adults_per_room
+        }
+        
+        # Distribute children across rooms if any
+        if children_ages and i == 0:
+            occupancy["children"] = children_ages
+        
+        occupancies.append(occupancy)
+    
+    return occupancies
+
+
+async def check_hotel_availability(
+    hotel_id: str,
+    checkin: str,
+    checkout: str,
+    guests: int,
+    rooms: int,
+    currency: str = "USD",
+    guest_nationality: str = "US"
+) -> Optional[Dict]:
+    """
+    Check hotel availability and get rates for specific dates
+    Returns availability data or None if not available
+    """
+    # Build cache key for availability
+    availability_cache_key = f"availability:{hotel_id}:{checkin}:{checkout}:{guests}:{rooms}"
+    
+    # Check cache first
+    cached_availability = await cache_get(availability_cache_key)
+    if cached_availability:
+        print(f"Cache hit for availability {hotel_id} ({checkin} to {checkout})")
+        return cached_availability
+    
+    print(f"Cache miss for availability {hotel_id} ({checkin} to {checkout})")
+    
+    try:
+        # Build occupancies
+        occupancies = build_occupancies(guests, rooms)
+        
+        # Call rates API to check availability
+        rates_response = api.get_rates(
+            hotel_ids=[hotel_id],
+            checkin=checkin,
+            checkout=checkout,
+            currency=currency,
+            guest_nationality=guest_nationality,
+            occupancies=occupancies
+        )
+        
+        # Check if we got valid data
+        if not rates_response or "data" not in rates_response:
+            return None
+        
+        # Check for errors
+        if "error" in rates_response:
+            print(f"No availability for {hotel_id}: {rates_response['error'].get('message')}")
+            return None
+        
+        hotel_rates = rates_response["data"]
+        if not hotel_rates or len(hotel_rates) == 0:
+            return None
+        
+        # Get the first hotel's rate data
+        hotel_rate_data = hotel_rates[0]
+        
+        # Check if hotel has room types available
+        if "roomTypes" not in hotel_rate_data or len(hotel_rate_data["roomTypes"]) == 0:
+            return None
+        
+        # Cache the availability data (shorter TTL than hotel data)
+        await cache_set(availability_cache_key, hotel_rate_data, AVAILABILITY_CACHE_TTL)
+        
+        return hotel_rate_data
+        
+    except Exception as e:
+        print(f"Error checking availability for {hotel_id}: {e}")
+        return None
+
+
+def extract_room_data_from_availability(availability_data: Dict) -> Optional[Dict]:
+    """
+    Extract room data from the availability response.
+    Uses the best rate's room information.
+    """
+    if not availability_data or "roomTypes" not in availability_data:
+        return None
+    
+    room_types = availability_data["roomTypes"]
+    if not room_types:
+        return None
+    
+    # Find the cheapest room type
+    best_room = None
+    best_price = float('inf')
+    
+    for room_type in room_types:
+        if "offerRetailRate" in room_type:
+            price = room_type["offerRetailRate"].get("amount", float('inf'))
+            if price < best_price:
+                best_price = price
+                best_room = room_type
+    
+    if not best_room:
+        return None
+    
+    # Get the first rate from the best room type
+    rates = best_room.get("rates", [])
+    if not rates:
+        return None
+    
+    first_rate = rates[0]
+    
+    # Build room data structure that matches what data_processor expects
+    room_data = {
+        "roomName": first_rate.get("name", "Standard Room"),
+        "maxOccupancy": first_rate.get("maxOccupancy", 2),
+        "adultCount": first_rate.get("adultCount", 2),
+        "childCount": first_rate.get("childCount", 0),
+        "childrenAges": first_rate.get("childrenAges", []),
+        "boardType": first_rate.get("boardType", ""),
+        "boardName": first_rate.get("boardName", ""),
+        "roomAmenities": []  # Not provided in rates response, use empty list
+    }
+    
+    return room_data
+
+
+def extract_best_rate(availability_data: Dict) -> Optional[Dict]:
+    """
+    Extract the best (cheapest) rate from availability data
+    Returns rate info with pricing
+    """
+    if not availability_data or "roomTypes" not in availability_data:
+        return None
+    
+    room_types = availability_data["roomTypes"]
+    if not room_types:
+        return None
+    
+    # Find the cheapest room type
+    best_room = None
+    best_price = float('inf')
+    
+    for room_type in room_types:
+        if "offerRetailRate" in room_type:
+            price = room_type["offerRetailRate"].get("amount", float('inf'))
+            if price < best_price:
+                best_price = price
+                best_room = room_type
+    
+    if not best_room:
+        return None
+    
+    # Extract rate details from first rate in the room type
+    rates = best_room.get("rates", [])
+    if not rates:
+        return None
+    
+    first_rate = rates[0]
+    
+    return {
+        "room_type_id": best_room.get("roomTypeId"),
+        "room_name": first_rate.get("name"),
+        "max_occupancy": first_rate.get("maxOccupancy"),
+        "board_type": first_rate.get("boardType"),
+        "board_name": first_rate.get("boardName"),
+        "price": best_room.get("offerRetailRate"),
+        "suggested_price": best_room.get("suggestedSellingPrice"),
+        "initial_price": best_room.get("offerInitialPrice"),
+        "taxes_and_fees": first_rate.get("retailRate", {}).get("taxesAndFees", []),
+        "cancellation_policies": first_rate.get("cancellationPolicies"),
+        "rate_id": first_rate.get("rateId"),
+        "offer_id": best_room.get("offerId"),
+        "supplier": best_room.get("supplier"),
+        "available": True
+    }
 
 
 # API endpoints
@@ -83,6 +275,7 @@ async def search_hotels(
 ):
     """
     Search for hotels using a Base64-encoded JSON payload.
+    Checks availability for given dates and only returns available hotels.
     Returns protobuf-compatible JSON.
     """
     # Decode Base64
@@ -104,25 +297,28 @@ async def search_hotels(
     max_results: int = query.get("max_results", 50)
     max_price_per_night: Optional[float] = query.get("max_price_per_night")
     min_rating: Optional[float] = query.get("min_rating")
+    currency: str = query.get("currency", "USD")
+    guest_nationality: str = query.get("guest_nationality", "US")
     
     try:
-        # Use SDK to fetch hotels
+        # Use SDK to fetch hotels in the area
         hotel_data = api.get_hotels(
             country_code=country,
             city_name=city,
             limit=max_results
         )
-        print(hotel_data)
+        print(f"Found {len(hotel_data.get('data', []))} hotels in {city}")
         
         hotels = hotel_data.get("data", [])
         
         # Get provider from response metadata or default
-        provider = hotel_data.get("provider", "Hotels API")
+        provider = hotel_data.get("provider", "LiteAPI")
             
         # Create response protobuf
         response = hotel_pb2.HotelSearchResponse()
         
-        # Process each hotel
+        # Process each hotel and check availability
+        available_count = 0
         for hotel in hotels:
             # Filter by rating if specified
             if min_rating and hotel.get("rating", 0) < min_rating:
@@ -132,13 +328,34 @@ async def search_hotels(
             if not hotel_id:
                 continue
             
-            # Check cache first using hotel ID
-            cache_key = f"hotel:{hotel_id}"
+            # Check hotel availability for the requested dates
+            availability_data = await check_hotel_availability(
+                hotel_id=hotel_id,
+                checkin=start_date,
+                checkout=end_date,
+                guests=guests,
+                rooms=rooms,
+                currency=currency,
+                guest_nationality=guest_nationality
+            )
+            
+            # Skip if not available
+            if not availability_data:
+                print(f"Hotel {hotel_id} not available for {start_date} to {end_date}")
+                continue
+            
+            # Extract best rate
+            best_rate = extract_best_rate(availability_data)
+            if not best_rate:
+                print(f"No rates found for hotel {hotel_id}")
+                continue
+            
+            # Check cache for transformed hotel data
+            cache_key = f"hotel:{hotel_id}:{start_date}:{end_date}"
             cached_hotel = await cache_get(cache_key)
             
             if cached_hotel:
-                print(f"Cache hit for hotel {hotel_id}")
-                # Parse cached data back to protobuf
+                print(f"Cache hit for transformed hotel {hotel_id}")
                 hotel_option = hotel_pb2.HotelOption()
                 ParseDict(cached_hotel, hotel_option)
                 
@@ -147,49 +364,40 @@ async def search_hotels(
                     continue
                 
                 response.options.append(hotel_option)
+                available_count += 1
             else:
-                print(f"Cache miss for hotel {hotel_id}")
+                print(f"Cache miss for transformed hotel {hotel_id}")
                 
-                # Use SDK to fetch room data
-                room_data = None
-                try:
-                    room_details = api.get_hotel_details(hotel_id=hotel_id)
-                    # Assuming room details returns rooms list
-                    if isinstance(room_details, dict):
-                        rooms_list = room_details.get("rooms", [])
-                    elif isinstance(room_details, list):
-                        rooms_list = room_details
-                    else:
-                        rooms_list = []
-                    
-                    if rooms_list:
-                        room_data = rooms_list[0]
-                except Exception as e:
-                    print(f"Error fetching room data for {hotel_id}: {e}")
+                # Extract room data from the availability response
+                room_data = extract_room_data_from_availability(availability_data)
                 
-                # Transform hotel data
+                # Transform hotel data with availability info
                 hotel_option = transform_hotel_data(
                     hotel, 
-                    room_data, 
+                    room_data,  # Now using room data from availability response
                     start_date, 
                     end_date, 
                     preferences,
-                    provider
+                    provider,
+                    best_rate  # Pass rate info
                 )
                 
                 # Filter by max price if specified
                 if max_price_per_night and hotel_option.price_per_night.amount > max_price_per_night:
                     continue
                 
-                # Cache the hotel option using hotel ID
+                # Cache the transformed hotel option
                 hotel_dict = MessageToDict(hotel_option)
-                await cache_set(cache_key, hotel_dict)
+                await cache_set(cache_key, hotel_dict, HOTEL_CACHE_TTL)
                 
                 response.options.append(hotel_option)
+                available_count += 1
+        
+        print(f"Found {available_count} available hotels out of {len(hotels)} total")
         
         # Set metadata
         search_id = f"search_{datetime.utcnow().timestamp()}"
-        response.metadata.total_results = hotel_data.get("total", len(response.options))
+        response.metadata.total_results = available_count
         response.metadata.search_id = search_id
         response.metadata.timestamp = datetime.utcnow().isoformat()
         response.metadata.data_source = provider
@@ -203,18 +411,18 @@ async def search_hotels(
 
 @app.get("/api/hotels/{hotel_id}")
 async def get_hotel_details(hotel_id: str):
-    """Get detailed information for a specific hotel"""
+    """Get detailed information for a specific hotel (basic info only)"""
     
     # Use hotel ID as cache key
-    cache_key = f"hotel:{hotel_id}"
+    cache_key = f"hotel_details:{hotel_id}"
     
     # Try cache first
     cached = await cache_get(cache_key)
     if cached:
-        print(f"Cache hit for hotel {hotel_id}")
+        print(f"Cache hit for hotel details {hotel_id}")
         return cached
     
-    print(f"Cache miss for hotel {hotel_id}")
+    print(f"Cache miss for hotel details {hotel_id}")
     
     # Use SDK to fetch from API
     try:
@@ -227,7 +435,7 @@ async def get_hotel_details(hotel_id: str):
         }
         
         # Cache using hotel ID
-        await cache_set(cache_key, result)
+        await cache_set(cache_key, result, HOTEL_CACHE_TTL)
         
         return result
         
@@ -235,18 +443,73 @@ async def get_hotel_details(hotel_id: str):
         raise HTTPException(status_code=502, detail=f"SDK error: {str(e)}")
 
 
+@app.post("/api/hotels/{hotel_id}/availability")
+async def check_availability(
+    hotel_id: str,
+    checkin: str = Body(...),
+    checkout: str = Body(...),
+    guests: int = Body(default=1),
+    rooms: int = Body(default=1),
+    currency: str = Body(default="USD"),
+    guest_nationality: str = Body(default="US")
+):
+    """
+    Check availability and get rates for a specific hotel
+    """
+    availability_data = await check_hotel_availability(
+        hotel_id=hotel_id,
+        checkin=checkin,
+        checkout=checkout,
+        guests=guests,
+        rooms=rooms,
+        currency=currency,
+        guest_nationality=guest_nationality
+    )
+    
+    if not availability_data:
+        raise HTTPException(status_code=404, detail="No availability found for this hotel")
+    
+    return availability_data
+
+
 @app.delete("/api/cache/hotel/{hotel_id}")
 async def invalidate_hotel_cache(hotel_id: str):
-    """Invalidate cache for a specific hotel"""
+    """Invalidate all cache entries for a specific hotel"""
     try:
-        cache_key = f"hotel:{hotel_id}"
         client = await get_redis_client()
-        deleted = await client.delete(cache_key)
-        return {"deleted": bool(deleted), "hotel_id": hotel_id, "key": cache_key}
+        
+        # Delete all keys matching the pattern
+        pattern = f"hotel:{hotel_id}*"
+        cursor = 0
+        deleted_count = 0
+        
+        while True:
+            cursor, keys = await client.scan(cursor, match=pattern, count=100)
+            if keys:
+                deleted_count += await client.delete(*keys)
+            if cursor == 0:
+                break
+        
+        # Also delete availability cache
+        availability_pattern = f"availability:{hotel_id}*"
+        cursor = 0
+        
+        while True:
+            cursor, keys = await client.scan(cursor, match=availability_pattern, count=100)
+            if keys:
+                deleted_count += await client.delete(*keys)
+            if cursor == 0:
+                break
+        
+        return {
+            "deleted": deleted_count,
+            "hotel_id": hotel_id,
+            "message": f"Invalidated {deleted_count} cache entries"
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Cache error: {str(e)}")
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    uvicorn.run(app, host="0.0.0.0", port=8000)
