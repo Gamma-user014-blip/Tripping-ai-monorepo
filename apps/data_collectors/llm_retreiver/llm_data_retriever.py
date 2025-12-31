@@ -101,18 +101,6 @@ Generate realistic flight options with:
 - Amenities appropriate to cabin class
 - Component scores 0.0-1.0 (price_score: lower price = higher, quality_score: better service/fewer stops)
 """,
-        "HotelSearchResponse": """
-Generate realistic hotel options with:
-- Real hotel chains (Marriott, Hilton, Hyatt, InterContinental, etc.)
-- Appropriate pricing per night: budget $50-100, midscale $100-250, upscale $250-500, luxury $500+
-- Ratings 3.0-5.0 (correlate with price/category)
-- Star ratings 1-5
-- Distance to city center: 0.5-5km
-- Realistic amenities for category (wifi, pool, gym, spa, etc.)
-- Room types: standard, deluxe, suite
-- ISO 8601 date format (YYYY-MM-DD)
-- Component scores 0.0-1.0 (price_score: lower price = higher, quality_score: rating/amenities)
-""",
         "ActivitySearchResponse": """
 Generate realistic activity options with:
 - Location-appropriate activities (tours, museums, outdoor activities, food tours)
