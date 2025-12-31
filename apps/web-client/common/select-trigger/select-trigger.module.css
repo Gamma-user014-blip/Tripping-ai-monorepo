@@ -1,0 +1,37 @@
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-400);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--color-black);
+}
+
+.trigger:focus {
+  outline: none;
+  border-color: none;
+}
+
+.valueWrapper {
+  flex: 1;
+  text-align: left;
+}
+
+.trigger[data-placeholder] {
+  color: var(--color-accent-600);
+}
+
+.icon {
+  margin-left: 8px;
+  color: var(--color-gray-700);
+}
+
+.iconDown { display: block; }
+.iconUp { display: none; }
+.trigger[data-state="open"] .iconDown { display: none; }
+.trigger[data-state="open"] .iconUp { display: block; }
