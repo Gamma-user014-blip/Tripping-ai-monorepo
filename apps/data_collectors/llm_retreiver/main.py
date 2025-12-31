@@ -33,7 +33,7 @@ def health_check():
 
 # ===== Flights =====
 
-@app.post("/flights/search")
+@app.post("/api/flights/search")
 async def get_flight_data(
     query: Dict[str, Any] = Body(..., description="Flight search JSON"),
     list_size: int = 5
@@ -56,7 +56,7 @@ Generate realistic flight options with:
 
 # ===== Activities =====
 
-@app.post("/activities/search")
+@app.post("/api/activities/search")
 async def get_activity_data(
     query: Dict[str, Any] = Body(..., description="Activity search JSON"),
     list_size: int = 15
@@ -78,7 +78,7 @@ Generate realistic activity options:
 
 # ===== Transport =====
 
-@app.post("/transport/search")
+@app.post("/api/transport/search")
 async def get_transport_data(
     query: Dict[str, Any] = Body(..., description="Transport search JSON"),
     list_size: int = 10

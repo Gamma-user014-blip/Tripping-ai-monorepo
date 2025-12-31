@@ -271,7 +271,7 @@ async def health_check():
 
 @app.post("/api/hotels/search")
 async def search_hotels(
-    payload: str = Body(..., description="JSON search request")
+    query: Dict[str, Any] = Body(..., description="JSON search request")
 ):
     """
     Search for hotels using a JSON payload.
@@ -279,11 +279,11 @@ async def search_hotels(
     Returns protobuf-compatible JSON.
     """
     # Decode Base64
-    try:
-        #decoded_bytes = base64.b64decode(payload)
-        query: Dict[str, Any] = json.loads(payload.decode("utf-8"))
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid json payload: {e}")
+    # try:
+    #     decoded_bytes = base64.b64decode(payload)
+    #     query: Dict[str, Any] = json.loads(decoded_bytes.decode("utf-8"))
+    # except Exception as e:
+    #     raise HTTPException(status_code=400, detail=f"Invalid json payload: {e}")
 
     # Extract parameters with defaults
     city: str = query["city"]
