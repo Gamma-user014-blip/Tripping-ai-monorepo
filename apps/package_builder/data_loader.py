@@ -7,13 +7,13 @@ def get_hotels():
     """
 
     #return json.loads(hotels_packet)
-    return hotels_packet["hotels"]
+    return hotels_packet["options"]
 
 def get_flights():
     """
     Returns the list of flights from the packet
     """
-    return flights_packet["flights"]
+    return flights_packet["options"]
 
 def build_airport_list(flights):
     """
