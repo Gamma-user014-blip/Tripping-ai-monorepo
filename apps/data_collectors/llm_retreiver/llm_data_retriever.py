@@ -135,7 +135,7 @@ def generate_json_from_proto(
     preferences: dict = None,
     system_description: str = None,
     use_grounding: bool = False,
-    provider: LLMProvider = LLMProvider.PERPLEXITY,
+    provider: LLMProvider = LLMProvider.GEMINI,
 ):
     schema = _proto_to_json_schema(proto_cls)
     proto_name = proto_cls.DESCRIPTOR.name
@@ -143,7 +143,12 @@ def generate_json_from_proto(
     service_context = _get_service_context(proto_name)
 
     system_prompt = f"""
-OUTPUT ONLY RAW JSON. DO NOT USE MARKDOWN OR CODE BLOCKS.
+    You are not a chatbot, you are a data retreiver.
+CRITICAL: OUTPUT ONLY RAW JSON. 
+DO NOT wrap the response in ```json``` or ``` code blocks.
+DO NOT use markdown formatting at all.
+Return ONLY the JSON object starting with {{ and ending with }}.
+
 
 {system_description or service_context}
 
@@ -162,11 +167,21 @@ IMPORTANT INSTRUCTIONS:
 
     if preferences:
         user_prompt = f"""
-Generate results for this search request:
+Search the web for CURRENT, REAL-TIME data for this request.
+Do NOT generate synthetic data - find actual current prices and availability.
+
+Search request:
 {json.dumps(preferences, indent=2)}
+
+Return REAL data you find on the web in the JSON format specified.
 """
     else:
-        user_prompt = f"Generate {list_size} realistic travel options."
+        user_prompt = f"""
+Search the web for {list_size} CURRENT, REAL travel options.
+Do NOT generate synthetic data - find actual current prices and availability.
+
+Return REAL data you find on the web in the JSON format specified.
+"""
 
     try:
         if provider == LLMProvider.PERPLEXITY:

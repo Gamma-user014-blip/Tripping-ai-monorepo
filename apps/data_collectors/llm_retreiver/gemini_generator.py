@@ -25,8 +25,7 @@ def _generate_with_gemini(
 
     config = types.GenerateContentConfig(
         system_instruction=system_prompt,
-        tools=tools if tools else None,
-        response_mime_type="application/json",
+        tools=tools if tools else None
     )
 
     response = CLIENT.models.generate_content(

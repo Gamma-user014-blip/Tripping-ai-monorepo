@@ -49,6 +49,7 @@ Generate realistic flight options with:
 - 0–2 stops
 - Component scores between 0.0–1.0
         """,
+        use_grounding=True,
         list_size=list_size
     )
     return resp
@@ -71,6 +72,7 @@ Generate realistic activity options:
 - Prices $10–300
 - Ratings & highlights
         """,
+        use_grounding=True,
         list_size=list_size
     )
     return resp
@@ -93,6 +95,7 @@ Generate realistic transport options:
 - ISO 8601 datetime
 - Component scores
         """,
+        use_grounding=True,
         list_size=list_size
     )
     return resp

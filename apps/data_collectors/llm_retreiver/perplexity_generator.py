@@ -18,12 +18,13 @@ def _generate_with_perplexity(system_prompt: str, user_prompt: str) -> str:
     url = "https://api.perplexity.ai/chat/completions"
 
     payload = {
-        "model": "sonar-pro",  # or "sonar"
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        "temperature": 0.7,
+    "model": "sonar-pro",  # Changed from sonar-pro
+    "messages": [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ],
+    "web_search": True,  # Enable web grounding
+    "return_citations": True,  # Get sources
     }
 
     headers = {
@@ -31,7 +32,7 @@ def _generate_with_perplexity(system_prompt: str, user_prompt: str) -> str:
         "Content-Type": "application/json",
     }
 
-    resp = requests.post(url, headers=headers, json=payload, timeout=60)
+    resp = requests.post(url, headers=headers, json=payload)
     resp.raise_for_status()
 
     data = resp.json()
