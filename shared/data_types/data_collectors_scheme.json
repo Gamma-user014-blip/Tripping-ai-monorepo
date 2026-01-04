@@ -1,0 +1,1155 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "definitions": {
+        "Money": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "type": "string",
+                    "description": "ISO 4217 code (USD, EUR, etc.)"
+                },
+                "amount": {
+                    "type": "number"
+                }
+            },
+            "required": [
+                "currency",
+                "amount"
+            ]
+        },
+        "Location": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "airportCode": {
+                    "type": "string",
+                    "description": "IATA code (optional)"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                }
+            },
+            "required": [
+                "city",
+                "country"
+            ]
+        },
+        "DateRange": {
+            "type": "object",
+            "properties": {
+                "startDate": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "ISO 8601 format: YYYY-MM-DD"
+                },
+                "endDate": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "ISO 8601 format: YYYY-MM-DD"
+                }
+            },
+            "required": [
+                "startDate",
+                "endDate"
+            ]
+        },
+        "TimeRange": {
+            "type": "object",
+            "properties": {
+                "startTime": {
+                    "type": "string",
+                    "pattern": "^([0-1][0-9]|2[0-3]):[0-5][0-9]$",
+                    "description": "ISO 8601 format: HH:MM"
+                },
+                "endTime": {
+                    "type": "string",
+                    "pattern": "^([0-1][0-9]|2[0-3]):[0-5][0-9]$",
+                    "description": "ISO 8601 format: HH:MM"
+                }
+            },
+            "required": [
+                "startTime",
+                "endTime"
+            ]
+        },
+        "ComponentScores": {
+            "type": "object",
+            "properties": {
+                "priceScore": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Lower price = higher score"
+                },
+                "qualityScore": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Rating, comfort, etc."
+                },
+                "convenienceScore": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Duration, location, etc."
+                },
+                "preferenceScore": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Match to user preferences"
+                }
+            }
+        },
+        "PreferenceType": {
+            "type": "string",
+            "enum": [
+                "PREFERENCE_UNKNOWN",
+                "LUXURY",
+                "BUDGET",
+                "ROMANTIC",
+                "FAMILY",
+                "ADVENTURE",
+                "CULTURE",
+                "FOOD",
+                "NATURE",
+                "BEACH",
+                "CITY"
+            ]
+        },
+        "FlightSearchRequest": {
+            "type": "object",
+            "properties": {
+                "origin": {
+                    "$ref": "#/definitions/Location"
+                },
+                "destination": {
+                    "$ref": "#/definitions/Location"
+                },
+                "departureDate": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "ISO 8601: YYYY-MM-DD"
+                },
+                "returnDate": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Optional for one-way"
+                },
+                "passengers": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "cabinClass": {
+                    "type": "string",
+                    "enum": [
+                        "economy",
+                        "premium_economy",
+                        "business",
+                        "first"
+                    ]
+                },
+                "preferences": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/PreferenceType"
+                    }
+                },
+                "maxResults": {
+                    "type": "integer",
+                    "default": 20
+                },
+                "maxPrice": {
+                    "type": "number",
+                    "description": "Optional price filter"
+                },
+                "maxStops": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "0=direct, 1=one stop, etc."
+                }
+            },
+            "required": [
+                "origin",
+                "destination",
+                "departureDate",
+                "passengers",
+                "cabinClass"
+            ]
+        },
+        "FlightSearchResponse": {
+            "type": "object",
+            "properties": {
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/FlightOption"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/FlightSearchMetadata"
+                }
+            },
+            "required": [
+                "options",
+                "metadata"
+            ]
+        },
+        "FlightOption": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier for caching"
+                },
+                "outbound": {
+                    "$ref": "#/definitions/FlightSegment"
+                },
+                "return": {
+                    "$ref": "#/definitions/FlightSegment"
+                },
+                "totalPrice": {
+                    "$ref": "#/definitions/Money"
+                },
+                "pricePerPerson": {
+                    "$ref": "#/definitions/Money"
+                },
+                "scores": {
+                    "$ref": "#/definitions/ComponentScores"
+                },
+                "bookingUrl": {
+                    "type": "string",
+                    "format": "uri"
+                },
+                "provider": {
+                    "type": "string",
+                    "description": "airline or booking platform"
+                },
+                "available": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "id",
+                "outbound",
+                "totalPrice",
+                "pricePerPerson",
+                "scores",
+                "bookingUrl",
+                "provider",
+                "available"
+            ]
+        },
+        "FlightSegment": {
+            "type": "object",
+            "properties": {
+                "origin": {
+                    "$ref": "#/definitions/Location"
+                },
+                "destination": {
+                    "$ref": "#/definitions/Location"
+                },
+                "departureTime": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "ISO 8601: YYYY-MM-DDTHH:MM:SS"
+                },
+                "arrivalTime": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "durationMinutes": {
+                    "type": "integer"
+                },
+                "stops": {
+                    "type": "integer"
+                },
+                "layovers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Layover"
+                    }
+                },
+                "airline": {
+                    "type": "string"
+                },
+                "flightNumber": {
+                    "type": "string"
+                },
+                "aircraft": {
+                    "type": "string"
+                },
+                "cabinClass": {
+                    "type": "string"
+                },
+                "amenities": {
+                    "$ref": "#/definitions/AmenityInfo"
+                }
+            },
+            "required": [
+                "origin",
+                "destination",
+                "departureTime",
+                "arrivalTime",
+                "durationMinutes",
+                "stops",
+                "airline",
+                "flightNumber",
+                "cabinClass"
+            ]
+        },
+        "Layover": {
+            "type": "object",
+            "properties": {
+                "airport": {
+                    "$ref": "#/definitions/Location"
+                },
+                "durationMinutes": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "airport",
+                "durationMinutes"
+            ]
+        },
+        "AmenityInfo": {
+            "type": "object",
+            "properties": {
+                "wifi": {
+                    "type": "boolean"
+                },
+                "meal": {
+                    "type": "boolean"
+                },
+                "entertainment": {
+                    "type": "boolean"
+                },
+                "powerOutlet": {
+                    "type": "boolean"
+                },
+                "legroomInches": {
+                    "type": "integer"
+                }
+            }
+        },
+        "FlightSearchMetadata": {
+            "type": "object",
+            "properties": {
+                "totalResults": {
+                    "type": "integer"
+                },
+                "searchId": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "dataSource": {
+                    "type": "string",
+                    "description": "llm_generated or amadeus_api etc."
+                }
+            },
+            "required": [
+                "totalResults",
+                "searchId",
+                "timestamp",
+                "dataSource"
+            ]
+        },
+        "HotelSearchRequest": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "$ref": "#/definitions/Location"
+                },
+                "dates": {
+                    "$ref": "#/definitions/DateRange"
+                },
+                "guests": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "rooms": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "preferences": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/PreferenceType"
+                    }
+                },
+                "maxResults": {
+                    "type": "integer"
+                },
+                "maxPricePerNight": {
+                    "type": "number"
+                },
+                "minRating": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 5
+                },
+                "amenities": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    },
+                    "description": "wifi, pool, gym, etc."
+                }
+            },
+            "required": [
+                "location",
+                "dates",
+                "guests",
+                "rooms"
+            ]
+        },
+        "HotelSearchResponse": {
+            "type": "object",
+            "properties": {
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/HotelOption"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/HotelSearchMetadata"
+                }
+            },
+            "required": [
+                "options",
+                "metadata"
+            ]
+        },
+        "HotelOption": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "location": {
+                    "$ref": "#/definitions/Location"
+                },
+                "distanceToCenterKm": {
+                    "type": "number"
+                },
+                "rating": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 5
+                },
+                "reviewCount": {
+                    "type": "integer"
+                },
+                "ratingCategory": {
+                    "type": "string",
+                    "description": "e.g., Excellent, Very Good"
+                },
+                "pricePerNight": {
+                    "$ref": "#/definitions/Money"
+                },
+                "totalPrice": {
+                    "$ref": "#/definitions/Money"
+                },
+                "additionalFees": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Fee"
+                    }
+                },
+                "room": {
+                    "$ref": "#/definitions/RoomInfo"
+                },
+                "amenities": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "category": {
+                    "type": "string",
+                    "enum": [
+                        "budget",
+                        "midscale",
+                        "upscale",
+                        "luxury"
+                    ]
+                },
+                "starRating": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5
+                },
+                "scores": {
+                    "$ref": "#/definitions/ComponentScores"
+                },
+                "bookingUrl": {
+                    "type": "string",
+                    "format": "uri"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "available": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "location",
+                "rating",
+                "pricePerNight",
+                "totalPrice",
+                "scores",
+                "bookingUrl",
+                "provider",
+                "available"
+            ]
+        },
+        "RoomInfo": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "description": "standard, deluxe, suite, etc."
+                },
+                "beds": {
+                    "type": "integer"
+                },
+                "bedType": {
+                    "type": "string",
+                    "description": "king, queen, twin, etc."
+                },
+                "maxOccupancy": {
+                    "type": "integer"
+                },
+                "sizeSqm": {
+                    "type": "number"
+                },
+                "features": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "balcony, view, etc."
+                }
+            }
+        },
+        "Fee": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "resort fee, parking, etc."
+                },
+                "amount": {
+                    "$ref": "#/definitions/Money"
+                },
+                "mandatory": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "name",
+                "amount",
+                "mandatory"
+            ]
+        },
+        "HotelSearchMetadata": {
+            "type": "object",
+            "properties": {
+                "totalResults": {
+                    "type": "integer"
+                },
+                "searchId": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "dataSource": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "totalResults",
+                "searchId",
+                "timestamp",
+                "dataSource"
+            ]
+        },
+        "TransportMode": {
+            "type": "string",
+            "enum": [
+                "MODE_UNKNOWN",
+                "RENTAL_CAR",
+                "TAXI",
+                "RIDESHARE",
+                "TRAIN",
+                "BUS",
+                "FERRY",
+                "PRIVATE_TRANSFER",
+                "PUBLIC_TRANSIT"
+            ]
+        },
+        "TransportSearchRequest": {
+            "type": "object",
+            "properties": {
+                "origin": {
+                    "$ref": "#/definitions/Location"
+                },
+                "destination": {
+                    "$ref": "#/definitions/Location"
+                },
+                "date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "ISO 8601: YYYY-MM-DD"
+                },
+                "time": {
+                    "type": "string",
+                    "pattern": "^([0-1][0-9]|2[0-3]):[0-5][0-9]$",
+                    "description": "ISO 8601: HH:MM (optional)"
+                },
+                "passengers": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "preferredModes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/TransportMode"
+                    }
+                },
+                "maxResults": {
+                    "type": "integer"
+                },
+                "maxPrice": {
+                    "type": "number"
+                },
+                "maxDurationMinutes": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "origin",
+                "destination",
+                "date",
+                "passengers"
+            ]
+        },
+        "TransportSearchResponse": {
+            "type": "object",
+            "properties": {
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/TransportOption"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/TransportSearchMetadata"
+                }
+            },
+            "required": [
+                "options",
+                "metadata"
+            ]
+        },
+        "TransportOption": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "mode": {
+                    "$ref": "#/definitions/TransportMode"
+                },
+                "provider": {
+                    "type": "string",
+                    "description": "Uber, Hertz, Amtrak, etc."
+                },
+                "origin": {
+                    "$ref": "#/definitions/Location"
+                },
+                "destination": {
+                    "$ref": "#/definitions/Location"
+                },
+                "distanceKm": {
+                    "type": "number"
+                },
+                "departureTime": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "arrivalTime": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "durationMinutes": {
+                    "type": "integer"
+                },
+                "totalPrice": {
+                    "$ref": "#/definitions/Money"
+                },
+                "pricePerPerson": {
+                    "$ref": "#/definitions/Money"
+                },
+                "details": {
+                    "$ref": "#/definitions/TransportDetails"
+                },
+                "scores": {
+                    "$ref": "#/definitions/ComponentScores"
+                },
+                "bookingUrl": {
+                    "type": "string",
+                    "format": "uri"
+                },
+                "available": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "id",
+                "mode",
+                "provider",
+                "origin",
+                "destination",
+                "totalPrice",
+                "scores",
+                "bookingUrl",
+                "available"
+            ]
+        },
+        "TransportDetails": {
+            "type": "object",
+            "oneOf": [
+                {
+                    "properties": {
+                        "rentalCar": {
+                            "$ref": "#/definitions/RentalCarDetails"
+                        }
+                    },
+                    "required": [
+                        "rentalCar"
+                    ]
+                },
+                {
+                    "properties": {
+                        "ride": {
+                            "$ref": "#/definitions/RideDetails"
+                        }
+                    },
+                    "required": [
+                        "ride"
+                    ]
+                },
+                {
+                    "properties": {
+                        "transit": {
+                            "$ref": "#/definitions/PublicTransitDetails"
+                        }
+                    },
+                    "required": [
+                        "transit"
+                    ]
+                }
+            ]
+        },
+        "RentalCarDetails": {
+            "type": "object",
+            "properties": {
+                "vehicleClass": {
+                    "type": "string",
+                    "description": "economy, compact, suv, etc."
+                },
+                "vehicleModel": {
+                    "type": "string"
+                },
+                "seats": {
+                    "type": "integer"
+                },
+                "luggage": {
+                    "type": "integer"
+                },
+                "transmission": {
+                    "type": "string",
+                    "enum": [
+                        "automatic",
+                        "manual"
+                    ]
+                },
+                "airConditioning": {
+                    "type": "boolean"
+                },
+                "unlimitedMileage": {
+                    "type": "boolean"
+                },
+                "includedFeatures": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "dailyRate": {
+                    "$ref": "#/definitions/Money"
+                },
+                "insuranceCost": {
+                    "$ref": "#/definitions/Money"
+                }
+            }
+        },
+        "RideDetails": {
+            "type": "object",
+            "properties": {
+                "vehicleType": {
+                    "type": "string",
+                    "description": "sedan, suv, van, etc."
+                },
+                "seats": {
+                    "type": "integer"
+                },
+                "shared": {
+                    "type": "boolean"
+                },
+                "estimatedWaitMinutes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "PublicTransitDetails": {
+            "type": "object",
+            "properties": {
+                "line": {
+                    "type": "string",
+                    "description": "train line, bus number, etc."
+                },
+                "stops": {
+                    "type": "integer"
+                },
+                "transferPoints": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "serviceClass": {
+                    "type": "string",
+                    "description": "standard, first class, etc."
+                },
+                "wifi": {
+                    "type": "boolean"
+                },
+                "foodService": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "TransportSearchMetadata": {
+            "type": "object",
+            "properties": {
+                "totalResults": {
+                    "type": "integer"
+                },
+                "searchId": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "dataSource": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "totalResults",
+                "searchId",
+                "timestamp",
+                "dataSource"
+            ]
+        },
+        "ActivityCategory": {
+            "type": "string",
+            "enum": [
+                "CATEGORY_UNKNOWN",
+                "TOUR",
+                "MUSEUM",
+                "RESTAURANT",
+                "SHOW",
+                "OUTDOOR",
+                "WATER_SPORTS",
+                "NIGHTLIFE",
+                "SHOPPING",
+                "SPA",
+                "ADVENTURE",
+                "CULTURAL",
+                "FOOD_TOUR"
+            ]
+        },
+        "ActivitySearchRequest": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "$ref": "#/definitions/Location"
+                },
+                "dates": {
+                    "$ref": "#/definitions/DateRange"
+                },
+                "preferences": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/PreferenceType"
+                    }
+                },
+                "categories": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ActivityCategory"
+                    }
+                },
+                "maxResults": {
+                    "type": "integer"
+                },
+                "maxPrice": {
+                    "type": "number"
+                },
+                "minRating": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 5
+                },
+                "maxDistanceKm": {
+                    "type": "integer",
+                    "description": "from location center"
+                },
+                "preferredTime": {
+                    "$ref": "#/definitions/TimeRange"
+                }
+            },
+            "required": [
+                "location",
+                "dates"
+            ]
+        },
+        "ActivitySearchResponse": {
+            "type": "object",
+            "properties": {
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ActivityOption"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/ActivitySearchMetadata"
+                }
+            },
+            "required": [
+                "options",
+                "metadata"
+            ]
+        },
+        "ActivityOption": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "category": {
+                    "$ref": "#/definitions/ActivityCategory"
+                },
+                "location": {
+                    "$ref": "#/definitions/Location"
+                },
+                "distanceFromQueryKm": {
+                    "type": "number"
+                },
+                "rating": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 5
+                },
+                "reviewCount": {
+                    "type": "integer"
+                },
+                "pricePerPerson": {
+                    "$ref": "#/definitions/Money"
+                },
+                "priceDetails": {
+                    "$ref": "#/definitions/PriceDetails"
+                },
+                "durationMinutes": {
+                    "type": "integer"
+                },
+                "availableTimes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/TimeSlot"
+                    }
+                },
+                "highlights": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "included": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excluded": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "minParticipants": {
+                    "type": "integer"
+                },
+                "maxParticipants": {
+                    "type": "integer"
+                },
+                "difficultyLevel": {
+                    "type": "string",
+                    "enum": [
+                        "easy",
+                        "moderate",
+                        "challenging"
+                    ]
+                },
+                "hotelPickup": {
+                    "type": "boolean"
+                },
+                "mealIncluded": {
+                    "type": "boolean"
+                },
+                "cancellationPolicy": {
+                    "type": "string"
+                },
+                "scores": {
+                    "$ref": "#/definitions/ComponentScores"
+                },
+                "bookingUrl": {
+                    "type": "string",
+                    "format": "uri"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "available": {
+                    "type": "boolean"
+                },
+                "imageUrls": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "format": "uri"
+                    }
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "category",
+                "location",
+                "rating",
+                "pricePerPerson",
+                "durationMinutes",
+                "scores",
+                "bookingUrl",
+                "provider",
+                "available"
+            ]
+        },
+        "PriceDetails": {
+            "type": "object",
+            "properties": {
+                "adultPrice": {
+                    "$ref": "#/definitions/Money"
+                },
+                "childPrice": {
+                    "$ref": "#/definitions/Money"
+                },
+                "seniorPrice": {
+                    "$ref": "#/definitions/Money"
+                }
+            }
+        },
+        "TimeSlot": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "ISO 8601: YYYY-MM-DD"
+                },
+                "time": {
+                    "type": "string",
+                    "pattern": "^([0-1][0-9]|2[0-3]):[0-5][0-9]$",
+                    "description": "ISO 8601: HH:MM"
+                },
+                "availableSpots": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "date",
+                "time",
+                "availableSpots"
+            ]
+        },
+        "ActivitySearchMetadata": {
+            "type": "object",
+            "properties": {
+                "totalResults": {
+                    "type": "integer"
+                },
+                "searchId": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "dataSource": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "totalResults",
+                "searchId",
+                "timestamp",
+                "dataSource"
+            ]
+        }
+    }
+}
