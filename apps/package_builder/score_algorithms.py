@@ -1,54 +1,26 @@
 from datetime import datetime
+from forex_python.converter import CurrencyRates
 
-EXCHANGE_RATES_TO_USD = {
-    "USD": 1.0,
-    "EUR": 1.084,
-    "GBP": 1.27,
-    "ILS": 0.27
+#currencyRates = CurrencyRates()
+
+currency_to_usd = {
+    "USD": 1.0,                # U.S. Dollar
+    "EUR": 1.1746,             # Euro
+    "GBP": 1.3477,             # British Pound
+    "AUD": 0.6673,             # Australian Dollar
+    "NZD": 0.5767,             # New Zealand Dollar
+    "CAD": 0.7288,             # Canadian Dollar (≈1/1.3724)
+    "CHF": 1.2626,             # Swiss Franc (≈1/0.7920)
+    "JPY": 0.00638,            # Japanese Yen (≈1/156.7)
+    "CNY": 0.1429,             # Chinese Yuan (≈1/6.9931)
+    "INR": 0.01111,            # Indian Rupee (≈1/90)
+    "SGD": 0.7780,             # Singapore Dollar (≈1/1.2851)
+    "HKD": 0.1284,             # Hong Kong Dollar (≈1/7.7888)
+    "SEK": 0.1086,             # Swedish Krona (≈1/9.2081)
+    "ILS": 0.3139,             # Israeli Shekel (≈1/3.1852)
+    "MXN": 0.0559,             # Mexican Peso (≈1/17.8919)
+    "ZAR": 0.0607              # South African Rand (≈1/16.4855)
 }
-
-
-
-def give_packages_scores(pairs):
-    """Compute scores for all hotel-flight pairs."""
-    for pair in pairs:
-        set_package_score(pair)
-
-
-def set_package_score(pair):
-    # Hotel scores
-    hotel = pair["hotel"]
-    set_hotel_scores(hotel)
-    hotel_scores = hotel["scores"]
-
-    flights = pair["flights"]
-    for flight in flights:
-        set_flight_scores(flight)
-    flights = sorted(flights, key=lambda flight: flight["scores"]["preference_score"], reverse=True)
-    flight = flights[0]
-    pair["cheapest_flight"] = flight
-
-
-    # Flight scores
-    if flight:
-        flight_scores = flight["scores"]
-    else:
-        flight_scores = {"price_score": 0, "quality_score": 0, "convenience_score": 0, "preference_score": 0}
-
-    # Distance between airport and hotel
-    distance = pair.get("distance_km", 0)
-    distance_score = 1 - min(distance / 50, 1)
-
-    # Combined package scores
-    pair["scores"] = {
-        "normal": 0.4 * flight_scores.get("preference_score", 0) +
-                  0.4 * hotel_scores.get("preference_score", 0) +
-                  0.2 * distance_score,
-        "budget": 0.4 * flight_scores.get("price_score", 0) +
-                  0.4 * hotel_scores.get("price_score", 0) +
-                  0.2 * distance_score
-    }
-
 
 def set_flights_scores(flights):
     for flight in flights:
@@ -59,19 +31,22 @@ def set_hotels_scores(hotels):
         set_hotel_scores(hotel)  
 
 def get_best_flight(flights):
+    if "scores" not in flights[0] or "preference_score" not in flights[0]["scores"]:
+        set_flights_scores(flights)
     flights = sorted(flights, key=lambda flight: flight["scores"]["preference_score"], reverse=True)
 
     return flights[0]
 
 
 def get_best_hotel(hotels):
+    if "scores" not in hotels[0]:
+        set_hotels_scores(hotels)
     hotels = sorted(hotels, key=lambda hotel: hotel["scores"]["preference_score"], reverse=True)
 
     return hotels[0]
 
 
 def set_flight_scores(flight):
-    """Compute flight scores based on outbound segment."""
     outbound = flight["outbound"]
     flight_time = get_flight_time(outbound)  # in minutes
     connections = outbound.get("stops", 0)
@@ -142,11 +117,14 @@ def get_flight_price_usd(flight):
     """Convert flight price_per_person to USD."""
     price = flight["price_per_person"]["amount"]
     currency = flight["price_per_person"]["currency"]
-    return price * EXCHANGE_RATES_TO_USD.get(currency, 1.0)
+    return currency_to_usd[currency] * price
+
+    #return currencyRates.convert(currency, 'USD', price)
 
 
 def get_hotel_price_usd(hotel):
     """Convert hotel price_per_night to USD."""
     price = hotel["price_per_night"]["amount"]
     currency = hotel["price_per_night"]["currency"]
-    return price * EXCHANGE_RATES_TO_USD.get(currency, 1.0)
+    return currency_to_usd[currency] * price
+    #return currencyRates.convert(currency, 'USD', price)

@@ -497,3 +497,253 @@ flights_packet = {
         }
     ]
 }
+
+hotels_packet2 = {
+    "options": [
+        {
+            "id": "manchester_central_hotel",
+            "name": "Manchester Central Hotel",
+            "description": "Upscale hotel in central Manchester, close to the city center.",
+            "location": {"city": "Manchester", "country": "UK", "airport_code": "MAN", "latitude": 53.4808, "longitude": -2.2426},
+            "distance_to_center_km": 0.3, "rating": 4.5, "review_count": 180, "rating_category": "Excellent",
+            "price_per_night": {"currency": "GBP", "amount": 220.0}, "total_price": {"currency": "GBP", "amount": 1100.0},
+            "room": {"type": "Deluxe", "beds": 2, "bed_type": "Queen", "max_occupancy": 3, "size_sqm": 27.0, "features": ["City view"]},
+            "amenities": ["wifi", "gym", "pool"], "category": "upscale", "star_rating": 5,
+            "booking_url": "https://booking.example.com/manchester_central_hotel", "provider": "mock_provider", "available": True
+        },
+        {
+            "id": "manchester_inn",
+            "name": "Manchester Inn",
+            "description": "Cozy midscale hotel near Piccadilly Station.",
+            "location": {"city": "Manchester", "country": "UK", "airport_code": "MAN", "latitude": 53.4770, "longitude": -2.2300},
+            "distance_to_center_km": 0.5, "rating": 4.1, "review_count": 120, "rating_category": "Very Good",
+            "price_per_night": {"currency": "GBP", "amount": 160.0}, "total_price": {"currency": "GBP", "amount": 800.0},
+            "room": {"type": "Standard", "beds": 1, "bed_type": "Queen", "max_occupancy": 2, "size_sqm": 20.0, "features": ["City view"]},
+            "amenities": ["wifi", "breakfast"], "category": "midscale", "star_rating": 4,
+            "booking_url": "https://booking.example.com/manchester_inn", "provider": "mock_provider", "available": True
+        },
+        {
+            "id": "oxford_road_hotel",
+            "name": "Oxford Road Hotel",
+            "description": "Affordable hotel close to Manchester University.",
+            "location": {"city": "Manchester", "country": "UK", "airport_code": "MAN", "latitude": 53.4740, "longitude": -2.2410},
+            "distance_to_center_km": 1.0, "rating": 3.8, "review_count": 90, "rating_category": "Good",
+            "price_per_night": {"currency": "GBP", "amount": 120.0}, "total_price": {"currency": "GBP", "amount": 600.0},
+            "room": {"type": "Standard", "beds": 1, "bed_type": "Twin", "max_occupancy": 2, "size_sqm": 18.0, "features": []},
+            "amenities": ["wifi"], "category": "budget", "star_rating": 3,
+            "booking_url": "https://booking.example.com/oxford_road_hotel", "provider": "mock_provider", "available": True
+        },
+        {
+            "id": "manchester_suite_hotel",
+            "name": "Manchester Suite Hotel",
+            "description": "Luxury suite hotel near Deansgate.",
+            "location": {"city": "Manchester", "country": "UK", "airport_code": "MAN", "latitude": 53.4815, "longitude": -2.2420},
+            "distance_to_center_km": 0.7, "rating": 4.7, "review_count": 200, "rating_category": "Excellent",
+            "price_per_night": {"currency": "GBP", "amount": 300.0}, "total_price": {"currency": "GBP", "amount": 1500.0},
+            "room": {"type": "Suite", "beds": 2, "bed_type": "King", "max_occupancy": 3, "size_sqm": 35.0, "features": ["City view", "Balcony"]},
+            "amenities": ["wifi", "gym", "pool"], "category": "luxury", "star_rating": 5,
+            "booking_url": "https://booking.example.com/manchester_suite_hotel", "provider": "mock_provider", "available": True
+        },
+        {
+            "id": "piccadilly_garden_hotel",
+            "name": "Piccadilly Garden Hotel",
+            "description": "Comfortable midscale hotel near Piccadilly Gardens.",
+            "location": {"city": "Manchester", "country": "UK", "airport_code": "MAN", "latitude": 53.4840, "longitude": -2.2380},
+            "distance_to_center_km": 0.4, "rating": 4.2, "review_count": 110, "rating_category": "Very Good",
+            "price_per_night": {"currency": "GBP", "amount": 140.0}, "total_price": {"currency": "GBP", "amount": 700.0},
+            "room": {"type": "Standard", "beds": 1, "bed_type": "Queen", "max_occupancy": 2, "size_sqm": 20.0, "features": ["City view"]},
+            "amenities": ["wifi", "breakfast"], "category": "midscale", "star_rating": 4,
+            "booking_url": "https://booking.example.com/piccadilly_garden_hotel", "provider": "mock_provider", "available": True
+        },
+        {
+            "id": "salford_budget_inn",
+            "name": "Salford Budget Inn",
+            "description": "Budget-friendly hotel near Salford Quays.",
+            "location": {"city": "Manchester", "country": "UK", "airport_code": "MAN", "latitude": 53.4790, "longitude": -2.2880},
+            "distance_to_center_km": 3.0, "rating": 3.7, "review_count": 85, "rating_category": "Good",
+            "price_per_night": {"currency": "GBP", "amount": 110.0}, "total_price": {"currency": "GBP", "amount": 550.0},
+            "room": {"type": "Standard", "beds": 1, "bed_type": "Twin", "max_occupancy": 2, "size_sqm": 17.0, "features": []},
+            "amenities": ["wifi"], "category": "budget", "star_rating": 3,
+            "booking_url": "https://booking.example.com/salford_budget_inn", "provider": "mock_provider", "available": True
+        },
+        {
+            "id": "manchester_east_hotel",
+            "name": "Manchester East Hotel",
+            "description": "Comfortable hotel in east Manchester, ideal for travelers.",
+            "location": {"city": "Manchester", "country": "UK", "airport_code": "MAN", "latitude": 53.4870, "longitude": -2.2120},
+            "distance_to_center_km": 4.0, "rating": 4.0, "review_count": 95, "rating_category": "Very Good",
+            "price_per_night": {"currency": "GBP", "amount": 130.0}, "total_price": {"currency": "GBP", "amount": 650.0},
+            "room": {"type": "Standard", "beds": 1, "bed_type": "Queen", "max_occupancy": 2, "size_sqm": 19.0, "features": []},
+            "amenities": ["wifi", "breakfast"], "category": "midscale", "star_rating": 4,
+            "booking_url": "https://booking.example.com/manchester_east_hotel", "provider": "mock_provider", "available": True
+        }
+    ],
+    "metadata": {"total_results": 7, "search_id": "hotel_search_manchester_2025", "timestamp": "2025-10-01T12:15:00Z", "data_source": "mock_data"}
+}
+
+# Manchester Flights Packet (7 real-like flights)
+flights_packet2 = {
+    "options": [
+        {
+            "id": "f1",
+            "outbound": {
+                "origin": {"city": "Manchester", "country": "UK", "airport_code": "MAN", "latitude": 53.3650, "longitude": -2.2720},
+                "destination": {"city": "New York", "country": "USA", "airport_code": "JFK", "latitude": 40.6413, "longitude": -73.7781},
+                "departure_time": "2025-12-27T10:00:00",
+                "arrival_time": "2025-12-27T13:30:00",
+                "duration_minutes": 450,
+                "stops": 0,
+                "layovers": [],
+                "airline": "British Airways",
+                "flight_number": "BA179",
+                "aircraft": "B777",
+                "cabin_class": "economy",
+                "amenities": {"wifi": True, "meal": True, "entertainment": True, "power_outlet": True, "legroom_inches": 31}
+            },
+            "return": None,
+            "total_price": {"currency": "USD", "amount": 670},
+            "price_per_person": {"currency": "USD", "amount": 670},
+            "booking_url": "https://book.britishairways.com/f1",
+            "provider": "British Airways",
+            "available": True
+        },
+        {
+            "id": "f2",
+            "outbound": {
+                "origin": {"city": "Manchester", "country": "UK", "airport_code": "MAN", "latitude": 53.3650, "longitude": -2.2720},
+                "destination": {"city": "New York", "country": "USA", "airport_code": "JFK", "latitude": 40.6413, "longitude": -73.7781},
+                "departure_time": "2025-12-27T11:30:00",
+                "arrival_time": "2025-12-27T15:15:00",
+                "duration_minutes": 405,
+                "stops": 1,
+                "layovers": [{"airport": {"city": "Dublin", "country": "Ireland", "airport_code": "DUB", "latitude": 53.4213, "longitude": -6.2701}, "duration_minutes": 60}],
+                "airline": "Delta",
+                "flight_number": "DL2",
+                "aircraft": "A330",
+                "cabin_class": "economy",
+                "amenities": {"wifi": True, "meal": True, "entertainment": True, "power_outlet": False, "legroom_inches": 30}
+            },
+            "return": None,
+            "total_price": {"currency": "USD", "amount": 650},
+            "price_per_person": {"currency": "USD", "amount": 650},
+            "booking_url": "https://book.delta.com/f2",
+            "provider": "Delta",
+            "available": True
+        },
+        {
+            "id": "f3",
+            "outbound": {
+                "origin": {"city": "Manchester", "country": "UK", "airport_code": "MAN", "latitude": 53.3650, "longitude": -2.2720},
+                "destination": {"city": "New York", "country": "USA", "airport_code": "JFK", "latitude": 40.6413, "longitude": -73.7781},
+                "departure_time": "2025-12-27T13:00:00",
+                "arrival_time": "2025-12-27T17:00:00",
+                "duration_minutes": 420,
+                "stops": 0,
+                "layovers": [],
+                "airline": "American Airlines",
+                "flight_number": "AA101",
+                "aircraft": "B777",
+                "cabin_class": "premium_economy",
+                "amenities": {"wifi": True, "meal": True, "entertainment": True, "power_outlet": True, "legroom_inches": 33}
+            },
+            "return": None,
+            "total_price": {"currency": "USD", "amount": 700},
+            "price_per_person": {"currency": "USD", "amount": 700},
+            "booking_url": "https://book.aa.com/f3",
+            "provider": "American Airlines",
+            "available": True
+        },
+        {
+            "id": "f4",
+            "outbound": {
+                "origin": {"city": "Manchester", "country": "UK", "airport_code": "MAN", "latitude": 53.3650, "longitude": -2.2720},
+                "destination": {"city": "New York", "country": "USA", "airport_code": "JFK", "latitude": 40.6413, "longitude": -73.7781},
+                "departure_time": "2025-12-27T14:45:00",
+                "arrival_time": "2025-12-27T19:00:00",
+                "duration_minutes": 435,
+                "stops": 1,
+                "layovers": [{"airport": {"city": "Reykjavik", "country": "Iceland", "airport_code": "KEF", "latitude": 63.9850, "longitude": -22.6056}, "duration_minutes": 75}],
+                "airline": "Icelandair",
+                "flight_number": "FI405",
+                "aircraft": "B757",
+                "cabin_class": "economy",
+                "amenities": {"wifi": True, "meal": True, "entertainment": False, "power_outlet": False, "legroom_inches": 31}
+            },
+            "return": None,
+            "total_price": {"currency": "USD", "amount": 600},
+            "price_per_person": {"currency": "USD", "amount": 600},
+            "booking_url": "https://book.icelandair.com/f4",
+            "provider": "Icelandair",
+            "available": True
+        },
+        {
+            "id": "f5",
+            "outbound": {
+                "origin": {"city": "Manchester", "country": "UK", "airport_code": "MAN", "latitude": 53.3650, "longitude": -2.2720},
+                "destination": {"city": "New York", "country": "USA", "airport_code": "JFK", "latitude": 40.6413, "longitude": -73.7781},
+                "departure_time": "2025-12-27T16:30:00",
+                "arrival_time": "2025-12-27T20:30:00",
+                "duration_minutes": 420,
+                "stops": 0,
+                "layovers": [],
+                "airline": "United Airlines",
+                "flight_number": "UA909",
+                "aircraft": "B787",
+                "cabin_class": "business",
+                "amenities": {"wifi": True, "meal": True, "entertainment": True, "power_outlet": True, "legroom_inches": 36}
+            },
+            "return": None,
+            "total_price": {"currency": "USD", "amount": 950},
+            "price_per_person": {"currency": "USD", "amount": 950},
+            "booking_url": "https://book.united.com/f5",
+            "provider": "United Airlines",
+            "available": True
+        },
+        {
+            "id": "f6",
+            "outbound": {
+                "origin": {"city": "Manchester", "country": "UK", "airport_code": "MAN", "latitude": 53.3650, "longitude": -2.2720},
+                "destination": {"city": "New York", "country": "USA", "airport_code": "JFK", "latitude": 40.6413, "longitude": -73.7781},
+                "departure_time": "2025-12-25T16:00:00",
+                "arrival_time": "2025-12-25T22:50:00",
+                "duration_minutes": 410,
+                "stops": 0,
+                "layovers": [],
+                "airline": "KLM",
+                "flight_number": "KL102",
+                "aircraft": "B787",
+                "cabin_class": "economy",
+                "amenities": {"wifi": True, "meal": True, "entertainment": True, "power_outlet": True, "legroom_inches": 31}
+            },
+            "return": None,
+            "total_price": {"currency": "USD", "amount": 660},
+            "price_per_person": {"currency": "USD", "amount": 660},
+            "booking_url": "https://book.klm.com/f6",
+            "provider": "KLM",
+            "available": True
+        },
+        {
+            "id": "f7",
+            "outbound": {
+                "origin": {"city": "Manchester", "country": "UK", "airport_code": "MAN", "latitude": 53.3650, "longitude": -2.2720},
+                "destination": {"city": "New York", "country": "USA", "airport_code": "JFK", "latitude": 40.6413, "longitude": -73.7781},
+                "departure_time": "2025-12-27T19:30:00",
+                "arrival_time": "2025-12-28T00:00:00",
+                "duration_minutes": 420,
+                "stops": 0,
+                "layovers": [],
+                "airline": "Lufthansa",
+                "flight_number": "LH457",
+                "aircraft": "A350",
+                "cabin_class": "economy",
+                "amenities": {"wifi": True, "meal": True, "entertainment": True, "power_outlet": True, "legroom_inches": 32}
+            },
+            "return": None,
+            "total_price": {"currency": "USD", "amount": 680},
+            "price_per_person": {"currency": "USD", "amount": 680},
+            "booking_url": "https://book.lufthansa.com/f7",
+            "provider": "Lufthansa",
+            "available": True
+        }
+    ]
+}
