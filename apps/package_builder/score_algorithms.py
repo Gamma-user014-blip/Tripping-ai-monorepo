@@ -1,24 +1,5 @@
 from datetime import datetime
-
-
-currency_to_usd = {
-    "USD": 1.0,                # U.S. Dollar
-    "EUR": 1.1746,             # Euro
-    "GBP": 1.3477,             # British Pound
-    "AUD": 0.6673,             # Australian Dollar
-    "NZD": 0.5767,             # New Zealand Dollar
-    "CAD": 0.7288,             # Canadian Dollar (≈1/1.3724)
-    "CHF": 1.2626,             # Swiss Franc (≈1/0.7920)
-    "JPY": 0.00638,            # Japanese Yen (≈1/156.7)
-    "CNY": 0.1429,             # Chinese Yuan (≈1/6.9931)
-    "INR": 0.01111,            # Indian Rupee (≈1/90)
-    "SGD": 0.7780,             # Singapore Dollar (≈1/1.2851)
-    "HKD": 0.1284,             # Hong Kong Dollar (≈1/7.7888)
-    "SEK": 0.1086,             # Swedish Krona (≈1/9.2081)
-    "ILS": 0.3139,             # Israeli Shekel (≈1/3.1852)
-    "MXN": 0.0559,             # Mexican Peso (≈1/17.8919)
-    "ZAR": 0.0607              # South African Rand (≈1/16.4855)
-}
+from currency_service import get_currency_rate
 
 
 
@@ -34,17 +15,13 @@ def set_hotels_scores(hotels):
 def get_best_flight(flights):
     if "scores" not in flights[0] or "preference_score" not in flights[0]["scores"]:
         set_flights_scores(flights)
-    flights = sorted(flights, key=lambda flight: flight["scores"]["preference_score"], reverse=True)
-
-    return flights[0]
+    return max(flights, key=lambda flight: flight["scores"]["preference_score"])
 
 
 def get_best_hotel(hotels):
     if "scores" not in hotels[0]:
         set_hotels_scores(hotels)
-    hotels = sorted(hotels, key=lambda hotel: hotel["scores"]["preference_score"], reverse=True)
-
-    return hotels[0]
+    return max(hotels, key=lambda hotel: hotel["scores"]["preference_score"])
 
 
 def set_flight_scores(flight):
@@ -118,14 +95,11 @@ def get_flight_price_usd(flight):
     """Convert flight price_per_person to USD."""
     price = flight["price_per_person"]["amount"]
     currency = flight["price_per_person"]["currency"]
-    return currency_to_usd[currency] * price
-
-    #return currencyRates.convert(currency, 'USD', price)
+    return get_currency_rate(currency) * price
 
 
 def get_hotel_price_usd(hotel):
     """Convert hotel price_per_night to USD."""
     price = hotel["price_per_night"]["amount"]
     currency = hotel["price_per_night"]["currency"]
-    return currency_to_usd[currency] * price
-    #return currencyRates.convert(currency, 'USD', price)
+    return get_currency_rate(currency) * price
