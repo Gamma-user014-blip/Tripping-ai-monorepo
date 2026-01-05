@@ -1,7 +1,5 @@
 from datetime import datetime
-from forex_python.converter import CurrencyRates
 
-#currencyRates = CurrencyRates()
 
 currency_to_usd = {
     "USD": 1.0,                # U.S. Dollar
@@ -21,6 +19,9 @@ currency_to_usd = {
     "MXN": 0.0559,             # Mexican Peso (≈1/17.8919)
     "ZAR": 0.0607              # South African Rand (≈1/16.4855)
 }
+
+
+
 
 def set_flights_scores(flights):
     for flight in flights:
