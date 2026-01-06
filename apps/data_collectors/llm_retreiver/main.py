@@ -7,14 +7,11 @@ from fastapi import FastAPI, HTTPException, Body
 from typing import Optional, Dict, Any
 import json
 
-# Import proto files
-import shared.data_types.activity_pb2 as activity_types
-import shared.data_types.flight_pb2 as flight_types
-import shared.data_types.hotel_pb2 as hotel_types
-import shared.data_types.transport_pb2 as transport_types
+# Import Pydantic models
+from shared.data_types import models
 
 from apps.data_collectors.llm_retreiver.llm_data_retriever import (
-    generate_json_from_proto
+    generate_json_from_model
 )
 from apps.data_collectors.llm_retreiver.llm_provider import LLMProvider
 
@@ -38,8 +35,8 @@ async def get_flight_data(
     query: Dict[str, Any] = Body(..., description="Flight search JSON"),
     list_size: int = 5
 ):
-    resp = generate_json_from_proto(
-        proto_cls=flight_types.FlightSegment,
+    resp = generate_json_from_model(
+        model_cls=models.FlightOption,
         preferences=query,
         system_description="""
 Generate realistic flight options with:
@@ -61,8 +58,8 @@ async def get_activity_data(
     query: Dict[str, Any] = Body(..., description="Activity search JSON"),
     list_size: int = 15
 ):
-    resp = generate_json_from_proto(
-        proto_cls=activity_types.ActivityOption,
+    resp = generate_json_from_model(
+        model_cls=models.ActivityOption,
         preferences=query,
         system_description="""
 Generate realistic activity options:
@@ -83,8 +80,8 @@ async def get_transport_data(
     query: Dict[str, Any] = Body(..., description="Transport search JSON"),
     list_size: int = 10
 ):
-    resp = generate_json_from_proto(
-        proto_cls=transport_types.TransportOption,
+    resp = generate_json_from_model(
+        model_cls=models.TransportOption,
         preferences=query,
         system_description="""
 Generate realistic transport options:
