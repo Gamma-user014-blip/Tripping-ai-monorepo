@@ -1,23 +1,30 @@
 from score_algorithms import *
 
-
 def build_package(packet):
+    """
+    Builds a package by selecting the best item from each stage.
+    'packet' is a list of stage dictionaries: [ {"type": "...", "options": [...]}, ... ]
+    """
+    package = []
 
-    entry_flights = packet["entry_flights"]
-    list_of_hotels = packet["list_of_hotels"]
-    exit_flights = packet["exit_flights"]
-
-
-    entry_flight = get_best_flight(entry_flights)
-    list_of_chosen_hotels = [get_best_hotel(hotels) for hotels in list_of_hotels]
-    exit_flight = get_best_flight(exit_flights)
-
-    entry_flight["type"] = "flight"
-    for hotel in list_of_chosen_hotels:
-        hotel["type"] = "hotel"
-
-    exit_flight["type"] = "flight"
-    package = [entry_flight] + list_of_chosen_hotels + [exit_flight]
-    
+    for stage in packet:
+        item_type = stage.get("type", "unknown")
+        options = stage.get("options", [])
+        
+        if not options:
+            continue
+            
+        if item_type == "flight":
+            best_item = get_best_flight(options)
+        elif item_type == "hotel":
+            best_item = get_best_hotel(options)
+        elif item_type == "activity":
+            # Activities scoring to be implemented later
+            best_item = options[0]
+        else:
+            best_item = options[0]
+        
+        best_item["type"] = item_type
+        package.append(best_item)
 
     return package

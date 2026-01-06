@@ -577,8 +577,7 @@ hotels_packet2 = {
             "amenities": ["wifi", "breakfast"], "category": "midscale", "star_rating": 4,
             "booking_url": "https://booking.example.com/manchester_east_hotel", "provider": "mock_provider", "available": True
         }
-    ],
-    "metadata": {"total_results": 7, "search_id": "hotel_search_manchester_2025", "timestamp": "2025-10-01T12:15:00Z", "data_source": "mock_data"}
+    ]
 }
 
 # Manchester Flights Packet (7 real-like flights)

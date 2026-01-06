@@ -1,32 +1,48 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Body
 from typing import List, Dict, Any
-import time
+from pydantic import BaseModel
 import uvicorn
 from packages_builder import build_package
 
-app = FastAPI()
+app = FastAPI(
+    title="Package Builder API",
+    description="Optimizes a sequence of travel options.",
+    version="1.6.0"
+)
 
-class Packet(BaseModel):
-    entry_flights: List[Dict[str, Any]]
-    list_of_hotels: List[List[Dict[str, Any]]]
-    exit_flights: List[Dict[str, Any]]
+# Simple model to keep the documentation clean and focused on the core structure
+class TripStage(BaseModel):
+    type: str
+    options: List[Dict[str, Any]]
+
+# Minimal example as requested
+minimal_example = [
+    {
+        "type": "flight",
+        "options": [
+            {"id": "flight_1", "...": "..."}
+        ]
+    },
+    {
+        "type": "hotel",
+        "options": [
+            {"id": "hotel_1", "...": "..."}
+        ]
+    }
+]
 
 @app.post("/build-package")
-async def create_package(packet: Packet):
+async def create_package(
+    stages: List[TripStage] = Body(..., example=minimal_example)
+):
+    """
+    ### Optimized Package Builder
+    Input is a list of stages. Each stage defines its type and available options.
+    """
     try:
-        # Benchmarking
-        start_time = time.time()
-        
-        # Convert Pydantic model to dict for existing logic
-        packet_dict = packet.model_dump()
-        result = build_package(packet_dict)
-        
-        end_time = time.time()
-        duration_ms = (end_time - start_time) * 1000
-        print(f"Package built in {duration_ms:.2f} ms")
-        
-        return result
+        # Convert models to raw dicts for the builder
+        raw_stages = [stage.model_dump() for stage in stages]
+        return build_package(raw_stages)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

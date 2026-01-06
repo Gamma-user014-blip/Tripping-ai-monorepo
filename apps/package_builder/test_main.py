@@ -23,9 +23,12 @@ def run_client():
         
         if isinstance(result, list):
             print(f"Package length: {len(result)}")
-            # Verify we have 3 items: flight, hotel, flight
+            # Item types are now injected by the builder based on stage type
             types = [item.get("type") for item in result]
             print(f"Item types: {types}")
+            for item in result:
+                score = item.get("scores", {}).get("preference_score", "N/A")
+                print(f" - {item.get('type', '???')} ({item['id']}): {score}")
             print("Success! Package received.")
         else:
             print("Received unexpected response struct:")
