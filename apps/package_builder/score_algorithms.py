@@ -19,7 +19,7 @@ def get_best_flight(flights):
 
 
 def get_best_hotel(hotels):
-    if "scores" not in hotels[0]:
+    if "scores" not in hotels[0] or "preference_score" not in hotels[0]["scores"]:
         set_hotels_scores(hotels)
     return max(hotels, key=lambda hotel: hotel["scores"]["preference_score"])
 

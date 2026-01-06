@@ -1,4 +1,4 @@
-# main.py
+# merger.py
 from data_loader import *
 from packages_builder import *
 def main():

@@ -32,7 +32,7 @@ def run_client():
             print(result)
 
     except requests.exceptions.ConnectionError:
-        print(f"Failed to connect to {URL}. Is the server running?")
+        print(f"Failed to connect to {URL}. Is the API running?")
     except Exception as e:
         print(f"An error occurred: {e}")
 
