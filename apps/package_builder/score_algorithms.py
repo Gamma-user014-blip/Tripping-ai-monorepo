@@ -83,7 +83,10 @@ def calc_flight_score(flight_time, connections, price, mode="normal"):
 
 
 def get_flight_time(segment):
-    """Returns flight duration in minutes from a FlightSegment."""
+    if "duration_minutes"  in segment:
+        return segment["duration_minutes"]
+
+    # Calcs if missing
     fmt = "%Y-%m-%dT%H:%M:%S"
     dep = segment["departure_time"]
     arr = segment["arrival_time"]
