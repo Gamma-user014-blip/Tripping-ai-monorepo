@@ -2,8 +2,6 @@ import os
 import json
 from google import genai
 from google.genai import types
-from google.protobuf.descriptor import FieldDescriptor
-from google.protobuf.json_format import ParseDict
 from dotenv import load_dotenv
 
 load_dotenv()

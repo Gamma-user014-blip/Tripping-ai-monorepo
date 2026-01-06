@@ -8,8 +8,7 @@ import json
 import os
 from dotenv import load_dotenv
 
-from shared.data_types import hotel_pb2
-from google.protobuf.json_format import MessageToDict, ParseDict
+from shared.data_types import models
 
 from .custom_liteapi import CustomLiteApi
 
@@ -276,15 +275,8 @@ async def search_hotels(
     """
     Search for hotels using a JSON payload.
     Checks availability for given dates and only returns available hotels.
-    Returns protobuf-compatible JSON.
+    Returns Pydantic model-compatible JSON.
     """
-    # Decode Base64
-    # try:
-    #     decoded_bytes = base64.b64decode(payload)
-    #     query: Dict[str, Any] = json.loads(decoded_bytes.decode("utf-8"))
-    # except Exception as e:
-    #     raise HTTPException(status_code=400, detail=f"Invalid json payload: {e}")
-
     # Extract parameters with defaults
     city: str = query["city"]
     country: str = query["country"]
@@ -314,8 +306,8 @@ async def search_hotels(
         # Get provider from response metadata or default
         provider = hotel_data.get("provider", "LiteAPI")
             
-        # Create response protobuf
-        response = hotel_pb2.HotelSearchResponse()
+        # Create response model
+        response = models.HotelSearchResponse()
         
         # Process each hotel and check availability
         available_count = 0
@@ -356,8 +348,7 @@ async def search_hotels(
             
             if cached_hotel:
                 print(f"Cache hit for transformed hotel {hotel_id}")
-                hotel_option = hotel_pb2.HotelOption()
-                ParseDict(cached_hotel, hotel_option)
+                hotel_option = models.HotelOption.model_validate(cached_hotel)
                 
                 # Filter by max price if specified
                 if max_price_per_night and hotel_option.price_per_night.amount > max_price_per_night:
@@ -371,7 +362,7 @@ async def search_hotels(
                 # Extract room data from the availability response
                 room_data = extract_room_data_from_availability(availability_data)
                 
-                # Transform hotel data with availability info
+                # Transform hotel data with availability info (returns Pydantic model)
                 hotel_option = transform_hotel_data(
                     hotel, 
                     room_data,  # Now using room data from availability response
@@ -387,7 +378,7 @@ async def search_hotels(
                     continue
                 
                 # Cache the transformed hotel option
-                hotel_dict = MessageToDict(hotel_option)
+                hotel_dict = hotel_option.model_dump()
                 await cache_set(cache_key, hotel_dict, HOTEL_CACHE_TTL)
                 
                 response.options.append(hotel_option)
@@ -403,7 +394,7 @@ async def search_hotels(
         response.metadata.data_source = provider
         
         # Convert to dict for JSON response
-        return MessageToDict(response)
+        return response.model_dump()
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching hotels: {str(e)}")
