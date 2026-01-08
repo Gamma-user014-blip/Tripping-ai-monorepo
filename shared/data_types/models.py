@@ -1,5 +1,5 @@
 from typing import List, Optional, Union
-from enum import IntEnum
+from enum import IntEnum, Enum
 from pydantic import BaseModel, Field
 
 # ==========================================
@@ -382,3 +382,44 @@ class TransportSearchRequest(BaseModel):
 class TransportSearchResponse(BaseModel):
     options: List[TransportOption] = Field(default_factory=list)
     metadata: SearchMetadata = Field(default_factory=SearchMetadata)
+
+class SectionType(str, Enum):
+    TRANSFER = "transfer"
+    FLIGHT = "flight"
+    STAY = "stay"
+
+class TransferRequest(TransportSearchRequest):
+    pass
+
+class FlightRequest(FlightSearchRequest):
+    pass
+
+class StayRequest(BaseModel):
+    hotel_request: HotelSearchRequest = Field(default_factory=HotelSearchRequest)
+    activity_request: ActivitySearchRequest = Field(default_factory=ActivitySearchRequest)
+
+class TripSection(BaseModel):
+    type: SectionType
+    data: Union[TransferRequest, FlightRequest, StayRequest]
+
+class TripRequest(BaseModel):
+    sections: List[TripSection] = Field(default_factory=list)
+
+class TransferResponse(BaseModel):
+    options: List[TransportOption] = Field(default_factory=list)
+
+class FlightResponse(BaseModel):
+    options: List[FlightOption] = Field(default_factory=list)
+
+class StayResponse(BaseModel):
+    hotel_options: List[HotelOption] = Field(default_factory=list)
+    activity_options: List[ActivityOption] = Field(default_factory=list)
+
+class TripSectionResponse(BaseModel):
+    type: SectionType
+    data: Union[TransferResponse, FlightResponse, StayResponse]
+
+class TripResponse(BaseModel):
+    sections: List[TripSectionResponse] = Field(default_factory=list)
+
+
