@@ -30,67 +30,42 @@ def health_check():
 
 # ===== Flights =====
 
-@app.post("/api/flights/search")
+@app.post("/api/flights/search", response_model=models.FlightSearchResponse)
 async def get_flight_data(
-    query: Dict[str, Any] = Body(..., description="Flight search JSON"),
-    list_size: int = 5
+    query: models.FlightSearchRequest = Body(..., description="Flight search request")
 ):
     resp = generate_json_from_model(
-        model_cls=models.FlightOption,
-        preferences=query,
-        system_description="""
-Generate realistic flight options with:
-- Real airline names and routes
-- Appropriate pricing by cabin class
-- ISO 8601 datetime formats
-- 0–2 stops
-- Component scores between 0.0–1.0
-        """,
-        list_size=list_size
+        model_cls=models.FlightSearchResponse,
+        preferences=query.model_dump(),
+        list_size=query.max_results or 5
     )
     return resp
 
 
 # ===== Activities =====
 
-@app.post("/api/activities/search")
+@app.post("/api/activities/search", response_model=models.ActivitySearchResponse)
 async def get_activity_data(
-    query: Dict[str, Any] = Body(..., description="Activity search JSON"),
-    list_size: int = 15
+    query: models.ActivitySearchRequest = Body(..., description="Activity search request")
 ):
     resp = generate_json_from_model(
-        model_cls=models.ActivityOption,
-        preferences=query,
-        system_description="""
-Generate realistic activity options:
-- City-specific experiences
-- Duration 1–8 hours
-- Prices $10–300
-- Ratings & highlights
-        """,
-        list_size=list_size
+        model_cls=models.ActivitySearchResponse,
+        preferences=query.model_dump(),
+        list_size=query.max_results or 15
     )
     return resp
 
 
 # ===== Transport =====
 
-@app.post("/api/transport/search")
+@app.post("/api/transport/search", response_model=models.TransportSearchResponse)
 async def get_transport_data(
-    query: Dict[str, Any] = Body(..., description="Transport search JSON"),
-    list_size: int = 10
+    query: models.TransportSearchRequest = Body(..., description="Transport search request")
 ):
     resp = generate_json_from_model(
-        model_cls=models.TransportOption,
-        preferences=query,
-        system_description="""
-Generate realistic transport options:
-- Distance-appropriate modes
-- Real providers
-- ISO 8601 datetime
-- Component scores
-        """,
-        list_size=list_size
+        model_cls=models.TransportSearchResponse,
+        preferences=query.model_dump(),
+        list_size=query.max_results or 10
     )
     return resp
 
