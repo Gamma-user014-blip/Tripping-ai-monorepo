@@ -158,10 +158,7 @@ class FlightOption(BaseModel):
     
     # Outbound flight
     outbound: FlightSegment = Field(default_factory=FlightSegment)
-    
-    # Return flight (if round-trip)
-    return_flight: FlightSegment = Field(default_factory=FlightSegment, alias="return") # 'return' is a keyword
-    
+        
     # Pricing
     total_price: Money = Field(default_factory=Money)
     price_per_person: Money = Field(default_factory=Money)
