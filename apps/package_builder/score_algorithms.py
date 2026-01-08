@@ -83,15 +83,19 @@ def calc_flight_score(flight_time, connections, price, mode="normal"):
 
 
 def get_flight_time(segment):
-    if "duration_minutes"  in segment:
+    if "duration_minutes" in segment:
         return segment["duration_minutes"]
 
-    # Calcs if missing
-    fmt = "%Y-%m-%dT%H:%M:%S"
-    dep = segment["departure_time"]
-    arr = segment["arrival_time"]
-    delta = datetime.strptime(arr, fmt) - datetime.strptime(dep, fmt)
-    return delta.total_seconds() / 60
+    # Use fromisoformat (up to 30x faster than strptime)
+    try:
+        dep = datetime.fromisoformat(segment["departure_time"])
+        arr = datetime.fromisoformat(segment["arrival_time"])
+        return (arr - dep).total_seconds() / 60
+    except (ValueError, AttributeError):
+        fmt = "%Y-%m-%dT%H:%M:%S"
+        dep = datetime.strptime(segment["departure_time"], fmt)
+        arr = datetime.strptime(segment["arrival_time"], fmt)
+        return (arr - dep).total_seconds() / 60
 
 
 def get_flight_price_usd(flight):

@@ -15,7 +15,7 @@ class TripStage(BaseModel):
     type: str
     options: List[Dict[str, Any]]
 
-# Minimal example as requested
+# Minimal exampl
 minimal_example = [
     {
         "type": "flight",

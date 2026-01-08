@@ -105,6 +105,9 @@ class CurrencyService:
     def get_rate(self, currency_code):
         return self._rates.get(currency_code, FALLBACK_RATES.get(currency_code, 1.0))
 
-# Global function helper
-def get_currency_rate(currency_code):
-    return CurrencyService().get_rate(currency_code)
+# Cached singleton instance for direct access
+_instance = CurrencyService()
+
+def get_currency_rate(currency_code: str) -> float:
+    """Access to currency rates using pre-instantiated service."""
+    return _instance.get_rate(currency_code)

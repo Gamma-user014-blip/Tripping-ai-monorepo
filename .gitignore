@@ -51,4 +51,6 @@ coverage/
 currency_cache.json
 test.py
 large_scale_test.py
+test_main.py
+airports.csv
 
