@@ -38,6 +38,24 @@ services:
     ports:
       - "8002:8000"   # optional – expose only if needed
 
+  trip_builder:
+    build:
+      context: .
+      dockerfile: ./apps/trip_builder/Dockerfile
+    container_name: trip_builder
+    environment:
+      - HOTEL_REQUEST_API=http://hotel_retriever:8000/api/hotels/search
+      - FLIGHT_REQUEST_API=http://llm_retreiver:8000/api/flights/search
+      - TRANSFER_REQUEST_API=http://llm_retreiver:8000/api/transport/search
+      - ACTIVITY_REQUEST_API=http://llm_retreiver:8000/api/activities/search
+    networks:
+      - shared_network
+    ports:
+      - "8003:8000"
+    depends_on:
+      - hotel_retriever
+      - llm_retriever
+
 networks:
   shared_network:
     driver: bridge
