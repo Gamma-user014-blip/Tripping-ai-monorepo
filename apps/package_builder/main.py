@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from fastapi import FastAPI, HTTPException
 from shared.data_types.models import TripResponse
 import uvicorn
+import time
 from packages_builder import build_package
 
 app = FastAPI(
@@ -21,7 +22,14 @@ async def create_package(trip: TripResponse):
     Accepts a full trip response and selects the best options for each section.
     """
     try:
-        return build_package(trip)
+        start_time = time.time()
+        result = build_package(trip)
+        end_time = time.time()
+        
+        print(f"[PERF] Package built in {(end_time - start_time) * 1000:.2f}ms")
+        sys.stdout.flush()
+        
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
