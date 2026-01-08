@@ -1,50 +1,30 @@
-from fastapi import FastAPI, HTTPException, Body
-from typing import List, Dict, Any
-from pydantic import BaseModel
+import sys
+import os
+# Add the project root to sys.path so 'shared' can be imported without PYTHONPATH hacks
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from fastapi import FastAPI, HTTPException
+from shared.data_types.models import TripResponse
 import uvicorn
 from packages_builder import build_package
 
 app = FastAPI(
     title="Package Builder API",
-    description="Optimizes a sequence of travel options.",
-    version="1.6.0"
+    description="Optimizes travel packages using shared models.",
+    version="2.0.0"
 )
 
-# Simple model to keep the documentation clean and focused on the core structure
-class TripStage(BaseModel):
-    type: str
-    options: List[Dict[str, Any]]
-
-# Minimal exampl
-minimal_example = [
-    {
-        "type": "flight",
-        "options": [
-            {"id": "flight_1", "...": "..."}
-        ]
-    },
-    {
-        "type": "hotel",
-        "options": [
-            {"id": "hotel_1", "...": "..."}
-        ]
-    }
-]
-
 @app.post("/build-package")
-async def create_package(
-    stages: List[TripStage] = Body(..., example=minimal_example)
-):
+async def create_package(trip: TripResponse):
     """
-    ### Optimized Package Builder
-    Input is a list of stages. Each stage defines its type and available options.
+    ### Trip Package Builder
+    Accepts a full trip response and selects the best options for each section.
     """
     try:
-        # Convert models to raw dicts for the builder
-        raw_stages = [stage.model_dump() for stage in stages]
-        return build_package(raw_stages)
+        return build_package(trip)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=81)
+    # Disable access logs for a slight performance boost
+    uvicorn.run(app, host="127.0.0.1", port=81, access_log=False)
