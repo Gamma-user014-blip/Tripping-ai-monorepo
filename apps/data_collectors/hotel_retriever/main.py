@@ -270,27 +270,32 @@ async def health_check():
 
 @app.post("/api/hotels/search")
 async def search_hotels(
-    query: Dict[str, Any] = Body(..., description="JSON search request")
+    query: models.HotelSearchRequest = Body(..., description="Hotel search request")
 ):
     """
     Search for hotels using a JSON payload.
     Checks availability for given dates and only returns available hotels.
     Returns Pydantic model-compatible JSON.
     """
-    # Extract parameters with defaults
-    city: str = query["city"]
-    country: str = query["country"]
-    start_date: str = query["start_date"]
-    end_date: str = query["end_date"]
+    # Extract parameters from Pydantic model
+    city = query.location.city
+    country = query.location.country
+    start_date = query.dates.start_date
+    end_date = query.dates.end_date
 
-    guests: int = query.get("guests", 1)
-    rooms: int = query.get("rooms", 1)
-    preferences: List[int] = query.get("preferences", [])
-    max_results: int = query.get("max_results", 50)
-    max_price_per_night: Optional[float] = query.get("max_price_per_night")
-    min_rating: Optional[float] = query.get("min_rating")
-    currency: str = query.get("currency", "USD")
-    guest_nationality: str = query.get("guest_nationality", "US")
+    guests = query.guests or 1
+    rooms = query.rooms or 1
+    
+    # Extract preferences from enum list if present
+    preferences = [p.value for p in query.preferences]
+    
+    max_results = query.max_results or 50
+    max_price_per_night = query.max_price_per_night or None
+    min_rating = query.min_rating or None
+    
+    # Defaults not in model but needed for API
+    currency = "USD" 
+    guest_nationality = "US"
     
     try:
         # Use SDK to fetch hotels in the area
