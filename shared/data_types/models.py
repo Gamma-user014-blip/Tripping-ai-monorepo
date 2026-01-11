@@ -423,3 +423,13 @@ class TripResponse(BaseModel):
     sections: List[TripSectionResponse] = Field(default_factory=list)
 
 
+class FinalStayOption(BaseModel):
+    hotel: HotelOption = Field(default_factory=HotelOption)
+    activity: List[ActivityOption] = Field(default_factory=list)
+
+class FinalTripSection(BaseModel):
+    type: SectionType
+    data: Union[TransportOption, FlightOption, FinalStayOption]
+
+class FinalTripLayout(BaseModel):
+    sections: List[FinalTripSection] = Field(default_factory=list)

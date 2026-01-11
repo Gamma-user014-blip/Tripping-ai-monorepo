@@ -47,3 +47,11 @@ next-env.d.ts
 # Testing
 coverage/
 
+# Package Builder App
+currency_cache.json
+test.py
+large_scale_test.py
+test_main.py
+airports.csv
+sample.py
+data_loader.py
