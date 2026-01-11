@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List
-from currency_service import get_currency_rate
+from .currency_service import get_currency_rate
 from shared.data_types.models import FlightOption, HotelOption, ComponentScores, FlightSegment
 
 
