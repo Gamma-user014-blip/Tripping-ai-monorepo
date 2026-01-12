@@ -916,17 +916,8 @@
                 "dates": {
                     "$ref": "#/definitions/DateRange"
                 },
-                "preferences": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/PreferenceType"
-                    }
-                },
-                "categories": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/ActivityCategory"
-                    }
+                "description": {
+                    "type": "string"
                 },
                 "maxResults": {
                     "type": "integer"

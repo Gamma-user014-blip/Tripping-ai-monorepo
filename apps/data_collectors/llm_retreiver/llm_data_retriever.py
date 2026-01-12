@@ -48,7 +48,7 @@ Generate realistic activity options with:
 - Realistic highlights and inclusions
 - Available time slots with ISO 8601 format (date: YYYY-MM-DD, time: HH:MM)
 - Difficulty levels: easy, moderate, challenging
-- Component scores 0.0-1.0 (preference_score: match to requested categories)
+- Component scores 0.0-1.0 (preference_score: match to requested description)
 """,
         "TransportSearchResponse": """
 Generate realistic transport options with:

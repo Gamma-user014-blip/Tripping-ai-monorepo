@@ -274,8 +274,7 @@ class ActivityOption(BaseModel):
 class ActivitySearchRequest(BaseModel):
     location: Location = Field(default_factory=Location)
     dates: DateRange = Field(default_factory=DateRange)
-    preferences: List[PreferenceType] = Field(default_factory=list)
-    categories: List[ActivityCategory] = Field(default_factory=list)
+    description: str = ""  # Replaced preferences and categories
     
     # Filters
     max_results: int = 0
@@ -425,7 +424,7 @@ class TripResponse(BaseModel):
 
 class FinalStayOption(BaseModel):
     hotel: HotelOption = Field(default_factory=HotelOption)
-    activity: List[ActivityOption] = Field(default_factory=list)
+    activities: List[ActivityOption] = Field(default_factory=list)
 
 class FinalTripSection(BaseModel):
     type: SectionType
