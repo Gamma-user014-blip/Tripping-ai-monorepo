@@ -132,8 +132,29 @@ class AmenityInfo(BaseModel):
     legroom_inches: int = 0
 
 class Layover(BaseModel):
-    airport: Location = Field(default_factory=Location)
-    duration_minutes: int = 0
+    airport: Location
+
+    start_time: str  # arrival.at
+    end_time: str    # next departure.at
+
+    duration_minutes: int
+
+    arrival_terminal: str | None = None
+    departure_terminal: str | None = None
+
+    airline_before: str
+    airline_after: str
+
+    is_airline_change: bool = False
+    is_terminal_change: bool = False
+    overnight: bool = False
+
+class LuggageInfo(BaseModel):
+    checked_bags: int = 0  # Number of checked bags included
+    checked_bag_weight_kg: float = 0.0  # Weight limit per bag in kg
+    carry_on_bags: int = 0  # Number of carry-on bags allowed
+    carry_on_weight_kg: float = 0.0  # Weight limit for carry-on in kg
+    carry_on_dimensions_cm: str = ""  # Dimensions as string e.g., "55x40x23"
 
 class FlightSegment(BaseModel):
     origin: Location = Field(default_factory=Location)
@@ -152,16 +173,14 @@ class FlightSegment(BaseModel):
     cabin_class: str = ""
     
     amenities: AmenityInfo = Field(default_factory=AmenityInfo)
+    luggage: LuggageInfo = Field(default_factory=LuggageInfo)
 
 class FlightOption(BaseModel):
     id: str = ""  # Unique identifier for caching
     
     # Outbound flight
     outbound: FlightSegment = Field(default_factory=FlightSegment)
-    
-    # Return flight (if round-trip)
-    return_flight: FlightSegment = Field(default_factory=FlightSegment, alias="return") # 'return' is a keyword
-    
+        
     # Pricing
     total_price: Money = Field(default_factory=Money)
     price_per_person: Money = Field(default_factory=Money)

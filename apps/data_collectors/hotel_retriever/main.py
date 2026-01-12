@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Body
 import base64
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from .data_processor import transform_hotel_data
 import redis.asyncio as redis
 import json
@@ -265,7 +265,7 @@ async def shutdown():
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 @app.post("/api/hotels/search")
@@ -392,10 +392,10 @@ async def search_hotels(
         print(f"Found {available_count} available hotels out of {len(hotels)} total")
         
         # Set metadata
-        search_id = f"search_{datetime.utcnow().timestamp()}"
+        search_id = f"search_{datetime.now(timezone.utc).timestamp()}"
         response.metadata.total_results = available_count
         response.metadata.search_id = search_id
-        response.metadata.timestamp = datetime.utcnow().isoformat()
+        response.metadata.timestamp = datetime.now(timezone.utc).isoformat()
         response.metadata.data_source = provider
         
         # Convert to dict for JSON response
