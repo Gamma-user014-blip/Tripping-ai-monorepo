@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import json
 import re
+from typing import Optional
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime, timezone 
@@ -94,7 +95,6 @@ def _get_location_meta(locations: Dict[str, Any], iata: str) -> Dict[str, Any]:
         return {}
     return locations.get(iata, {}) or {}
 
-from datetime import datetime
 
 def _is_overnight(start_iso: str, end_iso: str) -> bool:
     if not start_iso or not end_iso:
@@ -161,9 +161,9 @@ def _offer_to_flight_option(
         origin_meta = _get_location_meta(locations, origin_code)
         dest_meta = _get_location_meta(locations, dest_code)
 
-        # If your Location model ONLY has airport_code, keep it minimal:
-        origin_loc = Location(airport_code=origin_code)
-        dest_loc = Location(airport_code=dest_code)
+        origin_loc = _loc_from_iata(origin_code, locations)
+        dest_loc = _loc_from_iata(dest_code, locations)
+
 
         
         departure_time = dep.get("at", "") or ""
@@ -197,7 +197,8 @@ def _offer_to_flight_option(
 
         layovers.append(
             Layover(
-                airport=Location(airport_code=layover_airport),
+                airport=_loc_from_iata(layover_airport, locations),
+
 
                 start_time=layover_start,
                 end_time=layover_end,
@@ -223,25 +224,17 @@ def _offer_to_flight_option(
         if fds:
             cabin_class = (fds[0].get("cabin") or "").lower()
 
-    # Amenities + luggage
     amenities = AmenityInfo()
     luggage = LuggageInfo()
+
     if traveler_pricings:
-        fds = traveler_pricings[0].get("fareDetailsBySegment", []) or []
-        if fds:
-            ams = fds[0].get("amenities", []) or []
-            try:
-                amenities.items = [a.get("description", "") for a in ams if a.get("description")]
-            except Exception:
-                pass
+        fds_list = traveler_pricings[0].get("fareDetailsBySegment", []) or []
+        if fds_list:
+            fds0 = fds_list[0]
 
-            inc = fds[0].get("includedCheckedBags") or {}
-            if inc:
-                luggage.checked_bags = inc.get("weight", 0)
+            amenities = _parse_amenities_from_fds(fds0)
+            luggage = _parse_luggage_from_fds(fds0)
 
-            carry_on = fds[0].get("includedCabinBags") or {}
-            if carry_on:
-                luggage.carry_on_bags = carry_on.get("weight", 0)
 
     outbound_seg = FlightSegment(
         origin=origin_loc,
@@ -347,8 +340,6 @@ def flight_search(request: FlightSearchRequest):
 # ----------------------------
 # Local run helper (optional)
 # ----------------------------
-from typing import Optional
-from typing import Optional
 
 def pretty_print_flights_response(resp: "FlightSearchResponse") -> None:
     flights = resp.options or []
@@ -453,6 +444,71 @@ def pretty_print_flights_response(resp: "FlightSearchResponse") -> None:
     print(f"✈️  FOUND {len(flights)} FLIGHT OPTIONS")
 
 
+def _loc_from_iata(iata: str, locations: Dict[str, Any]) -> Location:
+    """
+    Build a Location with city/country/lat/lon using Amadeus dictionaries.locations.
+    Falls back safely if fields are missing.
+    """
+    meta = _get_location_meta(locations, iata) or {}
+    geo = meta.get("geoCode", {}) or {}
+
+    return Location(
+        airport_code=iata or "",
+        city=meta.get("cityName", "") or "",
+        country=meta.get("countryCode", "") or "",
+        latitude=float(geo.get("latitude") or 0.0),
+        longitude=float(geo.get("longitude") or 0.0),
+    )
+
+
+def _parse_amenities_from_fds(fds: Dict[str, Any]) -> AmenityInfo:
+    """
+    Amadeus amenities are usually a list with descriptions, not booleans.
+    We'll infer booleans by keyword matching.
+    """
+    info = AmenityInfo()
+
+    ams = fds.get("amenities", []) or []
+    for a in ams:
+        desc = (a.get("description") or "").lower()
+
+        if "wi-fi" in desc or "wifi" in desc:
+            info.wifi = True
+        if "meal" in desc or "food" in desc:
+            info.meal = True
+        if "entertainment" in desc:
+            info.entertainment = True
+        if "power" in desc or "usb" in desc or "outlet" in desc:
+            info.power_outlet = True
+
+    # legroom_inches is not provided by Flight Offers Search -> keep default 0
+    return info
+
+
+def _parse_luggage_from_fds(fds: Dict[str, Any]) -> LuggageInfo:
+    """
+    Correctly map Amadeus includedCheckedBags / includedCabinBags.
+    """
+    luggage = LuggageInfo()
+
+    checked = fds.get("includedCheckedBags") or {}
+    if checked:
+        luggage.checked_bags = int(checked.get("quantity") or 0)
+
+        weight = checked.get("weight")
+        unit = (checked.get("weightUnit") or "").upper()
+        if weight is not None and unit == "KG":
+            luggage.checked_bag_weight_kg = float(weight)
+
+    cabin = fds.get("includedCabinBags") or {}
+    if cabin:
+        luggage.carry_on_bags = int(cabin.get("quantity") or 0)
+
+        # Usually no weight/dimensions in this endpoint
+        # luggage.carry_on_weight_kg = ...
+        # luggage.carry_on_dimensions_cm = ...
+
+    return luggage
 
 if __name__ == "__main__":
     try:
@@ -462,6 +518,8 @@ if __name__ == "__main__":
             departure_date="2026-04-05",
             passengers=2,
         )
-        pretty_print_flights_response(flight_search(FlightReq))
+        
+        flight_response = flight_search(FlightReq)
+        print(json.dumps(flight_response.dict(), indent=2))
     except ResponseError as error:
         print(error)
