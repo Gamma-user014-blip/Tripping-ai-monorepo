@@ -1,9 +1,20 @@
 from datetime import datetime
 from typing import List
 from .currency_service import get_currency_rate
-from shared.data_types.models import FlightOption, HotelOption, ComponentScores, FlightSegment
+from shared.data_types.models import FlightOption, HotelOption, ComponentScores, FlightSegment, ActivityOption
+from collections import defaultdict
 
 
+
+TIME_NAMES = {
+        "morning": (6, 9),   # 6:00–9:59
+        "morning_late": (9, 12),   # 9:00–11:59
+        "afternoon": (12, 14.5), # 12:00–14:59
+        "afternoon_late": (14.5, 17), # 14:59–17:59
+        "evening": (17, 19),  # 17:00–19:59
+        "evening_late": (19, 21),  # 19:59–21:59
+        "night": (21, 6),      # 21:00–5:59
+}
 
 
 def set_flights_scores(flights: List[FlightOption]):
@@ -13,6 +24,75 @@ def set_flights_scores(flights: List[FlightOption]):
 def set_hotels_scores(hotels: List[HotelOption]):
     for hotel in hotels:
         set_hotel_scores(hotel)  
+
+
+def get_best_activities(activities: List[ActivityOption]):
+    set_activities_scores(activities)
+    times = split_activities_by_time(activities)
+    best_activities = best_per_bucket(times)
+    return list(best_activities.values())
+
+
+def best_per_bucket(times):
+    best_activities = {}
+    for time_name, acts in times.items():
+        if acts:
+            # pick activity with highest preference_score
+            best_activities[time_name] = max(acts, key=lambda activity: activity.scores.preference_score)
+    return best_activities
+
+
+def split_activities_by_time(activities):
+    times = defaultdict(list)
+
+    for act in activities:
+        for slot in act.available_times:
+            # parse time "HH:MM"
+            slot = slot.time
+            hour = int(slot.split(":")[0])
+            
+            # assign to bucket
+            for time_name, (start, end) in TIME_NAMES.items():
+                if start <= end:
+                    if start <= hour < end:
+                        times[time_name].append(act)
+                else:
+                    # wrap-around case for night (21–6)
+                    if hour >= start or hour < end:
+                        times[time_name].append(act)
+    return times
+
+def set_activities_scores(activities: List[ActivityOption]):
+    for activity in activities:
+        set_activity_scores(activity)
+
+
+def set_activity_scores(activity: ActivityOption):
+
+    max_price = 1000  # for normalization
+    price = get_currency_rate(activity.price_per_person.currency) * activity.price_per_person.amount
+    relative_price = price / max(activity.duration_minutes, 1)  # avoid division by zero
+    
+    # Invert price so cheaper per minute -> higher score
+    inverted_price = max(0, max_price - relative_price)
+    
+    # Weight rating factor based on review count
+    if activity.review_count > 20:
+        rating_factor = 0.7
+    else:
+        rating_factor = 0.5
+    
+    preference_score = activity.rating * rating_factor + (inverted_price / max_price) * (1 - rating_factor)
+    price_score = (inverted_price / max_price) * 0.7 + activity.rating * 0.3
+    
+    activity.scores = ComponentScores(
+        price_score=price_score,
+        quality_score=0,
+        convenience_score=0,
+        preference_score=preference_score
+    )
+
+
 
 def get_best_flight(flights: List[FlightOption]):
     if not flights:
