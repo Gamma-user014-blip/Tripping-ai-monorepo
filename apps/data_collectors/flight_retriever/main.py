@@ -10,14 +10,19 @@ from datetime import datetime, timezone
 from shared.data_types.models import *
 from fastapi import FastAPI, HTTPException
 from amadeus import Client, ResponseError
-
-
+from dotenv import load_dotenv
+import os
 # ----------------------------
 # Config
 # ----------------------------
 
-AMADEUS_CLIENT_ID = 'puGK9MPfzMCHoI9hpC2SoebnuDMKeWbA'
-AMADEUS_CLIENT_SECRET = 'Tizmh2XUrjV6rRAb'
+load_dotenv()
+
+AMADEUS_CLIENT_ID = os.getenv("AMADEUS_CLIENT_ID")
+AMADEUS_CLIENT_SECRET = os.getenv("AMADEUS_CLIENT_SECRET")
+
+if not AMADEUS_CLIENT_ID or not AMADEUS_CLIENT_SECRET:
+    raise RuntimeError("Missing Amadeus credentials – check .env")
 
 amadeus = Client(
     client_id=AMADEUS_CLIENT_ID,
@@ -278,7 +283,7 @@ def explore(obj, prefix=""):
 
 
 @app.post("/api/flight_retriever/search", response_model=FlightSearchResponse)
-def flight_search(request: FlightSearchRequest):
+async def flight_search(request: FlightSearchRequest):
 
     if not AMADEUS_CLIENT_ID or not AMADEUS_CLIENT_SECRET:
         raise HTTPException(status_code=500, detail="Missing AMADEUS_CLIENT_ID / AMADEUS_CLIENT_SECRET env vars")
@@ -336,112 +341,6 @@ def flight_search(request: FlightSearchRequest):
 
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Amadeus error: {e}")
-
-# ----------------------------
-# Local run helper (optional)
-# ----------------------------
-
-def pretty_print_flights_response(resp: "FlightSearchResponse") -> None:
-    flights = resp.options or []
-
-    print("\n" + "=" * 90)
-    print(f"✈️  FOUND {len(flights)} FLIGHT OPTIONS")
-    print("=" * 90)
-
-    for i, fo in enumerate(flights, start=1):
-        outbound = fo.outbound
-
-        origin = (outbound.origin.airport_code or "") if outbound.origin else ""
-        destination = (outbound.destination.airport_code or "") if outbound.destination else ""
-
-        total_price = fo.total_price
-        per_person = fo.price_per_person
-
-        print(f"\n🧳 FLIGHT #{i}")
-        print("-" * 90)
-
-        print(f"ID        : {fo.id or ''}")
-        print(f"Provider  : {fo.provider or ''}")
-        print(f"Available : {bool(fo.available)}")
-
-        print("\nROUTE")
-        print(f"  {origin} ➜ {destination}")
-
-        print("\nTIMES")
-        print(f"  Departure : {outbound.departure_time or ''}")
-        print(f"  Arrival   : {outbound.arrival_time or ''}")
-        h, m = divmod(outbound.duration_minutes, 60)
-        print(f"  Duration  : {int(h)}h {int(m)}m")
-
-        print("\nFLIGHT INFO")
-        print(f"  Airline   : {outbound.airline or ''}")
-        print(f"  Flight No : {outbound.flight_number or ''}")
-        print(f"  Aircraft  : {outbound.aircraft or ''}")
-        print(f"  Cabin     : {outbound.cabin_class or ''}")
-        print(f"  Stops     : {int(outbound.stops or 0)}")
-
-        layovers = outbound.layovers or []
-        print("\nLAYOVERS")
-        if not layovers:
-            print("  Direct flight")
-        else:
-            for idx, l in enumerate(layovers, start=1):
-                airport_code = l.airport.airport_code or "(unknown airport)"
-
-                start = l.start_time or ""
-                end = l.end_time or ""
-                duration = int(l.duration_minutes or 0)
-
-                arrival_terminal: Optional[str] = l.arrival_terminal
-                departure_terminal: Optional[str] = l.departure_terminal
-
-                airline_before = l.airline_before or ""
-                airline_after = l.airline_after or ""
-
-                is_airline_change = bool(l.is_airline_change)
-                is_terminal_change = bool(l.is_terminal_change)
-                overnight = bool(l.overnight)
-
-                print(f"  ✈ Stop #{idx} at {airport_code}")
-                print(f"     Time     : {start} → {end}")
-
-                # Terminals (optional)
-                term_bits = []
-                if arrival_terminal:
-                    term_bits.append(f"Arr T{arrival_terminal}")
-                if departure_terminal:
-                    term_bits.append(f"Dep T{departure_terminal}")
-                if term_bits:
-                    print(
-                        f"     Terminal : " + " → ".join(term_bits)
-                        if len(term_bits) == 2
-                        else f"     Terminal : {term_bits[0]}"
-                    )
-
-                # Layover duration
-                if duration:
-                    h, m = divmod(duration, 60)
-                    print(f"     Layover  : {h}h {m}m" if h else f"     Layover  : {m}m")
-
-                # Change flags (optional but useful)
-                flags = []
-                if is_airline_change:
-                    flags.append(f"Airline change ({airline_before} → {airline_after})")
-                if is_terminal_change:
-                    flags.append("Terminal change")
-                if overnight:
-                    flags.append("Overnight")
-                if flags:
-                    print(f"     Notes    : " + " | ".join(flags))
-
-        print("\nPRICE")
-        print(f"  Total     : {total_price.amount or 0} {total_price.currency or ''}")
-        print(f"  Per person: {per_person.amount or 0} {per_person.currency or ''}")
-
-        print("\n" + "-" * 90)
-
-    print("\n" + "=" * 90 + "\n")
-    print(f"✈️  FOUND {len(flights)} FLIGHT OPTIONS")
 
 
 def _loc_from_iata(iata: str, locations: Dict[str, Any]) -> Location:
@@ -510,16 +409,3 @@ def _parse_luggage_from_fds(fds: Dict[str, Any]) -> LuggageInfo:
 
     return luggage
 
-if __name__ == "__main__":
-    try:
-        FlightReq = FlightSearchRequest(
-            origin=Location(airport_code="LHR"),
-            destination=Location(airport_code="JFK"),
-            departure_date="2026-04-05",
-            passengers=2,
-        )
-        
-        flight_response = flight_search(FlightReq)
-        print(json.dumps(flight_response.dict(), indent=2))
-    except ResponseError as error:
-        print(error)
