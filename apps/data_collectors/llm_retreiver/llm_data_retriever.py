@@ -5,6 +5,7 @@ Supports flight, hotel, activity, and transport models.
 
 import os
 import json
+import re
 from google import genai
 from dotenv import load_dotenv
 
@@ -21,6 +22,32 @@ if not TOKEN:
     raise ValueError("Set GEMINI_API_TOKEN or GEMINI_API_KEY environment variable")
 
 CLIENT = genai.Client(api_key=TOKEN)
+
+
+def _strip_markdown_and_clean_json(text: str) -> str:
+    """
+    Remove markdown code blocks and clean up the JSON response.
+    
+    Args:
+        text: Raw text that may contain markdown code blocks
+        
+    Returns:
+        Clean JSON string
+    """
+    # Remove markdown code blocks (```json ... ``` or ``` ... ```)
+    text = re.sub(r'^```(?:json)?\s*\n', '', text.strip(), flags=re.MULTILINE)
+    text = re.sub(r'\n```\s*$', '', text.strip(), flags=re.MULTILINE)
+    
+    # Remove any remaining backticks at start/end
+    text = text.strip('`').strip()
+    
+    # Try to find JSON object/array if there's extra text
+    # Look for the outermost { } or [ ]
+    json_match = re.search(r'(\{.*\}|\[.*\])', text, re.DOTALL)
+    if json_match:
+        text = json_match.group(1)
+    
+    return text.strip()
 
 
 def _get_service_context(model_name: str) -> str:
@@ -82,6 +109,8 @@ def generate_json_from_model(
 
     system_prompt = f"""
 OUTPUT ONLY RAW JSON. DO NOT USE MARKDOWN OR CODE BLOCKS.
+DO NOT wrap the response in ```json or ``` markers.
+OUTPUT PURE JSON ONLY.
 
 {system_description or service_context}
 
@@ -102,9 +131,11 @@ IMPORTANT INSTRUCTIONS:
         user_prompt = f"""
 Generate results for this search request:
 {json.dumps(preferences, indent=2)}
+
+Remember: Output ONLY raw JSON, no markdown formatting.
 """
     else:
-        user_prompt = f"Generate {list_size} realistic travel options."
+        user_prompt = f"Generate {list_size} realistic travel options. Output ONLY raw JSON."
 
     try:
         if provider == LLMProvider.PERPLEXITY:
@@ -112,11 +143,16 @@ Generate results for this search request:
         else:
             raw_text = _generate_with_gemini(system_prompt, user_prompt, use_grounding)
 
-        return json.loads(raw_text)
+        # Strip markdown and clean the response
+        cleaned_text = _strip_markdown_and_clean_json(raw_text)
+        
+        return json.loads(cleaned_text)
 
     except json.JSONDecodeError as e:
         raise ValueError(
-            f"Failed to parse {provider} response as JSON: {e}\nResponse:\n{raw_text}"
+            f"Failed to parse {provider} response as JSON: {e}\n"
+            f"Raw response:\n{raw_text}\n"
+            f"Cleaned response:\n{cleaned_text if 'cleaned_text' in locals() else 'N/A'}"
         )
 
 

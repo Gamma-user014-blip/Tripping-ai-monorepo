@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the entire monorepo context to access shared modules
 COPY . /app
 
-CMD ["python3", "-m", "apps.trip_builder.main"]
+CMD ["python3", "-m", "apps.package_builder.main"]

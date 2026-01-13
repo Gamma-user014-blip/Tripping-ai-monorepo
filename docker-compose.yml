@@ -27,6 +27,19 @@ services:
     expose:
       - "6379"        # internal only
 
+  flight_retriever:
+    build:
+      context: .
+      dockerfile: ./apps/data_collectors/flight_retriever/Dockerfile
+    container_name: flight_retriever
+    environment:
+      - AMADEUS_CLIENT_ID
+      - AMADEUS_CLIENT_SECRET
+    networks:
+      - shared_network
+    ports:
+      - "8003:8000"
+
   llm_retriever:
     build:
       context: .
@@ -37,6 +50,37 @@ services:
       - llm_private_network
     ports:
       - "8002:8000"   # optional – expose only if needed
+
+  trip_builder:
+    build:
+      context: .
+      dockerfile: ./apps/trip_builder/Dockerfile
+    container_name: trip_builder
+    environment:
+      - HOTEL_REQUEST_API=http://hotel_retriever:8000/api/hotels/search
+      - FLIGHT_REQUEST_API=http://flight_retriever:8000/api/flight_retriever/search
+      - TRANSFER_REQUEST_API=http://llm_retreiver:8000/api/transport/search
+      - ACTIVITY_REQUEST_API=http://llm_retreiver:8000/api/activities/search
+      - PACKAGE_BUILDER_API=http://package_builder:8000/api/build-package
+    networks:
+      - shared_network
+    ports:
+      - "8100:8000"
+    depends_on:
+      - hotel_retriever
+      - llm_retriever
+
+  package_builder:
+    build:
+      context: .
+      dockerfile: ./apps/package_builder/Dockerfile
+    container_name: package_builder
+    networks:
+      - shared_network
+    ports:
+      - "8200:8000"
+    depends_on:
+      - trip_builder
 
 networks:
   shared_network:

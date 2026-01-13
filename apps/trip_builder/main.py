@@ -1,49 +1,127 @@
 from fastapi import FastAPI
-from shared.data_types.models import TripRequest, FlightRequest, TransferRequest, StayRequest, HotelSearchRequest, ActivitySearchRequest, SectionType
+from shared.data_types.models import *
+import os
+from dotenv import load_dotenv
+import httpx
+from shared.data_types.models import *
+import os
+from dotenv import load_dotenv
+import httpx
 import asyncio
 
+load_dotenv()
+
 app = FastAPI()
+
+HOTEL_REQUEST_API = os.getenv("HOTEL_REQUEST_API", "http://localhost:8000/api/hotels/search")
+FLIGHT_REQUEST_API = os.getenv("FLIGHT_REQUEST_API", "http://localhost:8000/api/flights/search")
+TRANSFER_REQUEST_API = os.getenv("TRANSFER_REQUEST_API", "http://localhost:8000/api/transport/search")
+ACTIVITY_REQUEST_API = os.getenv("ACTIVITY_REQUEST_API", "http://localhost:8000/api/activities/search")
+PACKAGE_BUILDER_API = os.getenv("PACKAGE_BUILDER_API", "http://localhost:8000/api/build-package")
 
 @app.get("/")
 def read_root():
     return {"message": "Trip Builder Service"}
 
-async def flight_search(request: FlightRequest):
-    return {"message": "Flight search"}
+async def flight_search(request: FlightRequest, client: httpx.AsyncClient) -> FlightResponse:
+    response = await client.post(FLIGHT_REQUEST_API, json=request.model_dump())
+    response.raise_for_status()
+    return FlightResponse.model_validate(response.json())
+async def flight_search(request: FlightRequest, client: httpx.AsyncClient) -> FlightResponse:
+    response = await client.post(FLIGHT_REQUEST_API, json=request.model_dump())
+    response.raise_for_status()
+    return FlightResponse.model_validate(response.json())
 
-async def transfer_search(request: TransferRequest):
-    return {"message": "Transfer search"}
+async def transfer_search(request: TransferRequest, client: httpx.AsyncClient) -> TransferResponse:
+    response = await client.post(TRANSFER_REQUEST_API, json=request.model_dump())
+    response.raise_for_status()
+    return TransferResponse.model_validate(response.json())
 
-async def stay_search(request: StayRequest):
-    return {"message": "Stay search"}
-
-async def activity_search(request: ActivitySearchRequest):
-    return {"message": "Activity search"}
-
-async def process_sections(request):
-    tasks = []
+async def stay_search(request: StayRequest, client: httpx.AsyncClient) -> StayResponse:
+    # Execute hotel and activity searches in parallel
     
-    for section in request.sections:
-        if section.type == SectionType.FLIGHT:
-            tasks.append(flight_search(section.data))
-        elif section.type == SectionType.TRANSFER:
-            tasks.append(transfer_search(section.data))
-        elif section.type == SectionType.STAY:
-            tasks.append(stay_search(section.data))
-        elif section.type == SectionType.ACTIVITY:
-            tasks.append(activity_search(section.data))
-    
-    # Wait for all searches to complete in parallel
-    results = await asyncio.gather(*tasks)
-    return results
+    async def get_hotels():
+        res = await client.post(HOTEL_REQUEST_API, json=request.hotel_request.model_dump())
+        res.raise_for_status()
+        return HotelSearchResponse.model_validate(res.json())
 
-@app.post("/api/create_trip")
+    async def get_activities():
+        res = await client.post(ACTIVITY_REQUEST_API, json=request.activity_request.model_dump())
+        res.raise_for_status()
+        return ActivitySearchResponse.model_validate(res.json())
+
+    hotel_data, activity_data = await asyncio.gather(get_hotels(), get_activities())
+    
+    return StayResponse(
+        hotel_options=hotel_data.options,
+        activity_options=activity_data.options
+    )
+
+async def stay_search(request: StayRequest, client: httpx.AsyncClient) -> StayResponse:
+    # Execute hotel and activity searches in parallel
+    
+    async def get_hotels():
+        res = await client.post(HOTEL_REQUEST_API, json=request.hotel_request.model_dump())
+        res.raise_for_status()
+        return HotelSearchResponse.model_validate(res.json())
+
+    async def get_activities():
+        res = await client.post(ACTIVITY_REQUEST_API, json=request.activity_request.model_dump())
+        res.raise_for_status()
+        return ActivitySearchResponse.model_validate(res.json())
+
+    hotel_data, activity_data = await asyncio.gather(get_hotels(), get_activities())
+    
+    return StayResponse(
+        hotel_options=hotel_data.options,
+        activity_options=activity_data.options
+    )
+
+
+async def process_sections(request: TripRequest) -> TripResponse:
+    trip_response = TripResponse()
+    
+    async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as client:
+        # Helper to process a single section and wrap it
+        async def process_section(section: TripSection) -> TripSectionResponse:
+            if section.type == SectionType.FLIGHT:
+                data = await flight_search(section.data, client)
+                return TripSectionResponse(type=SectionType.FLIGHT, data=data)
+            
+            elif section.type == SectionType.TRANSFER:
+                data = await transfer_search(section.data, client)
+                return TripSectionResponse(type=SectionType.TRANSFER, data=data)
+            
+            elif section.type == SectionType.STAY:
+                data = await stay_search(section.data, client)
+                return TripSectionResponse(type=SectionType.STAY, data=data)
+            
+            # Fallback for unknown types if needed, or raise
+            return None
+
+        # Create tasks for all sections
+        coros = [process_section(section) for section in request.sections]
+        
+        # Execute all in parallel
+        results = await asyncio.gather(*coros)
+        
+        # Filter out Nones if any
+        trip_response.sections = [r for r in results if r]
+            
+    return trip_response
+
+async def build_package(trip_response: TripResponse) -> FinalTripLayout:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as client:
+        res = await client.post(PACKAGE_BUILDER_API, json=trip_response.model_dump())
+        res.raise_for_status()
+        return FinalTripLayout.model_validate(res.json())
+
+@app.post("/api/create_trip", response_model=FinalTripLayout)
 async def create_trip(
     request: TripRequest
 ):
-    request_results = await process_sections(request)
-
-    return {"message": "Trip created successfully"}
+    trip_response = await process_sections(request)
+    return await build_package(trip_response)
 
 
 if __name__ == "__main__":

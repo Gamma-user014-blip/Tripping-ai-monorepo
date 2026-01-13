@@ -54,4 +54,4 @@ async def create_package(request: Request):
 
 if __name__ == "__main__":
     # Disable access logs for a slight performance boost
-    uvicorn.run(app, host="0.0.0.0", port=8100, access_log=False)
+    uvicorn.run(app, host="0.0.0.0", port=8000, access_log=False)
