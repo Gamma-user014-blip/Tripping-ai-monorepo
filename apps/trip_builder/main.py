@@ -3,6 +3,10 @@ from shared.data_types.models import *
 import os
 from dotenv import load_dotenv
 import httpx
+from shared.data_types.models import *
+import os
+from dotenv import load_dotenv
+import httpx
 import asyncio
 
 load_dotenv()
@@ -23,11 +27,35 @@ async def flight_search(request: FlightRequest, client: httpx.AsyncClient) -> Fl
     response = await client.post(FLIGHT_REQUEST_API, json=request.model_dump())
     response.raise_for_status()
     return FlightResponse.model_validate(response.json())
+async def flight_search(request: FlightRequest, client: httpx.AsyncClient) -> FlightResponse:
+    response = await client.post(FLIGHT_REQUEST_API, json=request.model_dump())
+    response.raise_for_status()
+    return FlightResponse.model_validate(response.json())
 
 async def transfer_search(request: TransferRequest, client: httpx.AsyncClient) -> TransferResponse:
     response = await client.post(TRANSFER_REQUEST_API, json=request.model_dump())
     response.raise_for_status()
     return TransferResponse.model_validate(response.json())
+
+async def stay_search(request: StayRequest, client: httpx.AsyncClient) -> StayResponse:
+    # Execute hotel and activity searches in parallel
+    
+    async def get_hotels():
+        res = await client.post(HOTEL_REQUEST_API, json=request.hotel_request.model_dump())
+        res.raise_for_status()
+        return HotelSearchResponse.model_validate(res.json())
+
+    async def get_activities():
+        res = await client.post(ACTIVITY_REQUEST_API, json=request.activity_request.model_dump())
+        res.raise_for_status()
+        return ActivitySearchResponse.model_validate(res.json())
+
+    hotel_data, activity_data = await asyncio.gather(get_hotels(), get_activities())
+    
+    return StayResponse(
+        hotel_options=hotel_data.options,
+        activity_options=activity_data.options
+    )
 
 async def stay_search(request: StayRequest, client: httpx.AsyncClient) -> StayResponse:
     # Execute hotel and activity searches in parallel
