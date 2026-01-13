@@ -13,6 +13,7 @@ HOTEL_REQUEST_API = os.getenv("HOTEL_REQUEST_API", "http://localhost:8000/api/ho
 FLIGHT_REQUEST_API = os.getenv("FLIGHT_REQUEST_API", "http://localhost:8000/api/flights/search")
 TRANSFER_REQUEST_API = os.getenv("TRANSFER_REQUEST_API", "http://localhost:8000/api/transport/search")
 ACTIVITY_REQUEST_API = os.getenv("ACTIVITY_REQUEST_API", "http://localhost:8000/api/activities/search")
+PACKAGE_BUILDER_API = os.getenv("PACKAGE_BUILDER_API", "http://localhost:8000/api/build-package")
 
 @app.get("/")
 def read_root():
@@ -81,11 +82,18 @@ async def process_sections(request: TripRequest) -> TripResponse:
             
     return trip_response
 
-@app.post("/api/create_trip", response_model=TripResponse)
+async def build_package(trip_response: TripResponse) -> FinalTripLayout:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as client:
+        res = await client.post(PACKAGE_BUILDER_API, json=trip_response.model_dump())
+        res.raise_for_status()
+        return FinalTripLayout.model_validate(res.json())
+
+@app.post("/api/create_trip", response_model=FinalTripLayout)
 async def create_trip(
     request: TripRequest
 ):
-    return await process_sections(request)
+    trip_response = await process_sections(request)
+    return await build_package(trip_response)
 
 
 if __name__ == "__main__":
