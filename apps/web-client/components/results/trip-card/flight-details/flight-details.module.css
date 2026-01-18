@@ -1,0 +1,150 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 16px 12px;
+  font-family: "Inter", sans-serif;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background-color: var(--color-gray-50);
+  border-radius: 8px;
+  padding: 8px 16px;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.row:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card-light);
+}
+
+.row:active {
+  transform: translateY(0px);
+}
+
+.airlineSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 60px;
+  flex-shrink: 0;
+}
+
+.logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.airlineName {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.timeSection {
+  display: flex;
+  align-items: center;
+}
+
+.time {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-dark);
+}
+
+.iconSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.code {
+  font-size: 10px;
+  color: var(--color-text-subtle);
+  font-weight: 500;
+}
+
+.flightPath {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+  padding: 0 8px;
+}
+
+.duration {
+  font-size: 10px;
+  color: var(--color-text-subtle);
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+
+.lineWrapper {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  position: relative;
+  height: 8px;
+}
+
+.line {
+  flex: 1;
+  height: 2px;
+  background-color: #e5e7eb;
+  border-radius: 1px;
+}
+
+.diamond {
+  width: 8px;
+  height: 8px;
+  background-color: #e5e7eb;
+  transform: rotate(45deg);
+  margin-left: -4px;
+}
+
+.stopMarker {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1;
+}
+
+.stopDot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-teal-primary);
+  transform: rotate(45deg);
+  border-radius: 0;
+}
+
+.stopText {
+  position: absolute;
+  top: 12px;
+  font-size: 8px;
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.baggage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  flex-shrink: 0;
+}

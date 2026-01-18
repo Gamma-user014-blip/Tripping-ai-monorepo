@@ -13,6 +13,10 @@
     "services": "concurrently \"npm run start --prefix apps/flight-service\" \"npm run start --prefix apps/hotel-service\""
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "prettier": "3.7.4"
+  },
+  "dependencies": {
+    "maplibre-gl": "^5.15.0"
   }
 }

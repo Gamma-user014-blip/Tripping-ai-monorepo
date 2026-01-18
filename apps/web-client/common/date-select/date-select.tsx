@@ -1,8 +1,8 @@
-import React from 'react';
-import DatePicker, { DateObject } from 'react-multi-date-picker';
-import { CalendarIcon } from '@radix-ui/react-icons';
-import TextLabel from '../text-label';
-import styles from './date-select.module.css';
+import React from "react";
+import DatePicker, { DateObject } from "react-multi-date-picker";
+import { CalendarIcon } from "@radix-ui/react-icons";
+import TextLabel from "../text-label";
+import styles from "./date-select.module.css";
 
 type DateSelectProps = {
   value?: DateObject | DateObject[] | null;
@@ -10,20 +10,22 @@ type DateSelectProps = {
   placeholder?: string;
 };
 
-const DateSelect: React.FC<DateSelectProps> = ({ 
-  value, 
-  onChange, 
-  placeholder = 'Select dates',
+const DateSelect: React.FC<DateSelectProps> = ({
+  value,
+  onChange,
+  placeholder = "Select dates",
 }) => {
-  const formatDateRange = (dates: DateObject | DateObject[] | null | undefined): string => {
-    if (!dates) return '';
+  const formatDateRange = (
+    dates: DateObject | DateObject[] | null | undefined,
+  ): string => {
+    if (!dates) return "";
     if (Array.isArray(dates) && dates.length === 2) {
-      return `${dates[0].format('MMM DD')} - ${dates[1].format('MMM DD')}`;
+      return `${dates[0].format("MMM DD")} - ${dates[1].format("MMM DD")}`;
     }
     if (!Array.isArray(dates)) {
-      return dates.format('MMM DD, YYYY');
+      return dates.format("MMM DD, YYYY");
     }
-    return '';
+    return "";
   };
 
   const formattedValue = formatDateRange(value);
@@ -38,12 +40,10 @@ const DateSelect: React.FC<DateSelectProps> = ({
       numberOfMonths={2}
       portal
       render={(_valueStr: any, openCalendar: () => void) => (
-        <button 
-          type="button"
-          onClick={openCalendar} 
-          className={styles.trigger}
-        >
-          <span className={`${styles.valueWrapper} ${!hasValue ? styles.placeholderText : ''}`}>
+        <button type="button" onClick={openCalendar} className={styles.trigger}>
+          <span
+            className={`${styles.valueWrapper} ${!hasValue ? styles.placeholderText : ""}`}
+          >
             <TextLabel type="P100" color={hasValue ? "accent" : "gray"}>
               {displayText}
             </TextLabel>

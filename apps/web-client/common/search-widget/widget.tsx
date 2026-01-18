@@ -13,23 +13,47 @@ import countries from "../countries.json";
 import airports from "../airports.json";
 import { CountrySelectItem } from "../country-select/country-select-item";
 import { AirportSelectItem } from "../airport-select/airport-select-item";
-import { popularAirportCodes, popularCountryCodes } from "./popular-destinations";
+import {
+  popularAirportCodes,
+  popularCountryCodes,
+} from "./popular-destinations";
 
 type People = { adults: number; children: number };
 type WidgetType = "primary" | "secondary";
 
 interface WidgetProps {
   type?: WidgetType;
+  initialFrom?: string | undefined;
+  initialTo?: string | undefined;
+  initialDates?: string | undefined;
+  initialAdults?: number | undefined;
+  initialChildren?: number | undefined;
 }
 
-const Widget: React.FC<WidgetProps> = ({ type = "primary" }): JSX.Element => {
+const Widget: React.FC<WidgetProps> = ({
+  type = "primary",
+  initialFrom,
+  initialTo,
+  initialDates,
+  initialAdults,
+  initialChildren,
+}): JSX.Element => {
   const router = useRouter();
+
+  const parseDates = (d?: string | undefined): DateObject | DateObject[] | null => {
+    if (!d) return null;
+    const parts = d.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length === 0) return null;
+    if (parts.length === 1) return new DateObject(parts[0]);
+    return parts.map((p) => new DateObject(p));
+  };
+
   const [dateRange, setDateRange] = useState<DateObject | DateObject[] | null>(
-    null
+    parseDates(initialDates),
   );
-  const [fromValue, setFromValue] = useState<string | undefined>(undefined);
-  const [toValue, setToValue] = useState<string | undefined>(undefined);
-  const [people, setPeople] = useState<People>({ adults: 1, children: 0 });
+  const [fromValue, setFromValue] = useState<string | undefined>(initialFrom);
+  const [toValue, setToValue] = useState<string | undefined>(initialTo);
+  const [people, setPeople] = useState<People>({ adults: initialAdults ?? 1, children: initialChildren ?? 0 });
 
   const airportOptions = useMemo(() => {
     return airports.map((airport) => ({
@@ -70,18 +94,40 @@ const Widget: React.FC<WidgetProps> = ({ type = "primary" }): JSX.Element => {
     return [...popularCountries, ...otherCountries];
   }, []);
 
-  const renderAirportTrigger = (selectedOption: { value: string; label: string } | undefined) => {
+  const renderAirportTrigger = (
+    selectedOption: { value: string; label: string } | undefined,
+  ) => {
     if (!selectedOption) {
-      return <TextLabel type="P100" color="gray">Airport</TextLabel>;
+      return (
+        <TextLabel type="P100" color="gray">
+          Airport
+        </TextLabel>
+      );
     }
-    return <AirportSelectItem name={selectedOption.label} code={selectedOption.value} />;
+    return (
+      <AirportSelectItem
+        name={selectedOption.label}
+        code={selectedOption.value}
+      />
+    );
   };
 
-  const renderCountryTrigger = (selectedOption: { value: string; label: string } | undefined) => {
+  const renderCountryTrigger = (
+    selectedOption: { value: string; label: string } | undefined,
+  ) => {
     if (!selectedOption) {
-      return <TextLabel type="P100" color="gray">Locations</TextLabel>;
+      return (
+        <TextLabel type="P100" color="gray">
+          Locations
+        </TextLabel>
+      );
     }
-    return <CountrySelectItem name={selectedOption.label} code={selectedOption.value} />;
+    return (
+      <CountrySelectItem
+        name={selectedOption.label}
+        code={selectedOption.value}
+      />
+    );
   };
 
   const isDateRangeValid = (d: DateObject | DateObject[] | null): boolean => {
@@ -108,21 +154,21 @@ const Widget: React.FC<WidgetProps> = ({ type = "primary" }): JSX.Element => {
 
     const formattedDates = Array.isArray(dates)
       ? dates.map((dt) =>
-          (dt as any).format ? (dt as any).format("YYYY-MM-DD") : String(dt)
+          (dt as any).format ? (dt as any).format("YYYY-MM-DD") : String(dt),
         )
       : dates && (dates as any).format
-      ? [(dates as any).format("YYYY-MM-DD")]
-      : [String(dates)];
+        ? [(dates as any).format("YYYY-MM-DD")]
+        : [String(dates)];
 
     router.push({
-      pathname: '/results',
+      pathname: "/results",
       query: {
         from,
         to,
-        dates: formattedDates.join(','),
+        dates: formattedDates.join(","),
         adults: people.adults,
-        children: people.children
-      }
+        children: people.children,
+      },
     });
   };
 
@@ -134,7 +180,11 @@ const Widget: React.FC<WidgetProps> = ({ type = "primary" }): JSX.Element => {
       })}
     >
       <div className={styles.selectWrapper}>
-        <TextLabel type="P200" classname={styles.label}>
+        <TextLabel
+          type="P200"
+          classname={styles.label}
+          color={type === "primary" ? "white" : "accent"}
+        >
           From
         </TextLabel>
         <Select
@@ -146,7 +196,11 @@ const Widget: React.FC<WidgetProps> = ({ type = "primary" }): JSX.Element => {
         />
       </div>
       <div className={styles.selectWrapper}>
-        <TextLabel type="P200" classname={styles.label}>
+        <TextLabel
+          type="P200"
+          classname={styles.label}
+          color={type === "primary" ? "white" : "accent"}
+        >
           To
         </TextLabel>
         <Select
@@ -158,7 +212,11 @@ const Widget: React.FC<WidgetProps> = ({ type = "primary" }): JSX.Element => {
         />
       </div>
       <div className={styles.selectWrapper}>
-        <TextLabel type="P200" classname={styles.label}>
+        <TextLabel
+          type="P200"
+          classname={styles.label}
+          color={type === "primary" ? "white" : "accent"}
+        >
           Dates
         </TextLabel>
         <DateSelect
@@ -168,7 +226,11 @@ const Widget: React.FC<WidgetProps> = ({ type = "primary" }): JSX.Element => {
         />
       </div>
       <div className={styles.selectWrapper}>
-        <TextLabel type="P200" classname={styles.label}>
+        <TextLabel
+          type="P200"
+          classname={styles.label}
+          color={type === "primary" ? "white" : "accent"}
+        >
           Group
         </TextLabel>
         <PeopleSelect initial={people} onChange={setPeople} />

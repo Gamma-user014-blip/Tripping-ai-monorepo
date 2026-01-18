@@ -60,4 +60,34 @@
 
   --widget-background-primary: rgba(0, 0, 0, 0.35);
   --widget-background-secondary: #f3f4f4;
+
+  --color-teal-primary: #4a9da6;
+  --color-teal-light: #e6f7f8;
+  --color-teal-medium: #b0d0d3;
+  --color-card-background: var(--color-white);
+  --color-border-dashed: #ccc;
+  
+  /* App Modernization Variables (Travelia Theme) */
+  --color-primary: #13ecec;
+  --color-primary-dark: #0fa3a3;
+  --color-background-light: #f8fcfc;
+  --color-background-dark: #102222;
+  --color-text-main: #0d1b1b;
+  --color-text-sub: #4c9a9a;
+  --color-card-light: #ffffff;
+  --color-card-dark: #1a2c2c;
+  --color-border-light: #e7f3f3;
+  --color-border-dark: #2a3c3c;
+  
+  /* Mappings */
+  --color-page-background: var(--color-background-light);
+  --color-text-dark: var(--color-text-main);
+  --color-text-muted: var(--color-text-sub);
+  --color-text-subtle: var(--color-text-sub);
+  --color-teal-primary: var(--color-text-sub);
+  --color-teal-dark: var(--color-primary-dark);
+  
+  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-card-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
+

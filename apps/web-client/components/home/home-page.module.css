@@ -27,14 +27,22 @@
 }
 
 .backgroundImage::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
   height: 240px;
-  background: linear-gradient(to top, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0));
-  background: linear-gradient(to top, var(--color-white-gradient-translucent), rgba(255, 255, 255, 0));
+  background: linear-gradient(
+    to top,
+    rgba(255, 255, 255, 0.6),
+    rgba(255, 255, 255, 0)
+  );
+  background: linear-gradient(
+    to top,
+    var(--color-white-gradient-translucent),
+    rgba(255, 255, 255, 0)
+  );
 }
 
 .centerOverlay {

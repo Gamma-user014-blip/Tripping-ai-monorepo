@@ -34,7 +34,7 @@ const Select: React.FC<SelectProps> = ({
   renderTriggerLabel,
 }): JSX.Element => {
   const [internalValue, setInternalValue] = useState<string | undefined>(
-    undefined
+    undefined,
   );
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,7 +59,7 @@ const Select: React.FC<SelectProps> = ({
   const filteredOptions = useMemo(() => {
     return searchQuery
       ? options.filter((opt) =>
-          opt.label.toLowerCase().includes(searchQuery.toLowerCase())
+          opt.label.toLowerCase().includes(searchQuery.toLowerCase()),
         )
       : options;
   }, [options, searchQuery]);
@@ -73,7 +73,7 @@ const Select: React.FC<SelectProps> = ({
 
   const triggerContent = renderTriggerLabel
     ? renderTriggerLabel(selectedOption)
-    : selectedOption?.label ?? placeholder;
+    : (selectedOption?.label ?? placeholder);
 
   const isPlaceholder = !selectedOption;
 
@@ -139,7 +139,11 @@ const Select: React.FC<SelectProps> = ({
                     {opt.renderLabel ? (
                       opt.renderLabel()
                     ) : (
-                      <TextLabel type="P100" classname={triggerStyles.label} color="accent">
+                      <TextLabel
+                        type="P100"
+                        classname={triggerStyles.label}
+                        color="accent"
+                      >
                         {opt.label}
                       </TextLabel>
                     )}

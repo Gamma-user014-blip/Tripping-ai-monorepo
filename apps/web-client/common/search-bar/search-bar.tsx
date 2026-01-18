@@ -9,7 +9,10 @@ interface SearchBarProps {
 }
 
 const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(
-  ({ value, onChange, placeholder = "Search...", onBlur }, ref): JSX.Element => {
+  (
+    { value, onChange, placeholder = "Search...", onBlur },
+    ref,
+  ): JSX.Element => {
     return (
       <div className={styles.searchContainer}>
         <input
@@ -32,11 +35,19 @@ const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(
           aria-hidden="true"
         >
           <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-          <line x1="20" y1="20" x2="16.5" y2="16.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <line
+            x1="20"
+            y1="20"
+            x2="16.5"
+            y2="16.5"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
         </svg>
       </div>
     );
-  }
+  },
 );
 
 export default SearchBar;
