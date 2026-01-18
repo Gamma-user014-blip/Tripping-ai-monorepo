@@ -52,11 +52,7 @@ const PeopleSelect: React.FC<PeopleSelectProps> = ({
         </button>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content
-          className={styles.panel}
-          sideOffset={6}
-          align="start"
-        >
+        <Popover.Content className={styles.panel} sideOffset={6} align="start">
           <div className={styles.row}>
             <div className={styles.label}>
               <span className={styles.title}>Adults</span>

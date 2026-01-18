@@ -1,5 +1,5 @@
-import ReactCountryFlag from 'react-country-flag';
-import styles from './country-select-item.module.css';
+import ReactCountryFlag from "react-country-flag";
+import styles from "./country-select-item.module.css";
 
 interface CountrySelectItemProps {
   name: string;

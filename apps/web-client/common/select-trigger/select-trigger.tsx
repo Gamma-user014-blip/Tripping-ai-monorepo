@@ -17,7 +17,9 @@ const SelectTrigger: React.FC<SelectTriggerProps> = ({
   onPointerDown,
   renderContent,
 }): JSX.Element => {
-  const content = renderContent ? renderContent() : (
+  const content = renderContent ? (
+    renderContent()
+  ) : (
     <TextLabel type="P100" color="black">
       {text}
     </TextLabel>

@@ -10,6 +10,20 @@
   border-radius: 8px;
   cursor: pointer;
   color: var(--color-black);
+  transition:
+    border-color 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.trigger:hover {
+  transform: none;
+  box-shadow: 0 0 0 2px rgba(0, 150, 136, 0.1); /* Teal glow */
+  border-color: var(--color-teal-primary);
+}
+
+.trigger:active {
+  transform: none;
+  background-color: #fafafa;
 }
 
 .trigger:focus {
@@ -31,7 +45,15 @@
   color: var(--color-gray-700);
 }
 
-.iconDown { display: block; }
-.iconUp { display: none; }
-.trigger[data-state="open"] .iconDown { display: none; }
-.trigger[data-state="open"] .iconUp { display: block; }
+.iconDown {
+  display: block;
+}
+.iconUp {
+  display: none;
+}
+.trigger[data-state="open"] .iconDown {
+  display: none;
+}
+.trigger[data-state="open"] .iconUp {
+  display: block;
+}

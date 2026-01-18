@@ -14,11 +14,15 @@ interface SelectContentProps {
   options: SelectOption[];
 }
 
-const SelectContent: React.FC<SelectContentProps> = ({ options }): JSX.Element => {
+const SelectContent: React.FC<SelectContentProps> = ({
+  options,
+}): JSX.Element => {
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   const filteredOptions = searchQuery
-    ? options.filter((opt) => opt.label.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? options.filter((opt) =>
+        opt.label.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
     : options;
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -29,14 +33,12 @@ const SelectContent: React.FC<SelectContentProps> = ({ options }): JSX.Element =
 
   return (
     <RadixSelect.Portal>
-      <RadixSelect.Content 
-        className={styles.content} 
-        position="popper" 
+      <RadixSelect.Content
+        className={styles.content}
+        position="popper"
         sideOffset={4}
       >
-        <div 
-          className={styles.searchWrapper}
-        >
+        <div className={styles.searchWrapper}>
           <SearchBar
             ref={inputRef}
             value={searchQuery}
@@ -48,15 +50,27 @@ const SelectContent: React.FC<SelectContentProps> = ({ options }): JSX.Element =
         <RadixSelect.Viewport className={styles.viewport}>
           {filteredOptions.length > 0 ? (
             filteredOptions.map((opt) => (
-              <RadixSelect.Item key={opt.value} value={opt.value} className={styles.item}>
+              <RadixSelect.Item
+                key={opt.value}
+                value={opt.value}
+                className={styles.item}
+              >
                 <RadixSelect.ItemText asChild>
-                  {opt.renderLabel ? opt.renderLabel() : <TextLabel type="P100" color="black">{opt.label}</TextLabel>}
+                  {opt.renderLabel ? (
+                    opt.renderLabel()
+                  ) : (
+                    <TextLabel type="P100" color="black">
+                      {opt.label}
+                    </TextLabel>
+                  )}
                 </RadixSelect.ItemText>
               </RadixSelect.Item>
             ))
           ) : (
             <div className={styles.noResults}>
-              <TextLabel type="P050" color="gray">No results found</TextLabel>
+              <TextLabel type="P050" color="gray">
+                No results found
+              </TextLabel>
             </div>
           )}
         </RadixSelect.Viewport>

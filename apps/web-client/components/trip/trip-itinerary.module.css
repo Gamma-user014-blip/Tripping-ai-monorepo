@@ -1,0 +1,418 @@
+.timelineContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+}
+
+/* Flight Card */
+.flightCard {
+    position: relative;
+    background-color: var(--color-card-light);
+    padding: 1.25rem; /* p-5 */
+    border-radius: 0.75rem; /* rounded-xl */
+    border: 1px solid var(--color-border-light);
+    box-shadow: var(--shadow-card);
+    transition:
+        transform 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.flightCard:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-1px);
+}
+
+.confirmedBadge {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    color: #16a34a; /* green-600 */
+    background-color: #f0fdf4; /* green-50 */
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.flightContent {
+    display: flex;
+    gap: 1rem; /* gap-4 */
+    align-items: flex-start;
+}
+
+.flightIconBox {
+    width: 3rem; /* size-12 */
+    height: 3rem;
+    border-radius: 0.5rem; /* rounded-lg */
+    background-color: #eff6ff; /* blue-50 */
+    color: #2563eb; /* blue-600 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.flightDetails {
+    flex: 1;
+}
+
+.dateTime {
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 700;
+    color: var(--color-text-sub);
+    margin-bottom: 0.25rem;
+}
+
+.flightTitle {
+    font-size: 1.125rem; /* text-lg */
+    font-weight: 700;
+    color: var(--color-text-main);
+    margin: 0 0 0.25rem 0;
+}
+
+.flightSub {
+    font-size: 0.875rem; /* text-sm */
+    color: var(--color-text-sub);
+    margin-bottom: 0.75rem;
+}
+
+/* Results-style route layout (layout only; keeps trip card background) */
+.flightRouteRow {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.flightTimeSection {
+    display: flex;
+    align-items: center;
+}
+
+.flightTime {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text-dark);
+    white-space: nowrap;
+}
+
+.flightIconSection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.flightCode {
+    font-size: 12px;
+    color: var(--color-text-subtle);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.flightPath {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 80px;
+    padding: 0 8px;
+}
+
+.flightDuration {
+    font-size: 12px;
+    color: var(--color-text-subtle);
+    margin-bottom: 4px;
+    white-space: nowrap;
+}
+
+.flightLineWrapper {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    position: relative;
+    height: 8px;
+}
+
+.flightLine {
+    flex: 1;
+    height: 2px;
+    background-color: #e5e7eb;
+    border-radius: 1px;
+}
+
+.flightDiamond {
+    width: 8px;
+    height: 8px;
+    background-color: #e5e7eb;
+    transform: rotate(45deg);
+    margin-left: -4px;
+}
+
+.flightStopMarker {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 1;
+}
+
+.flightStopDot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--color-teal-primary);
+    transform: rotate(45deg);
+    border-radius: 0;
+}
+
+.flightStopText {
+    position: absolute;
+    top: 12px;
+    font-size: 10px;
+    color: var(--color-text-subtle);
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* Stay Card */
+.stayCard {
+    background-color: var(--color-card-light);
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-border-light);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+    transition:
+        transform 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.stayCard:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-1px);
+}
+
+@media (min-width: 768px) {
+    .stayCard {
+        flex-direction: row;
+    }
+}
+
+.stayImageContainer {
+    height: 12rem; /* h-48 */
+    width: 100%;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    background-color: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+    .stayImageContainer {
+        height: auto;
+        width: 16rem; /* md:w-64 */
+    }
+}
+
+.ratingBadge {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(4px);
+    color: var(--color-text-dark);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stayContent {
+    padding: 1.5rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.stayHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+}
+
+.stayTags {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.stayBadge {
+    font-size: 0.625rem;
+    font-weight: 700;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background-color: #f3e8ff; /* purple-100 */
+    color: #9333ea; /* purple-600 */
+}
+
+.stayNights {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    font-weight: 600;
+}
+
+.stayTitle {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text-dark);
+    margin: 0.25rem 0;
+}
+
+.locationRow {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.amenities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.amenityTag {
+    font-size: 0.75rem;
+    background-color: #f8fafc;
+    border: 1px solid var(--color-border-light);
+    color: var(--color-text-muted);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.activitiesSection {
+    border-top: 1px solid var(--color-border-light);
+    padding-top: 1.5rem;
+    margin-top: auto;
+}
+
+.activitiesTitle {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-text-dark);
+    margin: 0 0 1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.activitiesGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    .activitiesGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.activityCard {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.8rem 1rem;
+    background-color: #f8fafc;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-border-light);
+    transition:
+        transform 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.activityCard:hover {
+    border-color: var(--color-primary-dark);
+    box-shadow: var(--shadow-card-light);
+    transform: translateY(-1px);
+}
+
+.activityIcon {
+    width: 2.5rem;
+    height: 2.5rem;
+    background-color: var(--color-white);
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-teal-dark);
+    border: 1px solid var(--color-border-light);
+    user-select: none;
+}
+
+.activityInfo {
+    display: flex;
+    flex-direction: column;
+}
+
+.activityName {
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin: 0.15rem 0;
+    color: var(--color-text-dark);
+}
+
+.activityMeta {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+/* Transfer Divider */
+.transferDivider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+.dividerLine {
+    flex: 1;
+    height: 2px;
+    background-color: var(--color-border-light);
+}
+
+.transferLabel {
+    padding: 0.5rem 1.25rem;
+    border-radius: 9999px;
+    background-color: var(--color-white);
+    border: 1px solid var(--color-border-light);
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
