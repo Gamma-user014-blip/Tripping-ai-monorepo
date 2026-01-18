@@ -33,7 +33,8 @@ def build_package(trip: TripResponse) -> FinalTripLayout:
                 
                 if data.activity_options:
                     # Activities scoring implemented simple head for now
-                    stay_option.activity = [data.activity_options[0]]
+                    #stay_option.activities = get_best_activities(data.activity_options)
+                    stay_option.activities = data.activity_options[:5]
                 
                 layout.sections.append(
                     FinalTripSection(type=SectionType.STAY, data=stay_option)
