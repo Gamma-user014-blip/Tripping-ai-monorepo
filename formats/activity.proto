@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package vacation.activity;
+
+import "shared/data_types/common.proto";
+
+// ===== REQUEST =====
+
+message ActivitySearchRequest {
+  vacation.common.Location location = 1;
+  vacation.common.DateRange dates = 2;
+  repeated vacation.common.PreferenceType preferences = 3;
+  repeated ActivityCategory categories = 4;
+  
+  // Filters
+  int32 max_results = 5;
+  double max_price = 6;
+  double min_rating = 7;
+  int32 max_distance_km = 8;  // from location center
+  vacation.common.TimeRange preferred_time = 9;
+}
+
+enum ActivityCategory {
+  CATEGORY_UNKNOWN = 0;
+  TOUR = 1;
+  MUSEUM = 2;
+  RESTAURANT = 3;
+  SHOW = 4;
+  OUTDOOR = 5;
+  WATER_SPORTS = 6;
+  NIGHTLIFE = 7;
+  SHOPPING = 8;
+  SPA = 9;
+  ADVENTURE = 10;
+  CULTURAL = 11;
+  FOOD_TOUR = 12;
+}
+
+// ===== RESPONSE =====
+
+message ActivitySearchResponse {
+  repeated ActivityOption options = 1;
+  SearchMetadata metadata = 2;
+}
+
+message ActivityOption {
+  string id = 1;
+  
+  // Basic info
+  string name = 2;
+  string description = 3;
+  ActivityCategory category = 4;
+  vacation.common.Location location = 5;
+  double distance_from_query_km = 6;
+  
+  // Rating
+  double rating = 7;  // 0-5 scale
+  int32 review_count = 8;
+  
+  // Pricing
+  vacation.common.Money price_per_person = 9;
+  PriceDetails price_details = 10;
+  
+  // Timing
+  int32 duration_minutes = 11;
+  repeated TimeSlot available_times = 12;
+  
+  // Details
+  repeated string highlights = 13;
+  repeated string included = 14;
+  repeated string excluded = 15;
+  int32 min_participants = 16;
+  int32 max_participants = 17;
+  string difficulty_level = 18;  // easy, moderate, challenging
+  
+  // Logistics
+  bool hotel_pickup = 19;
+  bool meal_included = 20;
+  string cancellation_policy = 21;
+  
+  // Scores
+  vacation.common.ComponentScores scores = 22;
+  
+  // Booking
+  string booking_url = 23;
+  string provider = 24;
+  bool available = 25;
+  
+  // Images
+  repeated string image_urls = 26;
+}
+
+message PriceDetails {
+  vacation.common.Money adult_price = 1;
+  vacation.common.Money child_price = 2;
+  vacation.common.Money senior_price = 3;
+}
+
+message TimeSlot {
+  string date = 1;  // ISO 8601: YYYY-MM-DD
+  string time = 2;  // ISO 8601: HH:MM
+  int32 available_spots = 3;
+}
+
+message SearchMetadata {
+  int32 total_results = 1;
+  string search_id = 2;
+  string timestamp = 3;
+  string data_source = 4;
+}

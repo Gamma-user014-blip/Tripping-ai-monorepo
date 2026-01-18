@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional
 from datetime import datetime
-from shared.data_types import hotel_pb2, common_pb2
+from shared.data_types import models
 
 
 def get_rating_category(rating: float) -> str:
@@ -35,37 +35,40 @@ def calculate_scores(
     distance: float,
     stars: int,
     preferences: List[int]
-) -> common_pb2.ComponentScores:
+) -> models.ComponentScores:
     """Calculate normalized component scores"""
-    scores = common_pb2.ComponentScores()
+    scores = models.ComponentScores()
     
     # Price score (inverse - lower price = higher score)
     # Assuming price range 50-500 USD per night
-    scores.price_score = max(0, min(1, 1 - (price - 50) / 450))
+    scores.price_score = max(0.0, min(1.0, 1.0 - (price - 50.0) / 450.0))
     
     # Quality score from rating (0-10 scale to 0-1)
     scores.quality_score = rating / 10.0 if rating else 0.5
     
     # Convenience score (distance to center in km)
-    scores.convenience_score = max(0, min(1, 1 - distance / 10))
+    scores.convenience_score = max(0.0, min(1.0, 1.0 - distance / 10.0))
     
     # Preference score based on matching preferences
     preference_score = 0.5  # Default neutral score
-    if common_pb2.LUXURY in preferences and stars >= 4:
+    
+    # Use IntEnum values for comparison with integer preferences list
+    if models.PreferenceType.LUXURY in preferences and stars >= 4:
         preference_score += 0.3
-    if common_pb2.BUDGET in preferences and stars <= 3:
+    if models.PreferenceType.BUDGET in preferences and stars <= 3:
         preference_score += 0.3
+        
     scores.preference_score = min(1.0, preference_score)
     
     return scores
 
 
-def transform_room_data(room_raw: Optional[Dict]) -> Optional[hotel_pb2.RoomInfo]:
-    """Transform raw room data to RoomInfo protobuf"""
+def transform_room_data(room_raw: Optional[Dict]) -> Optional[models.RoomInfo]:
+    """Transform raw room data to RoomInfo Pydantic model"""
     if not room_raw:
         return None
     
-    room_info = hotel_pb2.RoomInfo()
+    room_info = models.RoomInfo()
     
     # Extract features from amenities
     amenities = room_raw.get("roomAmenities", [])
@@ -85,16 +88,16 @@ def transform_room_data(room_raw: Optional[Dict]) -> Optional[hotel_pb2.RoomInfo
     return room_info
 
 
-def transform_fees(taxes_and_fees: List[Dict], currency: str) -> List[hotel_pb2.Fee]:
-    """Transform taxes and fees to Fee protobuf list"""
+def transform_fees(taxes_and_fees: List[Dict], currency: str) -> List[models.Fee]:
+    """Transform taxes and fees to Fee model list"""
     fees = []
     
     for tax_fee in taxes_and_fees:
         if not tax_fee.get("included", True):  # Only add non-included fees
-            fee = hotel_pb2.Fee()
+            fee = models.Fee()
             fee.name = tax_fee.get("description", "Additional Fee")
             fee.amount.currency = currency
-            fee.amount.amount = tax_fee.get("amount", 0.0)
+            fee.amount.amount = float(tax_fee.get("amount", 0.0))
             fee.mandatory = True
             fees.append(fee)
     
@@ -109,20 +112,11 @@ def transform_hotel_data(
     preferences: List[int],
     provider: str,
     rate_info: Optional[Dict] = None
-) -> hotel_pb2.HotelOption:
+) -> models.HotelOption:
     """
-    Transform raw API data to HotelOption protobuf
-    
-    Args:
-        hotel_raw: Raw hotel data from get_hotels API
-        room_raw: Raw room data
-        start_date: Check-in date (YYYY-MM-DD)
-        end_date: Check-out date (YYYY-MM-DD)
-        preferences: List of preference enums
-        provider: Provider name
-        rate_info: Rate information from availability check (optional)
+    Transform raw API data to HotelOption Pydantic model
     """
-    hotel_option = hotel_pb2.HotelOption()
+    hotel_option = models.HotelOption()
     
     # Basic info
     hotel_option.id = hotel_raw.get("id", "")
@@ -138,16 +132,16 @@ def transform_hotel_data(
     # Location
     hotel_option.location.city = hotel_raw.get("city", "")
     hotel_option.location.country = hotel_raw.get("country", "")
-    hotel_option.location.latitude = hotel_raw.get("latitude", 0.0)
-    hotel_option.location.longitude = hotel_raw.get("longitude", 0.0)
+    hotel_option.location.latitude = float(hotel_raw.get("latitude", 0.0))
+    hotel_option.location.longitude = float(hotel_raw.get("longitude", 0.0))
     
     # Distance to center (mock - in real implementation calculate from coordinates)
     hotel_option.distance_to_center_km = 2.5
     
     # Rating
-    hotel_option.rating = hotel_raw.get("rating", 0.0)
+    hotel_option.rating = float(hotel_raw.get("rating", 0.0))
     hotel_option.review_count = hotel_raw.get("reviewCount", 0)
-    hotel_option.rating_category = get_rating_category(hotel_raw.get("rating", 0))
+    hotel_option.rating_category = get_rating_category(hotel_option.rating)
     
     # Calculate nights
     start = datetime.fromisoformat(start_date)
@@ -160,7 +154,7 @@ def transform_hotel_data(
     if rate_info and "price" in rate_info:
         # Use actual rate data from availability check
         price_data = rate_info["price"]
-        total_amount = price_data.get("amount", 0.0)
+        total_amount = float(price_data.get("amount", 0.0))
         price_per_night = total_amount / nights if nights > 0 else total_amount
         
         hotel_option.price_per_night.currency = price_data.get("currency", currency)
@@ -195,7 +189,8 @@ def transform_hotel_data(
     if room_raw:
         room_info = transform_room_data(room_raw)
         if room_info:
-            hotel_option.room.CopyFrom(room_info)
+            # Pydantic assignment
+            hotel_option.room = room_info
     
     # Amenities (map facility IDs to simple labels)
     facility_ids = hotel_raw.get("facilityIds", [])
@@ -204,19 +199,20 @@ def transform_hotel_data(
     
     # Category and stars
     stars = hotel_raw.get("stars", 0)
-    hotel_option.category = get_hotel_category(stars, hotel_raw.get("rating", 0))
+    hotel_option.category = get_hotel_category(stars, hotel_option.rating)
     hotel_option.star_rating = stars
     
     # Calculate scores
     price_for_scoring = hotel_option.price_per_night.amount
     scores = calculate_scores(
         price=price_for_scoring,
-        rating=hotel_raw.get("rating", 0),
+        rating=hotel_option.rating,
         distance=hotel_option.distance_to_center_km,
         stars=stars,
         preferences=preferences
     )
-    hotel_option.scores.CopyFrom(scores)
+    # Pydantic assignment
+    hotel_option.scores = scores
     
     # Booking info
     hotel_option.booking_url = f"https://booking.liteapi.travel/hotels/{hotel_raw.get('id')}"
