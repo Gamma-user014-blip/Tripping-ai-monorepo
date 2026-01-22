@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import styles from "./ai-chat-sidebar.module.css";
+import { apiClient } from "../../../lib/api-client";
+import { ChatRequest, ChatResponse, ChatResponseStatus } from "../../../../../shared/types";
 
 interface Message {
   id: string;
@@ -9,10 +11,13 @@ interface Message {
 }
 
 interface AiChatSidebarProps {
-  onMessageSent?: () => void;
+  loadTrips?: (searchId?: string) => void;
 }
 
-const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ onMessageSent }) => {
+const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ loadTrips }) => {
+  const CHAT_SESSION_ID_KEY = "chat_session_id";
+  const CHAT_MESSAGES_KEY_PREFIX = "chat_messages_";
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "init",
@@ -26,6 +31,48 @@ const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ onMessageSent }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const sessionIdRef = useRef<string>("");
+  const isSendingRef = useRef<boolean>(false);
+
+  const getOrCreateSessionId = (): string => {
+    if (sessionIdRef.current) return sessionIdRef.current;
+
+    let storedSessionId = sessionStorage.getItem(CHAT_SESSION_ID_KEY);
+    if (!storedSessionId) {
+      storedSessionId = crypto.randomUUID();
+      sessionStorage.setItem(CHAT_SESSION_ID_KEY, storedSessionId);
+    }
+
+    sessionIdRef.current = storedSessionId;
+    return storedSessionId;
+  };
+
+  useEffect(() => {
+    const sessionId = getOrCreateSessionId();
+
+    const storedMessages = sessionStorage.getItem(
+      `${CHAT_MESSAGES_KEY_PREFIX}${sessionId}`,
+    );
+    if (!storedMessages) return;
+
+    try {
+      const parsed = JSON.parse(storedMessages) as unknown;
+      if (!Array.isArray(parsed) || parsed.length === 0) return;
+      setMessages(parsed as Message[]);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    const sessionId = sessionIdRef.current;
+    if (!sessionId) return;
+
+    sessionStorage.setItem(
+      `${CHAT_MESSAGES_KEY_PREFIX}${sessionId}`,
+      JSON.stringify(messages),
+    );
+  }, [messages]);
 
   const scrollToBottom = () => {
     const messageList = messageListRef.current;
@@ -37,17 +84,24 @@ const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ onMessageSent }) => {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
+  const handleSendMessage = async (): Promise<void> => {
+    if (isTyping || isSendingRef.current) return;
+
+    const trimmedMessage = inputValue.trim();
+    if (!trimmedMessage) return;
+
+    isSendingRef.current = true;
+    const sessionId = getOrCreateSessionId();
 
     const newUserMessage: Message = {
       id: Date.now().toString(),
-      text: inputValue.trim(),
+      text: trimmedMessage,
       sender: "user",
       timestamp: Date.now(),
     };
 
     setMessages((prev) => [...prev, newUserMessage]);
+    const userMessageText: string = trimmedMessage;
     setInputValue("");
     setIsTyping(true);
 
@@ -56,18 +110,28 @@ const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ onMessageSent }) => {
       inputRef.current.style.height = '32px';
     }
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const response: ChatResponse = await apiClient.post<ChatResponse>('/api/chat', { 
+        message: userMessageText,
+        sessionId
+      } satisfies ChatRequest);
+
+      if (response.status === ChatResponseStatus.ERROR) {
+        throw new Error('AI response error');
+      }
+
       const newAiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "Hello! That sounds clearer. Let me see what I can find for you.",
+        text: response.message,
         sender: "ai",
         timestamp: Date.now(),
       };
+      
       setMessages((prev) => [...prev, newAiMessage]);
-      setIsTyping(false);
 
-      onMessageSent?.();
+      if (response.status === ChatResponseStatus.COMPLETE) {
+        loadTrips?.(response.searchId);
+      }
 
       setTimeout(() => {
         try {
@@ -76,10 +140,23 @@ const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ onMessageSent }) => {
           // ignore
         }
       }, 0);
-    }, 1500);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "Sorry, I'm having trouble connecting. Please try again.",
+        sender: "ai",
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsTyping(false);
+      isSendingRef.current = false;
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isTyping || isSendingRef.current) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
