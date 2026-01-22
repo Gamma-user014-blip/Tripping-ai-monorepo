@@ -97,6 +97,19 @@ services:
     depends_on:
       - trip_builder
 
+  json_agent:
+    build:
+      context: .
+      dockerfile: ./apps/json_agent/Dockerfile
+    container_name: json_agent
+    environment:
+      - PERPLEXITY_API_KEY
+    networks:
+      - shared_network
+    ports:
+      - "8300:8000"
+
+
 networks:
   shared_network:
     driver: bridge
