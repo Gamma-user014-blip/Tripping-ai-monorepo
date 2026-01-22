@@ -3,10 +3,6 @@ from shared.data_types.models import *
 import os
 from dotenv import load_dotenv
 import httpx
-from shared.data_types.models import *
-import os
-from dotenv import load_dotenv
-import httpx
 import asyncio
 
 load_dotenv()
@@ -24,31 +20,43 @@ def read_root():
     return {"message": "Trip Builder Service"}
 
 async def flight_search(request: FlightRequest, client: httpx.AsyncClient) -> FlightResponse:
-    response = await client.post(FLIGHT_REQUEST_API, json=request.model_dump())
-    response.raise_for_status()
-    return FlightResponse.model_validate(response.json())
-async def flight_search(request: FlightRequest, client: httpx.AsyncClient) -> FlightResponse:
-    response = await client.post(FLIGHT_REQUEST_API, json=request.model_dump())
-    response.raise_for_status()
-    return FlightResponse.model_validate(response.json())
+    try:
+        response = await client.post(FLIGHT_REQUEST_API, json=request.model_dump())
+        response.raise_for_status()
+        return FlightResponse.model_validate(response.json())
+    except Exception as e:
+        print(f"Flight search failed: {e}")
+        return FlightResponse()
 
 async def transfer_search(request: TransferRequest, client: httpx.AsyncClient) -> TransferResponse:
-    response = await client.post(TRANSFER_REQUEST_API, json=request.model_dump())
-    response.raise_for_status()
-    return TransferResponse.model_validate(response.json())
+    try:
+        response = await client.post(TRANSFER_REQUEST_API, json=request.model_dump())
+        response.raise_for_status()
+        return TransferResponse.model_validate(response.json())
+    except Exception as e:
+        print(f"Transfer search failed: {e}")
+        return TransferResponse()
 
 async def stay_search(request: StayRequest, client: httpx.AsyncClient) -> StayResponse:
     # Execute hotel and activity searches in parallel
     
     async def get_hotels():
-        res = await client.post(HOTEL_REQUEST_API, json=request.hotel_request.model_dump())
-        res.raise_for_status()
-        return HotelSearchResponse.model_validate(res.json())
+        try:
+            res = await client.post(HOTEL_REQUEST_API, json=request.hotel_request.model_dump())
+            res.raise_for_status()
+            return HotelSearchResponse.model_validate(res.json())
+        except Exception as e:
+            print(f"Hotel search failed: {e}")
+            return HotelSearchResponse()
 
     async def get_activities():
-        res = await client.post(ACTIVITY_REQUEST_API, json=request.activity_request.model_dump())
-        res.raise_for_status()
-        return ActivitySearchResponse.model_validate(res.json())
+        try:
+            res = await client.post(ACTIVITY_REQUEST_API, json=request.activity_request.model_dump())
+            res.raise_for_status()
+            return ActivitySearchResponse.model_validate(res.json())
+        except Exception as e:
+            print(f"Activity search failed: {e}")
+            return ActivitySearchResponse()
 
     hotel_data, activity_data = await asyncio.gather(get_hotels(), get_activities())
     
@@ -56,27 +64,6 @@ async def stay_search(request: StayRequest, client: httpx.AsyncClient) -> StayRe
         hotel_options=hotel_data.options,
         activity_options=activity_data.options
     )
-
-async def stay_search(request: StayRequest, client: httpx.AsyncClient) -> StayResponse:
-    # Execute hotel and activity searches in parallel
-    
-    async def get_hotels():
-        res = await client.post(HOTEL_REQUEST_API, json=request.hotel_request.model_dump())
-        res.raise_for_status()
-        return HotelSearchResponse.model_validate(res.json())
-
-    async def get_activities():
-        res = await client.post(ACTIVITY_REQUEST_API, json=request.activity_request.model_dump())
-        res.raise_for_status()
-        return ActivitySearchResponse.model_validate(res.json())
-
-    hotel_data, activity_data = await asyncio.gather(get_hotels(), get_activities())
-    
-    return StayResponse(
-        hotel_options=hotel_data.options,
-        activity_options=activity_data.options
-    )
-
 
 async def process_sections(request: TripRequest) -> TripResponse:
     trip_response = TripResponse()
@@ -120,8 +107,14 @@ async def build_package(trip_response: TripResponse) -> FinalTripLayout:
 async def create_trip(
     request: TripRequest
 ):
+    print(f"Received create_trip request with {len(request.sections)} sections")
     trip_response = await process_sections(request)
+    print(f"Processed sections, got {len(trip_response.sections)} responses")
+    
+    print("Calling package builder...")
     package = await build_package(trip_response)
+    print("Package builder returned")
+    
     # Inject images back from search results into final package
     hotel_images = {
         h.id: h.image 
@@ -134,8 +127,7 @@ async def create_trip(
     for section in package.sections:
         if section.type == SectionType.STAY and section.data.hotel.id in hotel_images:
             section.data.hotel.image = hotel_images[section.data.hotel.id]
-            
-    print(package.model_dump_json(indent=2))    
+      
     return package
 
 
