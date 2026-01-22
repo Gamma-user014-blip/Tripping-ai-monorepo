@@ -46,6 +46,14 @@ class GenerateTripRequest(BaseModel):
     vibe: str
     actions: List[List[Union[str, int, float, None]]]
 
+class EditTripPlansRequest(BaseModel):
+    plans: List[TripPlan]
+    user_text: str
+
+class EditTripPlansResponse(BaseModel):
+    plans: List[TripPlan]
+    modified_indices: List[int]
+
 
 # ==========================================
 # HELPER FUNCTIONS
@@ -318,6 +326,87 @@ def generate_trip_plans_from_text(trip_yml: str) -> List[Dict[str, Any]]:
         return []
 
 
+def calculate_modified_indices(original_plans: List[TripPlan], edited_plans: List[TripPlan]) -> List[int]:
+    """
+    Compare two lists of TripPlans and return the indices of modified ones.
+    """
+    modified_indices = []
+    
+    # We assume the lists have the same length for simplicity in comparison mapping
+    # If the LLM changed the order or length, this logic might need to be more complex
+    # but for a direct "edit these plans" task, the mapping is usually 1:1.
+    for i, (orig, edited) in enumerate(zip(original_plans, edited_plans)):
+        # Convert models to dict for comparison
+        if orig.model_dump() != edited.model_dump():
+            modified_indices.append(i)
+            
+    # Handle cases where lengths differ
+    if len(edited_plans) > len(original_plans):
+        for i in range(len(original_plans), len(edited_plans)):
+            modified_indices.append(i)
+            
+    return modified_indices
+
+
+def edit_trip_plans_with_llm(plans: List[TripPlan], user_text: str) -> List[TripPlan]:
+    """
+    Use LLM to apply changes to a list of TripPlans based on natural language instructions.
+    """
+    plans_json = json.dumps([p.model_dump() for p in plans], indent=2)
+    
+    prompt = f"""
+    You are an expert travel coordinator. 
+    You are given a list of travel plans in JSON format and specific instructions for editing them.
+    
+    Current Plans:
+    {plans_json}
+    
+    Instructions:
+    {user_text}
+    
+    Protocol for Actions:
+    1. FLIGHT: ["FLIGHT", origin_city, origin_country, origin_code, dest_city, dest_country, dest_code, date, return_date, passengers, cabin]
+       - The 'date' is the day of travel.
+    2. STAY: ["STAY", city, country, start_date, end_date, guests, rooms, description]
+       - 'start_date' is check-in, 'end_date' is check-out.
+    
+    Constraint & Logic Rules:
+    - DATE ARITHMETIC: If a user asks to "shorten X by 1 day and give it to Y", this refers to the transition date BETWEEN X and Y.
+      Example: If X is [2026-09-13 to 2026-09-17] and Y is [2026-09-17 to 2026-09-20], and the user says "shorten X by one day and give it to Y":
+      * New X: [2026-09-13 to 2026-09-16]
+      * New Y: [2026-09-16 to 2026-09-20]
+      * The FLIGHT between X and Y must move from 2026-09-17 to 2026-09-16.
+    - PHRASING: Interpret "shorten in one day" as "shorten by one day" (duration - 1).
+    - CONTIGUITY: Stays and flights must remain contiguous. A check-out date for one city should generally match the check-in date for the next city and the flight date between them.
+    - SPECIFICITY: Only modify the specific plan(s) mentioned (e.g., "first option"). Leave others UNCHANGED.
+    - VISUAL INTEGRITY: Do not modify the JSON structure or the "vibe" name unless explicitly asked.
+    
+    Return the FULL updated list of plans in the specified output format.
+    """
+    
+    response = client.chat.completions.create(
+        model="sonar",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.0,
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "schema": TripPlansResponse.model_json_schema()
+            }
+        }
+    )
+    
+    content = response.choices[0].message.content
+    try:
+        data_dict = json.loads(content)
+        if "plans" in data_dict:
+            return [TripPlan(**p) for p in data_dict["plans"]]
+        return []
+    except Exception as e:
+        print(f"Error parsing edited plans: {str(e)}")
+        return []
+
+
 # ==========================================
 # API ENDPOINT
 # ==========================================
@@ -355,6 +444,28 @@ def build_trip_request(request: GenerateTripRequest):
     except Exception as e:
         print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to build trip: {str(e)}")
+
+
+@app.post("/api/edit-plans", response_model=EditTripPlansResponse)
+def edit_plans(request: EditTripPlansRequest):
+    if not request.user_text or request.user_text.strip() == "":
+        raise HTTPException(status_code=400, detail="user_text cannot be empty")
+    
+    try:
+        edited_plans = edit_trip_plans_with_llm(request.plans, request.user_text)
+        
+        if not edited_plans:
+             raise HTTPException(status_code=500, detail="Failed to edit plans via LLM")
+             
+        modified_indices = calculate_modified_indices(request.plans, edited_plans)
+        
+        return EditTripPlansResponse(
+            plans=edited_plans,
+            modified_indices=modified_indices
+        )
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to edit trip plans: {str(e)}")
 
 
 if __name__ == "__main__":
