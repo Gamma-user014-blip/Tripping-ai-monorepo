@@ -11,7 +11,7 @@ from openai import OpenAI
 import json
 import os
 import re
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 
 load_dotenv()
 
@@ -37,6 +37,13 @@ class TripVariation(BaseModel):
 
 class JsonAgentResponse(BaseModel):
     variations: List[TripVariation]
+
+class ActionPlan(BaseModel):
+    vibe: str
+    actions: List[List[Union[str, int, float, None]]]
+
+class ActionPlanResponse(BaseModel):
+    plans: List[ActionPlan]
 
 
 # ==========================================
@@ -236,7 +243,6 @@ def generate_action_sequences(trip_yml: str) -> List[Dict[str, Any]]:
        Note: description is a short string of activity preferences.
     
     Rules:
-    - Return a single JSON LIST of objects.
     - Generate EXACTLY 3 options.
     - Ensure logical flow for each option (FLIGHT -> STAY -> FLIGHT).
     - Be consistent with dates.
@@ -246,51 +252,66 @@ def generate_action_sequences(trip_yml: str) -> List[Dict[str, Any]]:
     {trip_yml}
     
     Output JSON Example:
-    [
-      {{
-        "vibe": "The Classic Tourist",
-        "actions": [
-          ["FLIGHT", "NYC", "USA", "JFK", "London", "UK", "LHR", "2024-05-01", "", 1, "economy"],
-          ["STAY", "London", "UK", "2024-05-01", "2024-05-05", 1, 1, "Major landmarks and museums"],
-          ["FLIGHT", "London", "UK", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "economy"]
-        ]
-      }},
-      {{
-        "vibe": "Hidden Gems",
-        "actions": [
-          ["FLIGHT", "NYC", "USA", "JFK", "London", "UK", "LHR", "2024-05-01", "", 1, "economy"],
-          ["STAY", "London", "UK", "2024-05-01", "2024-05-05", 1, 1, "Local markets and small cafes"],
-          ["FLIGHT", "London", "UK", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "economy"]
-        ]
-      }},
-      {{
-        "vibe": "Luxury Living",
-        "actions": [
-          ["FLIGHT", "NYC", "USA", "JFK", "London", "UK", "LHR", "2024-05-01", "", 1, "first"],
-          ["STAY", "London", "UK", "2024-05-01", "2024-05-05", 1, 1, "High-end shopping and fine dining"],
-          ["FLIGHT", "London", "UK", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "first"]
-        ]
-      }}
-    ]
+    {{
+      "plans": [
+        {{
+          "vibe": "The Classic Tourist",
+          "actions": [
+            ["FLIGHT", "NYC", "USA", "JFK", "London", "UK", "LHR", "2024-05-01", "", 1, "economy"],
+            ["STAY", "London", "UK", "2024-05-01", "2024-05-05", 1, 1, "Major landmarks and museums"],
+            ["FLIGHT", "London", "UK", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "economy"]
+          ]
+        }},
+        {{
+          "vibe": "Hidden Gems",
+          "actions": [
+            ["FLIGHT", "NYC", "USA", "JFK", "London", "UK", "LHR", "2024-05-01", "", 1, "economy"],
+            ["STAY", "London", "UK", "2024-05-01", "2024-05-05", 1, 1, "Local markets and small cafes"],
+            ["FLIGHT", "London", "UK", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "economy"]
+          ]
+        }},
+        {{
+          "vibe": "Luxury Living",
+          "actions": [
+            ["FLIGHT", "NYC", "USA", "JFK", "London", "UK", "LHR", "2024-05-01", "", 1, "first"],
+            ["STAY", "London", "UK", "2024-05-01", "2024-05-05", 1, 1, "High-end shopping and fine dining"],
+            ["FLIGHT", "London", "UK", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "first"]
+          ]
+        }}
+      ]
+    }}
     """
 
     response = client.chat.completions.create(
         model="sonar",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.9,
-        
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "schema": ActionPlanResponse.model_json_schema()
+            }
+        }
     )
 
-    cleaned_text = _strip_markdown_and_clean_json(response.choices[0].message.content)
+    # Use the structured output directly if possible, or parse the content
+    content = response.choices[0].message.content
     print("=== ACTION SEQUENCES ===")
-    print(cleaned_text)
+    print(content)
     print("=" * 50)
     
     try:
-        data = json.loads(cleaned_text)
-        if not isinstance(data, list):
-            return []
-        return data
+        # With response_format, content should be valid JSON matching the schema
+        data_dict = json.loads(content)
+        
+        # Convert to list of dicts that existing logic expects: [{"vibe": "...", "actions": [...]}]
+        # The schema output is {"plans": [...]}
+        if "plans" in data_dict:
+            return data_dict["plans"]
+        else:
+            # Fallback if somehow it's just the list (unlikely with schema)
+            return data_dict
+            
     except json.JSONDecodeError:
         print("Failed to decode JSON from LLM")
         return []
