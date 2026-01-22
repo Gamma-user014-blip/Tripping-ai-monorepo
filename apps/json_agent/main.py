@@ -228,18 +228,23 @@ def build_trip_request_from_instructions(actions: List[List[Any]]) -> TripReques
     return TripRequest(sections=sections)
 
 
-def generate_trip_plans_from_text(trip_yml: str) -> List[Dict[str, Any]]:
+def generate_single_trip_plan(trip_yml: str, previous_vibes: List[str]) -> Dict[str, Any]:
     """
-    Generate 3 distinct trip plans (vibes) as sequences of dense tool actions.
-    Returns a list of dicts: [{"vibe": "...", "actions": [...]}, ...]
+    Generate a single trip plan (vibe) as a sequence of dense tool actions.
+    Ensures the vibe is distinct from previous_vibes.
     """
+    vibe_context = ""
+    if previous_vibes:
+        vibe_context = f"Avoid these previous vibes: {', '.join(previous_vibes)}."
+
     prompt = f"""
     You are a creative travel planner JSON Agent.
     
     Task:
-    Read the trip description and generate 3 DISTINCT trip options (Vibes).
-    Each option should have a unique "vibe" (e.g., "Luxury Relax", "Adventure", "Cultural Deep Dive").
-    Represent each plan as a "vibe" name and a COMPACT SEQUENCE of actions.
+    Read the trip description and generate ONE UNIQUE trip option (Vibe).
+    {vibe_context}
+    The option should have a unique "vibe" name (e.g., "Luxury Relax", "Adventure", "Cultural Deep Dive").
+    Represent the plan as a "vibe" name and a COMPACT SEQUENCE of actions.
     
     Protocol for Actions:
     
@@ -252,8 +257,8 @@ def generate_trip_plans_from_text(trip_yml: str) -> List[Dict[str, Any]]:
        Note: description is a short string of activity preferences.
     
     Rules:
-    - Generate EXACTLY 3 options.
-    - Ensure logical flow for each option (FLIGHT -> STAY -> FLIGHT).
+    - Generate EXACTLY ONE option.
+    - Ensure logical flow (FLIGHT -> STAY -> FLIGHT).
     - Be consistent with dates.
     - Do not include any additional text or comments.
 
@@ -262,31 +267,11 @@ def generate_trip_plans_from_text(trip_yml: str) -> List[Dict[str, Any]]:
     
     Output JSON Example:
     {{
-      "plans": [
-        {{
-          "vibe": "The Classic Tourist",
-          "actions": [
-            ["FLIGHT", "NYC", "USA", "JFK", "London", "UK", "LHR", "2024-05-01", "", 1, "economy"],
-            ["STAY", "London", "UK", "2024-05-01", "2024-05-05", 1, 1, "Major landmarks and museums"],
-            ["FLIGHT", "London", "UK", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "economy"]
-          ]
-        }},
-        {{
-          "vibe": "Hidden Gems",
-          "actions": [
-            ["FLIGHT", "NYC", "USA", "JFK", "London", "UK", "LHR", "2024-05-01", "", 1, "economy"],
-            ["STAY", "London", "UK", "2024-05-01", "2024-05-05", 1, 1, "Local markets and small cafes"],
-            ["FLIGHT", "London", "UK", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "economy"]
-          ]
-        }},
-        {{
-          "vibe": "Luxury Living",
-          "actions": [
-            ["FLIGHT", "NYC", "USA", "JFK", "London", "UK", "LHR", "2024-05-01", "", 1, "first"],
-            ["STAY", "London", "UK", "2024-05-01", "2024-05-05", 1, 1, "High-end shopping and fine dining"],
-            ["FLIGHT", "London", "UK", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "first"]
-          ]
-        }}
+      "vibe": "The Classic Tourist",
+      "actions": [
+        ["FLIGHT", "NYC", "USA", "JFK", "London", "UK", "LHR", "2024-05-01", "", 1, "economy"],
+        ["STAY", "London", "UK", "2024-05-01", "2024-05-05", 1, 1, "Major landmarks and museums"],
+        ["FLIGHT", "London", "UK", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "economy"]
       ]
     }}
     """
@@ -298,32 +283,38 @@ def generate_trip_plans_from_text(trip_yml: str) -> List[Dict[str, Any]]:
         response_format={
             "type": "json_schema",
             "json_schema": {
-                "schema": TripPlansResponse.model_json_schema()
+                "schema": TripPlan.model_json_schema()
             }
         }
     )
 
-    # Use the structured output directly if possible, or parse the content
     content = response.choices[0].message.content
-    print("=== ACTION SEQUENCES ===")
-    print(content)
-    print("=" * 50)
-    
     try:
-        # With response_format, content should be valid JSON matching the schema
-        data_dict = json.loads(content)
-        
-        # Convert to list of dicts that existing logic expects: [{"vibe": "...", "actions": [...]}]
-        # The schema output is {"plans": [...]}
-        if "plans" in data_dict:
-            return data_dict["plans"]
-        else:
-            # Fallback if somehow it's just the list (unlikely with schema)
-            return data_dict
-            
+        return json.loads(content)
     except json.JSONDecodeError:
-        print("Failed to decode JSON from LLM")
-        return []
+        print(f"Failed to decode JSON from LLM: {content}")
+        return None
+
+
+def generate_trip_plans_from_text(trip_yml: str, count: int = 3) -> List[Dict[str, Any]]:
+    """
+    Generate 3 distinct trip plans (vibes) using separate LLM calls.
+    Returns a list of dicts: [{"vibe": "...", "actions": [...]}, ...]
+    """
+    plans = []
+    previous_vibes = []
+    
+    for i in range(count):
+        print(f"Generating plan {i+1}/{count}...")
+        plan = generate_single_trip_plan(trip_yml, previous_vibes)
+        if plan and "vibe" in plan:
+            plans.append(plan)
+            previous_vibes.append(plan["vibe"])
+        else:
+            print(f"Warning: Failed to generate plan {i+1}")
+            
+    return plans
+
 
 
 def calculate_modified_indices(original_plans: List[TripPlan], edited_plans: List[TripPlan]) -> List[int]:
