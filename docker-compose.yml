@@ -139,7 +139,6 @@ services:
     ports:
       - "8300:8000"
 
-
 networks:
   shared_network:
     driver: bridge
@@ -153,6 +152,10 @@ networks:
     internal: true
 
   flight_private_network:
+    driver: bridge
+    internal: true
+
+  web_private_network:
     driver: bridge
     internal: true
 
