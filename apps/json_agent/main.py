@@ -31,8 +31,12 @@ app = FastAPI()
 class JsonAgentRequest(BaseModel):
     trip_yml: str = ""
 
+class TripVariation(BaseModel):
+    vibe: str
+    trip_request: TripRequest
+
 class JsonAgentResponse(BaseModel):
-    trip_json: TripRequest
+    variations: List[TripVariation]
 
 
 # ==========================================
@@ -73,67 +77,100 @@ def _strip_markdown_and_clean_json(text: str) -> str:
     return text
 
 
-def execute_add_flight(args: Dict[str, Any]) -> FlightRequest:
+def execute_add_flight(args: List[Any]) -> FlightRequest:
     """
-    Execute 'add_flight' action: Convert flat args to FlightRequest model.
+    Execute 'FLIGHT' action: Convert positional args to FlightRequest.
+    Args protocol: [origin_city, origin_country, origin_code, dest_city, dest_country, dest_code, date, return_date, passengers, cabin]
     """
+    # Unpack safely with defaults if list is short (though LLM should be consistent)
+    # We expect at least 10 args after the command name
+    origin_city = args[0] if len(args) > 0 else ""
+    origin_country = args[1] if len(args) > 1 else ""
+    origin_code = args[2] if len(args) > 2 else ""
+    
+    dest_city = args[3] if len(args) > 3 else ""
+    dest_country = args[4] if len(args) > 4 else ""
+    dest_code = args[5] if len(args) > 5 else ""
+    
+    date = args[6] if len(args) > 6 else ""
+    return_date = args[7] if len(args) > 7 else ""
+    # Ensure passengers is int
+    try:
+        passengers = int(args[8]) if len(args) > 8 else 1
+    except:
+        passengers = 1
+        
+    cabin = args[9] if len(args) > 9 else "economy"
+
     origin = Location(
-        city=args.get("origin_city", ""),
-        country=args.get("origin_country", ""),
-        airport_code=args.get("origin_airport_code", "")
+        city=origin_city,
+        country=origin_country,
+        airport_code=origin_code
     )
     
     destination = Location(
-        city=args.get("destination_city", ""),
-        country=args.get("destination_country", ""),
-        airport_code=args.get("destination_airport_code", "")
+        city=dest_city,
+        country=dest_country,
+        airport_code=dest_code
     )
     
     return FlightRequest(
         origin=origin,
         destination=destination,
-        departure_date=args.get("date", ""),
-        # If 'return_date' is in args, use it, else default empty
-        return_date=args.get("return_date", ""),
-        passengers=args.get("passengers", 1),
-        cabin_class=args.get("cabin_class", "economy"),
+        departure_date=date,
+        return_date=return_date,
+        passengers=passengers,
+        cabin_class=cabin,
         max_results=20,
         max_stops=2
     )
 
 
-def execute_add_stay(args: Dict[str, Any]) -> StayRequest:
+def execute_add_stay(args: List[Any]) -> StayRequest:
     """
-    Execute 'add_stay' action: Convert flat args to StayRequest model.
+    Execute 'STAY' action: Convert positional args to StayRequest.
+    Args protocol: [city, country, start_date, end_date, guests, rooms, description]
     """
+    city = args[0] if len(args) > 0 else ""
+    country = args[1] if len(args) > 1 else ""
+    start_date = args[2] if len(args) > 2 else ""
+    end_date = args[3] if len(args) > 3 else ""
+    
+    try:
+        guests = int(args[4]) if len(args) > 4 else 2
+    except:
+        guests = 2
+        
+    try:
+        rooms = int(args[5]) if len(args) > 5 else 1
+    except:
+        rooms = 1
+        
+    description = args[6] if len(args) > 6 else ""
+
     location = Location(
-        city=args.get("city", ""),
-        country=args.get("country", "")
+        city=city,
+        country=country
     )
     
-    # Calculate end_date from start_date + nights if needed
-    # For now, we trust the LLM to give us valid dates or we accept empty strings if missing
-    # In a real app, date math libraries like datetime would be used here.
-    
     dates = DateRange(
-        start_date=args.get("start_date", ""),
-        end_date=args.get("end_date", "") # Expecting LLM to provide end_date or we leave it empty
+        start_date=start_date,
+        end_date=end_date
     )
     
     hotel_request = HotelSearchRequest(
         location=location,
         dates=dates,
-        guests=args.get("guests", 2),
-        rooms=args.get("rooms", 1),
+        guests=guests,
+        rooms=rooms,
         max_results=20,
-        min_rating=3.0,
-        # 'preferences' could be mapped to amenity lists or descriptions
+        min_rating=3.0
     )
     
     activity_request = ActivitySearchRequest(
         location=location,
         dates=dates,
-        description=args.get("activity_preferences", ""),
+        description=description,
         max_results=10,
         min_rating=3.0
     )
@@ -144,24 +181,28 @@ def execute_add_stay(args: Dict[str, Any]) -> StayRequest:
     )
 
 
-def build_trip_from_actions(actions: List[Dict[str, Any]]) -> TripRequest:
+def build_trip_from_actions(actions: List[List[Any]]) -> TripRequest:
     """
-    Construct a TripRequest from a list of action dictionaries.
+    Construct a TripRequest from a list of action arrays.
     """
     sections = []
     
-    for action_item in actions:
-        action_name = action_item.get("action")
-        args = action_item.get("args", {})
+    for action_row in actions:
+        if not isinstance(action_row, list) or len(action_row) == 0:
+            continue
+            
+        command = action_row[0]
+        # The args are everything after the command
+        args = action_row[1:]
         
-        if action_name == "add_flight":
+        if command == "FLIGHT":
             flight_req = execute_add_flight(args)
             sections.append(TripSection(
                 type=SectionType.FLIGHT,
                 data=flight_req
             ))
             
-        elif action_name == "add_stay":
+        elif command == "STAY":
             stay_req = execute_add_stay(args)
             sections.append(TripSection(
                 type=SectionType.STAY,
@@ -173,54 +214,80 @@ def build_trip_from_actions(actions: List[Dict[str, Any]]) -> TripRequest:
 
 def generate_action_sequences(trip_yml: str) -> List[Dict[str, Any]]:
     """
-    Generate one trip plan as a sequence of tool actions.
+    Generate 3 distinct trip plans (vibes) as sequences of dense tool actions.
+    Returns a list of dicts: [{"vibe": "...", "actions": [...]}, ...]
     """
     prompt = f"""
     You are a creative travel planner JSON Agent.
     
     Task:
-    Read the trip description and generate a CREATIVE trip plan.
-    Represent the plan as a sequence of ACTIONS.
+    Read the trip description and generate 3 DISTINCT trip options (Vibes).
+    Each option should have a unique "vibe" (e.g., "Luxury Relax", "Adventure", "Cultural Deep Dive").
+    Represent each plan as a "vibe" name and a COMPACT SEQUENCE of actions.
     
-    Available Actions:
-    1. add_flight
-       Args: origin_city, origin_country, origin_airport_code (opt), destination_city, destination_country, destination_airport_code (opt), date (YYYY-MM-DD), return_date (opt, YYYY-MM-DD), passengers, cabin_class
+    Protocol for Actions:
     
-    2. add_stay
-       Args: city, country, start_date (YYYY-MM-DD), end_date (YYYY-MM-DD), guests, rooms, activity_preferences (string description of what to do)
+    1. FLIGHT
+       Format: ["FLIGHT", origin_city, origin_country, origin_code, dest_city, dest_country, dest_code, date, return_date, passengers, cabin]
+       Note: origin_code/dest_code can be empty string if unknown. return_date empty if one-way.
+       
+    2. STAY
+       Format: ["STAY", city, country, start_date, end_date, guests, rooms, description]
+       Note: description is a short string of activity preferences.
     
     Rules:
-    - Return a JSON List of action objects: {{ "action": "name", "args": {{ ... }} }}
-    - Ensure logical flow (flight -> stay -> flight).
+    - Return a single JSON LIST of objects.
+    - Generate EXACTLY 3 options.
+    - Ensure logical flow for each option (FLIGHT -> STAY -> FLIGHT).
     - Be consistent with dates.
-    - Be creative with the plan.
     - Do not include any additional text or comments.
 
     Trip Description:
     {trip_yml}
     
-    Output JSON Format:
+    Output JSON Example:
     [
-      {{ "action": "add_flight", "args": {{ ... }} }},
-      {{ "action": "add_stay", "args": {{ ... }} }},
-      ...
+      {{
+        "vibe": "The Classic Tourist",
+        "actions": [
+          ["FLIGHT", "NYC", "USA", "JFK", "London", "UK", "LHR", "2024-05-01", "", 1, "economy"],
+          ["STAY", "London", "UK", "2024-05-01", "2024-05-05", 1, 1, "Major landmarks and museums"],
+          ["FLIGHT", "London", "UK", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "economy"]
+        ]
+      }},
+      {{
+        "vibe": "Hidden Gems",
+        "actions": [
+          ["FLIGHT", "NYC", "USA", "JFK", "London", "UK", "LHR", "2024-05-01", "", 1, "economy"],
+          ["STAY", "London", "UK", "2024-05-01", "2024-05-05", 1, 1, "Local markets and small cafes"],
+          ["FLIGHT", "London", "UK", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "economy"]
+        ]
+      }},
+      {{
+        "vibe": "Luxury Living",
+        "actions": [
+          ["FLIGHT", "NYC", "USA", "JFK", "London", "UK", "LHR", "2024-05-01", "", 1, "first"],
+          ["STAY", "London", "UK", "2024-05-01", "2024-05-05", 1, 1, "High-end shopping and fine dining"],
+          ["FLIGHT", "London", "UK", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "first"]
+        ]
+      }}
     ]
     """
 
     response = client.chat.completions.create(
         model="sonar",
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.9
+        temperature=0.9,
+        
     )
 
     cleaned_text = _strip_markdown_and_clean_json(response.choices[0].message.content)
-    print("=== ACTION SEQUENCE ===")
+    print("=== ACTION SEQUENCES ===")
     print(cleaned_text)
     print("=" * 50)
     
     try:
         data = json.loads(cleaned_text)
-        # Validate it's a list
         if not isinstance(data, list):
             return []
         return data
@@ -229,19 +296,33 @@ def generate_action_sequences(trip_yml: str) -> List[Dict[str, Any]]:
         return []
 
 
-def create_trip_json_from_yml(trip_yml: str) -> TripRequest:
+def create_trip_json_from_yml(trip_yml: str) -> List[TripVariation]:
     """
-    Main pipeline: YAML -> Actions -> Single TripRequest.
+    Main pipeline: YAML -> Action Sequences (x3) -> List[TripVariation].
     """
-    # Step 1: Generate Action Sequence
-    actions = generate_action_sequences(trip_yml)
+    # Step 1: Generate Action Sequences (Returns list of {vibe, actions})
+    variations_data = generate_action_sequences(trip_yml)
     
-    # Step 2: Build TripRequest from actions
-    if isinstance(actions, list) and len(actions) > 0:
-        return build_trip_from_actions(actions)
+    results = []
     
-    # Return empty request if something failed
-    return TripRequest(sections=[])
+    # Step 2: Build TripRequest for each variation
+    if isinstance(variations_data, list):
+        for item in variations_data:
+            if not isinstance(item, dict):
+                continue
+                
+            vibe = item.get("vibe", "Standard")
+            actions = item.get("actions", [])
+            
+            if isinstance(actions, list) and len(actions) > 0:
+                trip_req = build_trip_from_actions(actions)
+                results.append(TripVariation(
+                    vibe=vibe,
+                    trip_request=trip_req
+                ))
+    
+    # Return results (empty list if failures)
+    return results
 
 
 # ==========================================
@@ -254,8 +335,8 @@ def create_json(request: JsonAgentRequest):
         raise HTTPException(status_code=400, detail="trip_yml cannot be empty")
     
     try:
-        result = create_trip_json_from_yml(request.trip_yml)
-        return JsonAgentResponse(trip_json=result)
+        variations = create_trip_json_from_yml(request.trip_yml)
+        return JsonAgentResponse(variations=variations)
     except Exception as e:
         print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to generate trip JSON: {str(e)}")
