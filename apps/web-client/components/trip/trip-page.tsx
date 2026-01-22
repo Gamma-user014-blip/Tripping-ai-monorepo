@@ -15,7 +15,7 @@ const TripPage: React.FC = (): JSX.Element => {
   const trip = MOCK_RESULTS.find((t) => t.tripId === tripId) || MOCK_RESULTS[0];
 
   return (
-    <div className={styles.tripPage}>
+    <div className={styles.tripPage} id="trip-page-content">
       <div className={styles.navContainer}>
         <Navbar />
       </div>

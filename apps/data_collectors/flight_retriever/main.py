@@ -1,17 +1,14 @@
-from __future__ import annotations
-
 import os
 import json
-import re
-from typing import Optional
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+import redis.asyncio as redis
+from typing import Optional, Dict, List, Any, Tuple
 from datetime import datetime, timezone 
 from shared.data_types.models import *
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from amadeus import Client, ResponseError
 from dotenv import load_dotenv
-import os
+
+from .data_processor import transform_flight_data, generate_unique_flight_id
 # ----------------------------
 # Config
 # ----------------------------
@@ -23,6 +20,56 @@ AMADEUS_CLIENT_SECRET = os.getenv("AMADEUS_CLIENT_SECRET")
 
 if not AMADEUS_CLIENT_ID or not AMADEUS_CLIENT_SECRET:
     raise RuntimeError("Missing Amadeus credentials – check .env")
+
+# Redis connection
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+redis_client = None
+
+# Cache TTL (2 hours for flight data as it's more volatile than hotels)
+FLIGHT_CACHE_TTL = 7200
+
+async def get_redis_client():
+    global redis_client
+    if redis_client is None:
+        redis_client = await redis.from_url(REDIS_URL, decode_responses=True)
+    return redis_client
+
+async def cache_get(key: str) -> Optional[Dict]:
+    try:
+        client = await get_redis_client()
+        data = await client.get(key)
+        return json.loads(data) if data else None
+    except Exception as e:
+        print(f"Cache get error: {e}")
+        return None
+
+async def cache_set(key: str, value: Dict, ttl: int = FLIGHT_CACHE_TTL):
+    try:
+        client = await get_redis_client()
+        await client.setex(key, ttl, json.dumps(value))
+    except Exception as e:
+        print(f"Cache set error: {e}")
+
+async def map_provider_id(unique_id: str, provider_offer: Dict):
+    """Map generated unique ID to raw provider offer data"""
+    try:
+        client = await get_redis_client()
+        key = f"map:flight_offer:{unique_id}"
+        # Store the entire raw offer because Amadeus IDs are extremely transient
+        await client.setex(key, FLIGHT_CACHE_TTL * 3, json.dumps(provider_offer))
+    except Exception as e:
+        print(f"Mapping error: {e}")
+
+async def get_provider_offer(unique_id: str) -> Optional[Dict]:
+    """Get raw provider offer from unique ID"""
+    try:
+        client = await get_redis_client()
+        key = f"map:flight_offer:{unique_id}"
+        data = await client.get(key)
+        return json.loads(data) if data else None
+    except Exception as e:
+        print(f"Mapping lookup error: {e}")
+        return None
 
 amadeus = Client(
     client_id=AMADEUS_CLIENT_ID,
@@ -40,246 +87,27 @@ async def root():
     return {"message": "Hello, FastAPI!"}
 
 
+@app.on_event("startup")
+async def startup():
+    await get_redis_client()
+    print("Redis connection initialized")
+
+@app.on_event("shutdown")
+async def shutdown():
+    if redis_client:
+        await redis_client.close()
+
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 # ----------------------------
 # Helpers
 # ----------------------------
 
-def _parse_iso_duration_to_minutes(d: str) -> int:
-    """
-    Amadeus uses ISO 8601 durations like 'PT6H17M' or 'PT50M'.
-    """
-    if not d:
-        return 0
-    m = re.fullmatch(r"PT(?:(\d+)H)?(?:(\d+)M)?", d)
-    if not m:
-        return 0
-    hours = int(m.group(1) or 0)
-    minutes = int(m.group(2) or 0)
-    return hours * 60 + minutes
+# Helper functions moved to data_processor.py
 
-
-def _safe_float(x: Any, default: float = 0.0) -> float:
-    try:
-        return float(x)
-    except Exception:
-        return default
-
-
-def _iso_to_dt(s: str) -> Optional[datetime]:
-    """
-    Amadeus returns ISO timestamps, usually with timezone offsets.
-    Example: '2026-04-05T10:30:00' or '2026-04-05T10:30:00+02:00' or '...Z'
-    """
-    if not s:
-        return None
-    try:
-        return datetime.fromisoformat(s.replace("Z", "+00:00"))
-    except Exception:
-        return None
-
-
-def _minutes_between(start_iso: str, end_iso: str) -> int:
-    start = _iso_to_dt(start_iso)
-    end = _iso_to_dt(end_iso)
-    if not start or not end:
-        return 0
-    delta = end - start
-    return max(0, int(delta.total_seconds() // 60))
-
-
-def _get_location_meta(locations: Dict[str, Any], iata: str) -> Dict[str, Any]:
-    """
-    locations is expected to come from resp.result['dictionaries']['locations'].
-    """
-    if not locations or not iata:
-        return {}
-    return locations.get(iata, {}) or {}
-
-
-def _is_overnight(start_iso: str, end_iso: str) -> bool:
-    if not start_iso or not end_iso:
-        return False
-    try:
-        start_dt = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
-        end_dt = datetime.fromisoformat(end_iso.replace("Z", "+00:00"))
-        return start_dt.date() != end_dt.date()
-    except Exception:
-        return False
-
-def _offer_to_flight_option(
-    offer: Dict[str, Any],
-    passengers: int = 1,
-    locations: Optional[Dict[str, Any]] = None,   # <--- NEW
-) -> FlightOption:
-    locations = locations or {}
-    
-    # --- Pricing ---
-    price_info = offer.get("price", {}) or {}
-    currency = price_info.get("currency") or "USD"
-    total_amount = _safe_float(price_info.get("grandTotal") or price_info.get("total"))
-
-    traveler_pricings = offer.get("travelerPricings", []) or []
-    if traveler_pricings:
-        per_person_amount = _safe_float(traveler_pricings[0].get("price", {}).get("total"))
-    else:
-        per_person_amount = total_amount / max(1, passengers)
-
-    total_price = Money(currency=currency, amount=total_amount)
-    price_per_person = Money(currency=currency, amount=per_person_amount)
-
-    # --- Outbound itinerary & segments ---
-    itineraries = offer.get("itineraries", []) or []
-    outbound_it = itineraries[0] if itineraries else {}
-    segments = outbound_it.get("segments", []) or []
-    if segments:
-        path = " -> ".join(
-            (s.get("departure", {}).get("iataCode", "?") + "-" + s.get("arrival", {}).get("iataCode", "?"))
-            for s in segments
-        )
-    # Defaults
-    origin_loc = Location()
-    dest_loc = Location()
-    departure_time = ""
-    arrival_time = ""
-    airline = ""
-    flight_number = ""
-    aircraft = ""
-    cabin_class = ""
-
-    # First & last segment give route + times
-    if segments:
-        first_seg = segments[0]
-        last_seg = segments[-1]
-
-        dep = first_seg.get("departure", {}) or {}
-        arr = last_seg.get("arrival", {}) or {}
-
-        origin_code = dep.get("iataCode", "") or ""
-        dest_code = arr.get("iataCode", "") or ""
-
-        # OPTIONAL: enrich origin/destination with dictionaries if your Location model supports it
-        origin_meta = _get_location_meta(locations, origin_code)
-        dest_meta = _get_location_meta(locations, dest_code)
-
-        origin_loc = _loc_from_iata(origin_code, locations)
-        dest_loc = _loc_from_iata(dest_code, locations)
-
-
-        
-        departure_time = dep.get("at", "") or ""
-        arrival_time = arr.get("at", "") or ""
-
-        airline = first_seg.get("carrierCode", "") or ""
-        flight_number = (first_seg.get("carrierCode", "") or "") + (first_seg.get("number", "") or "")
-        aircraft = (first_seg.get("aircraft", {}) or {}).get("code", "") or ""
-
-    # Duration & stops
-    duration_minutes = _parse_iso_duration_to_minutes(outbound_it.get("duration", ""))
-    stops = max(0, len(segments) - 1)
-
-        # Layovers: between seg i and seg i+1
-    layovers: List[Layover] = []
-    for i in range(len(segments) - 1):
-        seg_in = segments[i] or {}
-        seg_out = segments[i + 1] or {}
-
-        a = seg_in.get("arrival", {}) or {}
-        b = seg_out.get("departure", {}) or {}
-
-        layover_airport = a.get("iataCode", "") or ""
-        layover_start = a.get("at", "") or ""
-        layover_end = b.get("at", "") or ""
-
-        layover_duration = _minutes_between(layover_start, layover_end)
-
-        arrival_terminal = a.get("terminal")
-        departure_terminal = b.get("terminal")
-
-        layovers.append(
-            Layover(
-                airport=_loc_from_iata(layover_airport, locations),
-
-
-                start_time=layover_start,
-                end_time=layover_end,
-                duration_minutes=layover_duration,
-
-                arrival_terminal=arrival_terminal,
-                departure_terminal=departure_terminal,
-
-                airline_before=seg_in.get("carrierCode", "") or "",
-                airline_after=seg_out.get("carrierCode", "") or "",
-
-                is_airline_change=(seg_in.get("carrierCode", "") != seg_out.get("carrierCode", "")),
-                is_terminal_change=(arrival_terminal is not None and departure_terminal is not None and arrival_terminal != departure_terminal),
-                overnight=_is_overnight(layover_start, layover_end),
-            )
-        )
-
-
-
-    # Cabin class (best source is fareDetailsBySegment)
-    if traveler_pricings:
-        fds = traveler_pricings[0].get("fareDetailsBySegment", []) or []
-        if fds:
-            cabin_class = (fds[0].get("cabin") or "").lower()
-
-    amenities = AmenityInfo()
-    luggage = LuggageInfo()
-
-    if traveler_pricings:
-        fds_list = traveler_pricings[0].get("fareDetailsBySegment", []) or []
-        if fds_list:
-            fds0 = fds_list[0]
-
-            amenities = _parse_amenities_from_fds(fds0)
-            luggage = _parse_luggage_from_fds(fds0)
-
-
-    outbound_seg = FlightSegment(
-        origin=origin_loc,
-        destination=dest_loc,
-        departure_time=departure_time,
-        arrival_time=arrival_time,
-        duration_minutes=duration_minutes,
-        stops=stops,
-        layovers=layovers,
-        airline=airline,
-        flight_number=flight_number,
-        aircraft=aircraft,
-        cabin_class=cabin_class,
-        amenities=amenities,
-        luggage=luggage,
-    )
-
-    provider = ""
-    vac = offer.get("validatingAirlineCodes", []) or []
-    provider = vac[0] if vac else airline
-
-    return FlightOption(
-        id=str(offer.get("id", "")),
-        outbound=outbound_seg,
-        total_price=total_price,
-        price_per_person=price_per_person,
-        scores=ComponentScores(),
-        booking_url="",
-        provider=provider,
-        available=True,
-    )
-
-def explore(obj, prefix=""):
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            print(f"{prefix}{k}: {type(v).__name__}")
-            explore(v, prefix + "  ")
-    elif isinstance(obj, list) and obj:
-        print(f"{prefix}[list of {type(obj[0]).__name__}]")
-        explore(obj[0], prefix + "  ")
 
 
 @app.post("/api/flight_retriever/search", response_model=FlightSearchResponse)
@@ -302,6 +130,14 @@ async def flight_search(request: FlightSearchRequest):
     max_results = 250  # your decision
 
     try:
+        # Check if entire search is cached (Optional, but good for performance)
+        search_cache_key = f"flight_search:{origin_code}:{dest_code}:{departure_date}:{adults}"
+        cached_response = await cache_get(search_cache_key)
+        if cached_response:
+            print(f"Cache hit for search {search_cache_key}")
+            return FlightSearchResponse.model_validate(cached_response)
+
+        print(f"Cache miss for search {search_cache_key}, calling Amadeus...")
         resp = amadeus.shopping.flight_offers_search.get(
             originLocationCode=origin_code,
             destinationLocationCode=dest_code,
@@ -314,98 +150,79 @@ async def flight_search(request: FlightSearchRequest):
         dictionaries = result.get("dictionaries", {}) or {}
         locations = dictionaries.get("locations", {}) or {}
         
-
         offers = resp.data or []
 
-        flight_options: list[FlightOption] = [
-            _offer_to_flight_option(
-                o,
-                passengers=adults,
-                locations=locations,
-            )
-            for o in offers
-        ]
+        flight_options: list[FlightOption] = []
+        for o in offers:
+            # Generate Unique ID based on segments (before transformation)
+            itineraries = o.get("itineraries", []) or []
+            segments = itineraries[0].get("segments", []) if itineraries else []
+            unique_id = generate_unique_flight_id(segments)
 
-        # ---- build metadata (fill what you have in your SearchMetadata model) ----
+            # Check if THIS INDIVIDUAL flight option is in cache
+            # (Matches hotel_retriever pattern)
+            opt_cache_key = f"flight_option:{unique_id}"
+            cached_opt = await cache_get(opt_cache_key)
+            
+            if cached_opt:
+                # Use cached transformed model
+                opt = FlightOption.model_validate(cached_opt)
+            else:
+                # Transform and cache
+                opt = transform_flight_data(o, passengers=adults, locations=locations)
+                await cache_set(opt_cache_key, opt.model_dump())
+            
+            # Save mapping to raw offer for price verification later
+            await map_provider_id(unique_id, o)
+            flight_options.append(opt)
+
+        # ---- build metadata ----
         metadata = SearchMetadata(
-            origin=origin_code,
-            destination=dest_code,
-            departure_date=departure_date,
-            passengers=adults,
-            returned_count=len(flight_options),
-            requested_max=max_results,
-            retrieved_at=datetime.now(timezone.utc).isoformat(),
+            total_results=len(flight_options),
+            search_id=f"flight_search_{datetime.now(timezone.utc).timestamp()}",
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            data_source="Amadeus",
         )
 
-        return FlightSearchResponse(options=flight_options, metadata=metadata)
+        response = FlightSearchResponse(options=flight_options, metadata=metadata)
+        
+        # Cache the entire search response
+        await cache_set(search_cache_key, response.model_dump())
+
+        return response
 
     except Exception as e:
+        print(f"Search error: {e}")
         raise HTTPException(status_code=502, detail=f"Amadeus error: {e}")
 
 
-def _loc_from_iata(iata: str, locations: Dict[str, Any]) -> Location:
-    """
-    Build a Location with city/country/lat/lon using Amadeus dictionaries.locations.
-    Falls back safely if fields are missing.
-    """
-    meta = _get_location_meta(locations, iata) or {}
-    geo = meta.get("geoCode", {}) or {}
-
-    return Location(
-        airport_code=iata or "",
-        city=meta.get("cityName", "") or "",
-        country=meta.get("countryCode", "") or "",
-        latitude=float(geo.get("latitude") or 0.0),
-        longitude=float(geo.get("longitude") or 0.0),
-    )
+@app.get("/api/flight_retriever/flights/{flight_id}")
+async def get_flight_details(flight_id: str):
+    """Get raw offer details from provider using unique mapping"""
+    offer = await get_provider_offer(flight_id)
+    if not offer:
+        raise HTTPException(status_code=404, detail="Flight offer not found in cache or expired")
+    return offer
 
 
-def _parse_amenities_from_fds(fds: Dict[str, Any]) -> AmenityInfo:
-    """
-    Amadeus amenities are usually a list with descriptions, not booleans.
-    We'll infer booleans by keyword matching.
-    """
-    info = AmenityInfo()
-
-    ams = fds.get("amenities", []) or []
-    for a in ams:
-        desc = (a.get("description") or "").lower()
-
-        if "wi-fi" in desc or "wifi" in desc:
-            info.wifi = True
-        if "meal" in desc or "food" in desc:
-            info.meal = True
-        if "entertainment" in desc:
-            info.entertainment = True
-        if "power" in desc or "usb" in desc or "outlet" in desc:
-            info.power_outlet = True
-
-    # legroom_inches is not provided by Flight Offers Search -> keep default 0
-    return info
+@app.post("/api/flight_retriever/flights/{flight_id}/price")
+async def verify_price(flight_id: str):
+    """Verify current price and availability for a flight offer"""
+    offer = await get_provider_offer(flight_id)
+    if not offer:
+        raise HTTPException(status_code=404, detail="Flight offer not found in cache or expired")
+    
+    try:
+        # Call Amadeus Pricing API to verify
+        # Note: This requires the full raw offer object
+        price_resp = amadeus.shopping.flight_offers.pricing.post(offer)
+        return price_resp.result
+    except ResponseError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-def _parse_luggage_from_fds(fds: Dict[str, Any]) -> LuggageInfo:
-    """
-    Correctly map Amadeus includedCheckedBags / includedCabinBags.
-    """
-    luggage = LuggageInfo()
+# Helper functions moved to data_processor.py or removed if redundant
 
-    checked = fds.get("includedCheckedBags") or {}
-    if checked:
-        luggage.checked_bags = int(checked.get("quantity") or 0)
-
-        weight = checked.get("weight")
-        unit = (checked.get("weightUnit") or "").upper()
-        if weight is not None and unit == "KG":
-            luggage.checked_bag_weight_kg = float(weight)
-
-    cabin = fds.get("includedCabinBags") or {}
-    if cabin:
-        luggage.carry_on_bags = int(cabin.get("quantity") or 0)
-
-        # Usually no weight/dimensions in this endpoint
-        # luggage.carry_on_weight_kg = ...
-        # luggage.carry_on_dimensions_cm = ...
-
-    return luggage
 

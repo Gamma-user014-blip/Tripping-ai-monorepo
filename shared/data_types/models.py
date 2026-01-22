@@ -75,7 +75,7 @@ class HotelOption(BaseModel):
     description: str = ""
     location: Location = Field(default_factory=Location)
     distance_to_center_km: float = 0.0
-    
+    image: str = "" # url to image
     # Rating
     rating: float = 0.0  # 0-5 scale
     review_count: int = 0
