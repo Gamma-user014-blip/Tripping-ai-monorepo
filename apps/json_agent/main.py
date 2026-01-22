@@ -28,29 +28,30 @@ app = FastAPI()
 # API MODELS
 # ==========================================
 
-class JsonAgentRequest(BaseModel):
+class GeneratePlansRequest(BaseModel):
     trip_yml: str = ""
 
-class TripVariation(BaseModel):
+class GeneratedTripResponse(BaseModel):
     vibe: str
     trip_request: TripRequest
 
-class JsonAgentResponse(BaseModel):
-    variations: List[TripVariation]
-
-class ActionPlan(BaseModel):
+class TripPlan(BaseModel):
     vibe: str
     actions: List[List[Union[str, int, float, None]]]
 
-class ActionPlanResponse(BaseModel):
-    plans: List[ActionPlan]
+class TripPlansResponse(BaseModel):
+    plans: List[TripPlan]
+
+class GenerateTripRequest(BaseModel):
+    vibe: str
+    actions: List[List[Union[str, int, float, None]]]
 
 
 # ==========================================
 # HELPER FUNCTIONS
 # ==========================================
 
-def _strip_markdown_and_clean_json(text: str) -> str:
+def extract_json_from_text(text: str) -> str:
     """
     Robustly extract the largest JSON object or array from the text,
     ignoring any markdown code blocks or surrounding text.
@@ -84,7 +85,7 @@ def _strip_markdown_and_clean_json(text: str) -> str:
     return text
 
 
-def execute_add_flight(args: List[Any]) -> FlightRequest:
+def parse_flight_action(args: List[Any]) -> FlightRequest:
     """
     Execute 'FLIGHT' action: Convert positional args to FlightRequest.
     Args protocol: [origin_city, origin_country, origin_code, dest_city, dest_country, dest_code, date, return_date, passengers, cabin]
@@ -133,7 +134,7 @@ def execute_add_flight(args: List[Any]) -> FlightRequest:
     )
 
 
-def execute_add_stay(args: List[Any]) -> StayRequest:
+def parse_stay_action(args: List[Any]) -> StayRequest:
     """
     Execute 'STAY' action: Convert positional args to StayRequest.
     Args protocol: [city, country, start_date, end_date, guests, rooms, description]
@@ -188,7 +189,7 @@ def execute_add_stay(args: List[Any]) -> StayRequest:
     )
 
 
-def build_trip_from_actions(actions: List[List[Any]]) -> TripRequest:
+def build_trip_request_from_instructions(actions: List[List[Any]]) -> TripRequest:
     """
     Construct a TripRequest from a list of action arrays.
     """
@@ -203,14 +204,14 @@ def build_trip_from_actions(actions: List[List[Any]]) -> TripRequest:
         args = action_row[1:]
         
         if command == "FLIGHT":
-            flight_req = execute_add_flight(args)
+            flight_req = parse_flight_action(args)
             sections.append(TripSection(
                 type=SectionType.FLIGHT,
                 data=flight_req
             ))
             
         elif command == "STAY":
-            stay_req = execute_add_stay(args)
+            stay_req = parse_stay_action(args)
             sections.append(TripSection(
                 type=SectionType.STAY,
                 data=stay_req
@@ -219,7 +220,7 @@ def build_trip_from_actions(actions: List[List[Any]]) -> TripRequest:
     return TripRequest(sections=sections)
 
 
-def generate_action_sequences(trip_yml: str) -> List[Dict[str, Any]]:
+def generate_trip_plans_from_text(trip_yml: str) -> List[Dict[str, Any]]:
     """
     Generate 3 distinct trip plans (vibes) as sequences of dense tool actions.
     Returns a list of dicts: [{"vibe": "...", "actions": [...]}, ...]
@@ -289,7 +290,7 @@ def generate_action_sequences(trip_yml: str) -> List[Dict[str, Any]]:
         response_format={
             "type": "json_schema",
             "json_schema": {
-                "schema": ActionPlanResponse.model_json_schema()
+                "schema": TripPlansResponse.model_json_schema()
             }
         }
     )
@@ -317,50 +318,43 @@ def generate_action_sequences(trip_yml: str) -> List[Dict[str, Any]]:
         return []
 
 
-def create_trip_json_from_yml(trip_yml: str) -> List[TripVariation]:
-    """
-    Main pipeline: YAML -> Action Sequences (x3) -> List[TripVariation].
-    """
-    # Step 1: Generate Action Sequences (Returns list of {vibe, actions})
-    variations_data = generate_action_sequences(trip_yml)
-    
-    results = []
-    
-    # Step 2: Build TripRequest for each variation
-    if isinstance(variations_data, list):
-        for item in variations_data:
-            if not isinstance(item, dict):
-                continue
-                
-            vibe = item.get("vibe", "Standard")
-            actions = item.get("actions", [])
-            
-            if isinstance(actions, list) and len(actions) > 0:
-                trip_req = build_trip_from_actions(actions)
-                results.append(TripVariation(
-                    vibe=vibe,
-                    trip_request=trip_req
-                ))
-    
-    # Return results (empty list if failures)
-    return results
-
-
 # ==========================================
 # API ENDPOINT
 # ==========================================
 
-@app.post("/api/create_json", response_model=JsonAgentResponse)
-def create_json(request: JsonAgentRequest):
+@app.post("/api/generate-plans", response_model=TripPlansResponse)
+def generate_plans(request: GeneratePlansRequest):
     if not request.trip_yml or request.trip_yml.strip() == "":
         raise HTTPException(status_code=400, detail="trip_yml cannot be empty")
     
     try:
-        variations = create_trip_json_from_yml(request.trip_yml)
-        return JsonAgentResponse(variations=variations)
+        variations_data = generate_trip_plans_from_text(request.trip_yml)
+        
+        plans = []
+        if isinstance(variations_data, list):
+            for item in variations_data:
+                if isinstance(item, dict):
+                    vibe = item.get("vibe", "Standard")
+                    actions = item.get("actions", [])
+                    plans.append(TripPlan(vibe=vibe, actions=actions))
+                    
+        return TripPlansResponse(plans=plans)
     except Exception as e:
         print(f"Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate trip JSON: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate trip plans: {str(e)}")
+
+
+@app.post("/api/build-trip-request", response_model=GeneratedTripResponse)
+def build_trip_request(request: GenerateTripRequest):
+    try:
+        trip_req = build_trip_request_from_instructions(request.actions)
+        return GeneratedTripResponse(
+            vibe=request.vibe,
+            trip_request=trip_req
+        )
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to build trip: {str(e)}")
 
 
 if __name__ == "__main__":
