@@ -41,7 +41,7 @@ const ResultsPage: React.FC = (): JSX.Element => {
     }
   }
 
-  const handleChatMessage = (): void => {
+  const handleLoadTrips = (): void => {
     loadResults()
   }
 
@@ -60,7 +60,7 @@ const ResultsPage: React.FC = (): JSX.Element => {
         </div>
         <div className={styles.resultsAndFilters}>
           <div className={styles.filterContainer}>
-            <AiChatSidebar onMessageSent={handleChatMessage} />
+            <AiChatSidebar loadTrips={handleLoadTrips} />
           </div>
           <div className={styles.resultsContainer}>
             <div>

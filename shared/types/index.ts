@@ -10,5 +10,6 @@ export * from './flight';
 export * from './activity';
 export * from './transport';
 export * from './trip';
+export * from './chat';
 
 
