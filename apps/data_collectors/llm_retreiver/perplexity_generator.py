@@ -15,7 +15,7 @@ def _generate_with_perplexity(system_prompt: str, user_prompt: str) -> str:
     url = "https://api.perplexity.ai/chat/completions"
 
     payload = {
-        "model": "sonar-pro",  # or "sonar"
+        "model": "sonar",  # or "sonar"
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
