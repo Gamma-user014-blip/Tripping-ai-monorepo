@@ -13,10 +13,17 @@
     "services": "concurrently \"npm run start --prefix apps/flight-service\" \"npm run start --prefix apps/hotel-service\""
   },
   "devDependencies": {
+    "@types/body-parser": "^1.19.6",
+    "@types/express": "^5.0.6",
     "concurrently": "^9.2.1",
     "prettier": "3.7.4"
   },
   "dependencies": {
-    "maplibre-gl": "^5.15.0"
+    "body-parser": "^2.2.2",
+    "express": "^5.2.1",
+    "google-auth-library": "^10.5.0",
+    "googleapis": "^170.1.0",
+    "maplibre-gl": "^5.15.0",
+    "next": "^16.1.4"
   }
 }

@@ -121,7 +121,22 @@ async def create_trip(
     request: TripRequest
 ):
     trip_response = await process_sections(request)
-    return await build_package(trip_response)
+    package = await build_package(trip_response)
+    # Inject images back from search results into final package
+    hotel_images = {
+        h.id: h.image 
+        for s in trip_response.sections 
+        if s.type == SectionType.STAY 
+        for h in s.data.hotel_options 
+        if h.image
+    }
+    
+    for section in package.sections:
+        if section.type == SectionType.STAY and section.data.hotel.id in hotel_images:
+            section.data.hotel.image = hotel_images[section.data.hotel.id]
+            
+    print(package.model_dump_json(indent=2))    
+    return package
 
 
 if __name__ == "__main__":

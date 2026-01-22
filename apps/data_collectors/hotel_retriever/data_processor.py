@@ -140,12 +140,15 @@ def transform_hotel_data(
     import re
     description = re.sub('<[^<]+?>', '', description)
     hotel_option.description = description[:500]  # Truncate
-    
+    hotel_option.image = hotel_raw.get("main_photo", "")
     # Location
     hotel_option.location.city = hotel_raw.get("city", "")
     hotel_option.location.country = hotel_raw.get("country", "")
     hotel_option.location.latitude = lat
     hotel_option.location.longitude = lon
+    
+    # Image
+    hotel_option.image = hotel_raw.get("main_photo", "")
     
     # Distance to center (mock - in real implementation calculate from coordinates)
     hotel_option.distance_to_center_km = 2.5
