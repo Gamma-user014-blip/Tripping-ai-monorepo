@@ -104,9 +104,12 @@ services:
     volumes:
       - mongo_data:/data/db
     networks:
+      - shared_network
       - web_private_network
     expose:
       - "27017"
+    ports:
+      - "27017:27017"
 
   web_server:
     build:
