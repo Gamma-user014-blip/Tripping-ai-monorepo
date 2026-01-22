@@ -139,6 +139,35 @@ services:
       - "8300:8000"
 
 
+  mongo:
+    image: mongo:7
+    container_name: mongo
+    command: mongod --quiet
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - web_private_network
+    expose:
+      - "27017"
+
+  web_server:
+    build:
+      context: .
+      dockerfile: ./apps/web-server/Dockerfile
+    container_name: web_server
+    environment:
+      - PORT=3001
+      - MONGODB_URI=mongodb://mongo:27017/tripping_ai
+      - SESSION_SECRET=${SESSION_SECRET:-dev-secret-key-change-in-production}
+      - NODE_ENV=production
+    networks:
+      - shared_network
+      - web_private_network
+    ports:
+      - "3001:3001"
+    depends_on:
+      - mongo
+
 networks:
   shared_network:
     driver: bridge
@@ -159,7 +188,12 @@ networks:
     driver: bridge
     internal: true
 
+  web_private_network:
+    driver: bridge
+    internal: true
+
 volumes:
   hotel_redis_data:
   mongo_data:
   flight_redis_data:
+  mongo_data:
