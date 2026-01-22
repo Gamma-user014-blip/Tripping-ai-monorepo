@@ -3,10 +3,6 @@ from shared.data_types.models import *
 import os
 from dotenv import load_dotenv
 import httpx
-from shared.data_types.models import *
-import os
-from dotenv import load_dotenv
-import httpx
 import asyncio
 
 load_dotenv()
