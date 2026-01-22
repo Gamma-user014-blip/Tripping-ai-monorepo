@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Body
 import base64
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
-from .data_processor import transform_hotel_data
+from .data_processor import transform_hotel_data, generate_unique_hotel_id
 import redis.asyncio as redis
 import json
 import os
@@ -57,6 +57,27 @@ async def cache_set(key: str, value: Dict, ttl: int = HOTEL_CACHE_TTL):
         print(f"Cache set error: {e}")
 
 
+async def map_provider_id(unique_id: str, provider_id: str):
+    """Map generated unique ID to provider ID"""
+    try:
+        client = await get_redis_client()
+        key = f"map:provider_id:{unique_id}"
+        await client.setex(key, HOTEL_CACHE_TTL * 24, provider_id) # Keep mapping longer
+    except Exception as e:
+        print(f"Mapping error: {e}")
+
+
+async def get_provider_id(unique_id: str) -> Optional[str]:
+    """Get provider ID from unique ID"""
+    try:
+        client = await get_redis_client()
+        key = f"map:provider_id:{unique_id}"
+        return await client.get(key)
+    except Exception as e:
+        print(f"Mapping lookup error: {e}")
+        return None
+
+
 def build_occupancies(guests: int, rooms: int, children_ages: List[int] = None) -> List[Dict]:
     """Build occupancy structure for API request"""
     if children_ages is None:
@@ -87,22 +108,25 @@ async def check_hotel_availability(
     guests: int,
     rooms: int,
     currency: str = "USD",
-    guest_nationality: str = "US"
+    guest_nationality: str = "US",
+    unique_id: Optional[str] = None
 ) -> Optional[Dict]:
     """
     Check hotel availability and get rates for specific dates
     Returns availability data or None if not available
     """
     # Build cache key for availability
-    availability_cache_key = f"availability:{hotel_id}:{checkin}:{checkout}:{guests}:{rooms}"
+    # Use unique_id for caching if provided, otherwise fallback to provider hotel_id
+    cache_id = unique_id if unique_id else hotel_id
+    availability_cache_key = f"availability:{cache_id}:{checkin}:{checkout}:{guests}:{rooms}"
     
     # Check cache first
     cached_availability = await cache_get(availability_cache_key)
     if cached_availability:
-        print(f"Cache hit for availability {hotel_id} ({checkin} to {checkout})")
+        print(f"Cache hit for availability {cache_id} ({checkin} to {checkout})")
         return cached_availability
     
-    print(f"Cache miss for availability {hotel_id} ({checkin} to {checkout})")
+    print(f"Cache miss for availability {cache_id} ({checkin} to {checkout})")
     
     try:
         # Build occupancies
@@ -324,35 +348,22 @@ async def search_hotels(
             hotel_id = hotel.get("id")
             if not hotel_id:
                 continue
+
+            # Generate unique global ID
+            name = hotel.get("name", "")
+            lat = float(hotel.get("latitude", 0.0))
+            lon = float(hotel.get("longitude", 0.0))
+            unique_id = generate_unique_hotel_id(name, lat, lon)
             
-            # Check hotel availability for the requested dates
-            availability_data = await check_hotel_availability(
-                hotel_id=hotel_id,
-                checkin=start_date,
-                checkout=end_date,
-                guests=guests,
-                rooms=rooms,
-                currency=currency,
-                guest_nationality=guest_nationality
-            )
+            # Save mapping for later retrieval
+            await map_provider_id(unique_id, hotel_id)
             
-            # Skip if not available
-            if not availability_data:
-                print(f"Hotel {hotel_id} not available for {start_date} to {end_date}")
-                continue
-            
-            # Extract best rate
-            best_rate = extract_best_rate(availability_data)
-            if not best_rate:
-                print(f"No rates found for hotel {hotel_id}")
-                continue
-            
-            # Check cache for transformed hotel data
-            cache_key = f"hotel:{hotel_id}:{start_date}:{end_date}"
+            # Check cache for transformed hotel data FIRST to avoid API calls
+            cache_key = f"hotel:{unique_id}:{start_date}:{end_date}"
             cached_hotel = await cache_get(cache_key)
             
             if cached_hotel:
-                print(f"Cache hit for transformed hotel {hotel_id}")
+                print(f"Cache hit for transformed hotel {unique_id}")
                 hotel_option = models.HotelOption.model_validate(cached_hotel)
                 
                 # Filter by max price if specified
@@ -361,33 +372,56 @@ async def search_hotels(
                 
                 response.options.append(hotel_option)
                 available_count += 1
-            else:
-                print(f"Cache miss for transformed hotel {hotel_id}")
-                
-                # Extract room data from the availability response
-                room_data = extract_room_data_from_availability(availability_data)
-                
-                # Transform hotel data with availability info (returns Pydantic model)
-                hotel_option = transform_hotel_data(
-                    hotel, 
-                    room_data,  # Now using room data from availability response
-                    start_date, 
-                    end_date, 
-                    preferences,
-                    provider,
-                    best_rate  # Pass rate info
-                )
-                
-                # Filter by max price if specified
-                if max_price_per_night and hotel_option.price_per_night.amount > max_price_per_night:
-                    continue
-                
-                # Cache the transformed hotel option
-                hotel_dict = hotel_option.model_dump()
-                await cache_set(cache_key, hotel_dict, HOTEL_CACHE_TTL)
-                
-                response.options.append(hotel_option)
-                available_count += 1
+                continue # Path optimized: Skip availability API check
+
+            # Cache miss: Check hotel availability for the requested dates
+            print(f"Cache miss for transformed hotel {unique_id}, checking live availability...")
+            availability_data = await check_hotel_availability(
+                hotel_id=hotel_id,
+                checkin=start_date,
+                checkout=end_date,
+                guests=guests,
+                rooms=rooms,
+                currency=currency,
+                guest_nationality=guest_nationality,
+                unique_id=unique_id
+            )
+            
+            # Skip if not available
+            if not availability_data:
+                print(f"Hotel {unique_id} ({hotel_id}) not available for {start_date} to {end_date}")
+                continue
+            
+            # Extract best rate
+            best_rate = extract_best_rate(availability_data)
+            if not best_rate:
+                print(f"No rates found for hotel {unique_id}")
+                continue
+            
+            # Extract room data from the availability response
+            room_data = extract_room_data_from_availability(availability_data)
+            
+            # Transform hotel data with availability info (returns Pydantic model)
+            hotel_option = transform_hotel_data(
+                hotel, 
+                room_data, 
+                start_date, 
+                end_date, 
+                preferences,
+                provider,
+                best_rate
+            )
+            
+            # Filter by max price if specified
+            if max_price_per_night and hotel_option.price_per_night.amount > max_price_per_night:
+                continue
+            
+            # Cache the transformed hotel option
+            hotel_dict = hotel_option.model_dump()
+            await cache_set(cache_key, hotel_dict, HOTEL_CACHE_TTL)
+            
+            response.options.append(hotel_option)
+            available_count += 1
         
         print(f"Found {available_count} available hotels out of {len(hotels)} total")
         
@@ -420,10 +454,16 @@ async def get_hotel_details(hotel_id: str):
     
     print(f"Cache miss for hotel details {hotel_id}")
     
+    # Resolve provider ID from unique ID mapping
+    provider_id = await get_provider_id(hotel_id)
+    if not provider_id:
+        print(f"No provider mapping found for {hotel_id}, assuming direct ID")
+        provider_id = hotel_id
+    
     # Use SDK to fetch from API
     try:
         # Get hotel details using SDK
-        hotel_details = api.get_hotel_details(hotel_id=hotel_id)
+        hotel_details = api.get_hotel_details(hotel_id=provider_id)
         
         result = {
             "hotel": hotel_details.get("hotel", hotel_details),
@@ -452,14 +492,22 @@ async def check_availability(
     """
     Check availability and get rates for a specific hotel
     """
+    # Resolve provider ID from unique ID mapping
+    provider_id = await get_provider_id(hotel_id)
+    if not provider_id:
+        # Fallback to assuming the passed ID is the provider ID if no mapping found
+        # (Useful for direct API usage or testing)
+        provider_id = hotel_id
+        
     availability_data = await check_hotel_availability(
-        hotel_id=hotel_id,
+        hotel_id=provider_id,
         checkin=checkin,
         checkout=checkout,
         guests=guests,
         rooms=rooms,
         currency=currency,
-        guest_nationality=guest_nationality
+        guest_nationality=guest_nationality,
+        unique_id=hotel_id  # Cache using the request ID (UUID)
     )
     
     if not availability_data:
