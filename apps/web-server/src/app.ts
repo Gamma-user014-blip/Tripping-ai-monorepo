@@ -23,7 +23,7 @@ app.use(
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-    }),
+    }) as any,
 )
 
 app.use((req: Request, res: Response, next: NextFunction): void => {

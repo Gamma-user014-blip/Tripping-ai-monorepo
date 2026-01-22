@@ -1,8 +1,8 @@
 import type { Request, Response } from 'express'
 import { Router } from 'express'
 import { getNextChatMessageCount } from '../../chat/chat-session-store'
-import type { ChatRequest, ChatResponse } from '@shared/types'
-import { ChatResponseStatus } from '@shared/types'
+import type { ChatRequest, ChatResponse } from '@monorepo/shared'
+import { ChatResponseStatus } from '@monorepo/shared'
 
 const router: Router = Router()
 
