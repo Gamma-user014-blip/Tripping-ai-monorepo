@@ -1,5 +1,5 @@
 import { ActivityCategory } from "./enums";
-import { ComponentScores, Location, Money, SearchMetadata } from "./common";
+import { ComponentScores, DateRange, Location, Money, SearchMetadata, TimeRange } from "./common";
 
 export interface PriceDetails {
   adult_price: Money;
@@ -40,6 +40,17 @@ export interface ActivityOption {
   provider: string;
   available: boolean;
   image_urls: string[];
+}
+
+export interface ActivitySearchRequest {
+  location: Location;
+  dates: DateRange;
+  description: string;
+  max_results?: number;
+  max_price?: number;
+  min_rating?: number;
+  max_distance_km?: number;
+  preferred_time?: TimeRange;
 }
 
 export interface ActivitySearchResponse {

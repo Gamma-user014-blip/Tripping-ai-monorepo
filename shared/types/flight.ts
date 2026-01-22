@@ -57,6 +57,19 @@ export interface FlightOption {
   available: boolean;
 }
 
+export interface FlightSearchRequest {
+  origin: Location;
+  destination: Location;
+  departure_date: string;
+  return_date?: string;
+  passengers: number;
+  cabin_class: string;
+  preferences?: number[];
+  max_results?: number;
+  max_price?: number;
+  max_stops?: number;
+}
+
 export interface FlightSearchResponse {
   options: FlightOption[];
   metadata: SearchMetadata;

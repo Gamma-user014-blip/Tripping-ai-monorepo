@@ -1,4 +1,4 @@
-import { ComponentScores, Location, Money, SearchMetadata } from "./common";
+import { ComponentScores, DateRange, Location, Money, SearchMetadata } from "./common";
 
 export interface RoomInfo {
   type: string;
@@ -35,6 +35,18 @@ export interface HotelOption {
   booking_url: string;
   provider: string;
   available: boolean;
+}
+
+export interface HotelSearchRequest {
+  location: Location;
+  dates: DateRange;
+  guests: number;
+  rooms: number;
+  preferences?: number[];
+  max_results?: number;
+  max_price_per_night?: number;
+  min_rating?: number;
+  amenities?: number[];
 }
 
 export interface HotelSearchResponse {
