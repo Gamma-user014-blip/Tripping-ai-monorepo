@@ -3,13 +3,17 @@ import { Router } from 'express'
 import { getNextChatMessageCount } from '../../chat/chat-session-store'
 import type { ChatRequest, ChatResponse } from '@monorepo/shared'
 import { ChatResponseStatus } from '@monorepo/shared'
+import { generatePlans } from '../../chat/json-agent-util'
+import { TripPlan } from '../../chat/json-agent-util'
 
 const router: Router = Router()
 
-router.post('/chat', (req: Request, res: Response): void => {
+router.post('/chat', async (req: Request, res: Response): Promise<void> => {
   const body = req.body as Partial<ChatRequest>
   const message = body.message
   const sessionId = body.sessionId
+
+  // Checks for data
 
   if (!message || typeof message !== 'string') {
     res.status(400).json({ error: 'Message is required' })
@@ -21,14 +25,11 @@ router.post('/chat', (req: Request, res: Response): void => {
     return
   }
 
+  // Start logic of processign the data given by the user
+
   const messageCount: number = getNextChatMessageCount(sessionId)
 
-  const aiResponse: string =
-    messageCount === 1
-      ? 'Hello'
-      : messageCount === 2
-        ? 'Yes, I agree'
-        : 'Under construction'
+  const aiResponse: string = "ok"
 
   const delayMs: number =
     messageCount === 1

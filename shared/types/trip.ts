@@ -1,7 +1,7 @@
+import { ActivityOption, ActivitySearchRequest } from "./activity";
 import { SectionType } from "./enums";
-import { FlightOption } from "./flight";
-import { HotelOption } from "./hotel";
-import { ActivityOption } from "./activity";
+import { FlightOption, FlightSearchRequest } from "./flight";
+import { HotelOption, HotelSearchRequest } from "./hotel";
 import { TransportOption } from "./transport";
 
 export interface TransferResponse {
@@ -38,4 +38,18 @@ export interface FinalTripSection {
 
 export interface FinalTripLayout {
   sections: FinalTripSection[];
+}
+
+export interface StayRequest {
+  hotel_request: HotelSearchRequest;
+  activity_request: ActivitySearchRequest;
+}
+
+export interface TripSection {
+  type: SectionType;
+  data: FlightSearchRequest | StayRequest;
+}
+
+export interface TripRequest {
+  sections: TripSection[];
 }

@@ -2,23 +2,44 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY apps/web-server/package*.json ./
-RUN npm ci --only=production
+# Copy workspace configuration and lockfile
+COPY package*.json ./
 
-COPY shared/ /app/shared/
-COPY apps/web-server/tsconfig.json ./
-COPY apps/web-server/src ./src
+# Copy shared and web-server package definitions
+COPY shared/package*.json ./shared/
+COPY apps/web-server/package*.json ./apps/web-server/
 
-RUN npm install typescript @types/node @types/express @types/cookie-session @types/cors --save-dev
+# Install all dependencies (hoisted to root)
+RUN npm install
+
+# Copy source code for shared and web-server
+COPY shared ./shared
+COPY apps/web-server ./apps/web-server
+
+# Build the web-server
+WORKDIR /app/apps/web-server
 RUN npm run build
 
+# Final production stage
 FROM node:20-alpine
 
 WORKDIR /app
 
-COPY --from=builder /app/package*.json ./
+# Copy built node_modules (contains symlinks)
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
+
+# Copy compiled artifacts for web-server and shared
+COPY --from=builder /app/apps/web-server/dist ./dist
+
+# Reconstruct the shared package where the symlink points
+# node_modules/@monorepo/shared -> /app/shared
+WORKDIR /app/shared
+COPY --from=builder /app/shared/package*.json ./
+COPY --from=builder /app/apps/web-server/dist/shared/ ./
+
+# Back to app root
+WORKDIR /app
+COPY --from=builder /app/apps/web-server/package*.json ./
 
 EXPOSE 3001
 
