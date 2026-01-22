@@ -1,113 +1,186 @@
-import React from 'react';
-import styles from './trip-itinerary.module.css';
-import { TripResult, FlightSegment, Hotel, TripHighlight } from '../results/types';
-import { Icon } from '../results/icon';
+import React from "react";
+import styles from "./trip-itinerary.module.css";
+import {
+  TripResponse,
+  TripSectionResponse,
+  SectionType,
+  FlightResponse,
+  StayResponse,
+  TransferResponse,
+  FlightOption,
+  FlightSegment,
+  HotelOption,
+  ActivityOption,
+  TransportOption,
+} from "../results/types";
+import { Icon } from "../results/icon";
 
 interface TripItineraryProps {
-  trip: TripResult;
+  trip: TripResponse;
 }
 
-// Helper to ensure consistent date formatting on server/client
-const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-GB', { 
-        weekday: 'short', 
-        day: 'numeric', 
-        month: 'short' 
-    });
+const formatDate = (dateString: string): string => {
+  return new Date(dateString).toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 };
 
-export default function TripItinerary({ trip }: TripItineraryProps) {
-  const stays = trip.hotels || [];
+const formatTime = (isoString: string): string => {
+  const date = new Date(isoString);
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+};
 
+const formatDuration = (minutes: number): string => {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours}h ${mins}m`;
+};
+
+const isFlightResponse = (data: unknown): data is FlightResponse => {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "options" in data &&
+    Array.isArray((data as FlightResponse).options) &&
+    (data as FlightResponse).options.length > 0 &&
+    "outbound" in (data as FlightResponse).options[0]
+  );
+};
+
+const isStayResponse = (data: unknown): data is StayResponse => {
+  return typeof data === "object" && data !== null && "hotel_options" in data;
+};
+
+const isTransferResponse = (data: unknown): data is TransferResponse => {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "options" in data &&
+    Array.isArray((data as TransferResponse).options) &&
+    (data as TransferResponse).options.length > 0 &&
+    "mode" in (data as TransferResponse).options[0]
+  );
+};
+
+const TripItinerary = ({ trip }: TripItineraryProps): JSX.Element => {
   return (
     <main className={styles.timelineContainer}>
-      {/* 1. Outbound Flight */}
-      <FlightCard 
-        type="outbound" 
-        segment={trip.outboundFlight} 
-        date={trip.startDate}
-      />
-
-      {stays.map((hotel, index) => {
-        const label = index === 0 ? 'Airport Transfer to Hotel' : 'Transfer to Next Stay';
-        const isPrimary = index === 0;
-        const stayHighlights = filterHighlightsForHotelCity(trip.highlights, hotel);
-        const nights = getNightsFromHotelDateRange(hotel);
-
-        return (
-          <React.Fragment key={hotel.id}>
-            <TransferDivider label={label} />
-            <StayCard
-              hotel={hotel}
-              highlights={stayHighlights}
-              nights={nights}
-              isPrimary={isPrimary}
-            />
-          </React.Fragment>
-        );
-      })}
-
-      <TransferDivider label="Transfer to Airport" />
-
-      {/* 3. Return Flight */}
-      <FlightCard 
-        type="return" 
-        segment={trip.returnFlight} 
-        date={trip.endDate}
-      />
+      {trip.sections.map((section, index) => (
+        <SectionRenderer key={index} section={section} index={index} />
+      ))}
     </main>
   );
-}
+};
 
-// --- Subcomponents ---
+const SectionRenderer = ({
+  section,
+  index,
+}: {
+  section: TripSectionResponse;
+  index: number;
+}): JSX.Element | null => {
+  if (section.type === SectionType.FLIGHT && isFlightResponse(section.data)) {
+    const flight = section.data.options[0];
+    return (
+      <FlightCard
+        type={index === 0 ? "outbound" : "return"}
+        flight={flight}
+      />
+    );
+  }
 
-function FlightCard({ type, segment, date }: { type: 'outbound' | 'return', segment: FlightSegment, date: string }) {
-  const isDeparture = type === 'outbound';
-  
+  if (section.type === SectionType.STAY && isStayResponse(section.data)) {
+    const stayData = section.data;
+    const selectedHotel = stayData.hotel_options[0];
+    if (!selectedHotel) return null;
+    return (
+      <StayCard
+        key={selectedHotel.id}
+        hotel={selectedHotel}
+        activities={stayData.activity_options}
+        isPrimary={true}
+      />
+    );
+  }
+
+  if (section.type === SectionType.TRANSFER && isTransferResponse(section.data)) {
+    const transfer = section.data.options[0];
+    return (
+      <TransferDivider
+        label={`${transfer.provider} to ${transfer.destination.city}`}
+      />
+    );
+  }
+
+  return null;
+};
+
+const FlightCard = ({
+  type,
+  flight,
+}: {
+  type: "outbound" | "return";
+  flight: FlightOption;
+}): JSX.Element => {
+  const isDeparture = type === "outbound";
+  const segment = flight.outbound;
+  const departureTime = formatTime(segment.departure_time);
+  const arrivalTime = formatTime(segment.arrival_time);
+  const duration = formatDuration(segment.duration_minutes);
+  const date = segment.departure_time.split("T")[0];
+
   return (
     <div className={styles.flightCard}>
-        {/*
-      <div className={styles.confirmedBadge}>Confirmed</div>
-      */}
       <div className={styles.flightContent}>
         <div className={styles.flightIconBox}>
-          <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>
-            {isDeparture ? 'flight_takeoff' : 'flight_land'}
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: "24px" }}
+          >
+            {isDeparture ? "flight_takeoff" : "flight_land"}
           </span>
         </div>
         <div className={styles.flightDetails}>
-            <div className={styles.dateTime}>
-                {formatDate(date)} • {segment.departureTime}
-            </div>
+          <div className={styles.dateTime}>
+            {formatDate(date)} • {departureTime}
+          </div>
           <h4 className={styles.flightTitle}>
-            Flight to {segment.destination.airportCode || segment.destination.city}
+            Flight to{" "}
+            {segment.destination.airport_code || segment.destination.city}
           </h4>
           <p className={styles.flightSub}>
-            {segment.airline} • {segment.duration} • {segment.stops === 0 ? 'Direct' : `${segment.stops} Stop(s)`}
+            {segment.airline} • {duration} •{" "}
+            {segment.stops === 0 ? "Direct" : `${segment.stops} Stop(s)`}
           </p>
-          
+
           <div className={styles.flightRouteRow}>
             <div className={styles.flightTimeSection}>
-              <span className={styles.flightTime}>{segment.departureTime}</span>
+              <span className={styles.flightTime}>{departureTime}</span>
             </div>
 
             <div className={styles.flightIconSection}>
               <Icon icon="plane" height={18} color="var(--color-text-subtle)" />
               <span className={styles.flightCode}>
-                {segment.origin.airportCode || segment.origin.city}
+                {segment.origin.airport_code || segment.origin.city}
               </span>
             </div>
 
             <div className={styles.flightPath}>
-              <span className={styles.flightDuration}>{segment.duration}</span>
+              <span className={styles.flightDuration}>{duration}</span>
               <div className={styles.flightLineWrapper}>
                 <div className={styles.flightLine} />
                 {segment.stops > 0 && (
                   <div className={styles.flightStopMarker}>
                     <div className={styles.flightStopDot} />
-                    {segment.stopInfo && (
+                    {segment.layovers.length > 0 && (
                       <span className={styles.flightStopText}>
-                        {segment.stopInfo}
+                        {segment.layovers[0].airport.city}
                       </span>
                     )}
                   </div>
@@ -123,126 +196,157 @@ function FlightCard({ type, segment, date }: { type: 'outbound' | 'return', segm
                 color="var(--color-text-subtle)"
               />
               <span className={styles.flightCode}>
-                {segment.destination.airportCode || segment.destination.city}
+                {segment.destination.airport_code || segment.destination.city}
               </span>
             </div>
 
             <div className={styles.flightTimeSection}>
-              <span className={styles.flightTime}>{segment.arrivalTime}</span>
+              <span className={styles.flightTime}>{arrivalTime}</span>
             </div>
           </div>
         </div>
       </div>
     </div>
   );
-}
+};
 
-function StayCard({
+const STAY_GRADIENTS: Array<[string, string]> = [
+  ["hsl(210 70% 55%)", "hsl(232 70% 32%)"],
+  ["hsl(195 70% 52%)", "hsl(214 70% 30%)"],
+  ["hsl(255 65% 58%)", "hsl(275 70% 34%)"],
+  ["hsl(220 24% 62%)", "hsl(232 26% 30%)"],
+  ["hsl(205 65% 54%)", "hsl(255 55% 34%)"],
+];
+
+const getStayGradient = (id: string): string => {
+  let hash = 0;
+  for (const char of id) {
+    hash = (hash * 31 + char.charCodeAt(0)) % 360;
+  }
+  const index = hash % STAY_GRADIENTS.length;
+  const [from, to] = STAY_GRADIENTS[index];
+  return `linear-gradient(135deg, ${from}, ${to})`;
+};
+
+const StayCard = ({
   hotel,
-  highlights,
-  nights,
+  activities,
   isPrimary,
 }: {
-  hotel: Hotel;
-  highlights: TripHighlight[];
-  nights: number;
+  hotel: HotelOption;
+  activities: ActivityOption[];
   isPrimary: boolean;
-}) {
-  const bgImage = hotel.image && hotel.image.startsWith('http') ? `url("${hotel.image}")` : undefined;
+}): JSX.Element => {
+  const bgImage = getStayGradient(hotel.id);
+
+  const hotelActivities = activities.filter(
+    (act) =>
+      act.location.city.toLowerCase() === hotel.location.city.toLowerCase()
+  );
 
   return (
     <div className={styles.stayCard}>
-      <div className={styles.stayImageContainer} style={{ backgroundImage: bgImage }}>
-        {!bgImage && <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#9ca3af' }}>hotel</span>}
+      <div
+        className={styles.stayImageContainer}
+        style={{ background: bgImage }}
+      >
         <div className={styles.ratingBadge}>
-          <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#eab308' }}>star</span>
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: "14px", color: "#eab308" }}
+          >
+            star
+          </span>
           {hotel.rating}
         </div>
       </div>
-      
+
       <div className={styles.stayContent}>
         <div className={styles.stayHeader}>
           <div>
             <div className={styles.stayTags}>
-              <span className={styles.stayBadge}>{isPrimary ? 'Primary Stay' : 'Secondary Stay'}</span>
-              <span className={styles.stayNights}>{nights} Nights</span>
+              <span className={styles.stayBadge}>
+                {isPrimary ? "Primary Stay" : "Secondary Stay"}
+              </span>
+              <span className={styles.stayNights}>
+                ${hotel.total_price.amount}
+              </span>
             </div>
             <h3 className={styles.stayTitle}>{hotel.name}</h3>
           </div>
         </div>
 
         <div className={styles.locationRow}>
-          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>location_on</span>
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: "16px" }}
+          >
+            location_on
+          </span>
           {hotel.location.city}, {hotel.location.country}
         </div>
 
         <div className={styles.amenities}>
           {hotel.amenities.slice(0, 5).map((tag, i) => (
-            <span key={i} className={styles.amenityTag}>{tag}</span>
+            <span key={i} className={styles.amenityTag}>
+              {tag}
+            </span>
           ))}
         </div>
 
-        <div className={styles.activitiesSection}>
-          <h4 className={styles.activitiesTitle}>
-            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#0d9488' }}>attractions</span>
-            Planned Activities
-          </h4>
-          <div className={styles.activitiesGrid}>
-            {highlights.filter(h => h.type === 'activity').map((act, idx) => (
-              <div key={idx} className={styles.activityCard}>
-                <div className={styles.activityIcon}>
-                    <span className="material-symbols-outlined">attractions</span>
+        {hotelActivities.length > 0 && (
+          <div className={styles.activitiesSection}>
+            <h4 className={styles.activitiesTitle}>
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: "18px", color: "#0d9488" }}
+              >
+                attractions
+              </span>
+              Planned Activities
+            </h4>
+            <div className={styles.activitiesGrid}>
+              {hotelActivities.map((act) => (
+                <div key={act.id} className={styles.activityCard}>
+                  <div className={styles.activityIcon}>
+                    <span className="material-symbols-outlined">
+                      attractions
+                    </span>
+                  </div>
+                  <div className={styles.activityInfo}>
+                    <h5 className={styles.activityName}>{act.name}</h5>
+                    <span className={styles.activityMeta}>
+                      {act.available_times[0]?.date
+                        ? formatDate(act.available_times[0].date)
+                        : "TBD"}
+                    </span>
+                  </div>
                 </div>
-                <div className={styles.activityInfo}>
-                  <h5 className={styles.activityName}>{act.title}</h5>
-                  <span className={styles.activityMeta}>
-                    {formatDate(act.date)}
-                  </span>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
-}
+};
 
-function TransferDivider({ label }: { label: string }) {
+const TransferDivider = ({ label }: { label: string }): JSX.Element => {
   return (
     <div className={styles.transferDivider}>
       <div className={styles.dividerLine}></div>
       <div className={styles.transferLabel}>
-        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>directions_car</span>
+        <span
+          className="material-symbols-outlined"
+          style={{ fontSize: "16px" }}
+        >
+          directions_car
+        </span>
         {label}
       </div>
       <div className={styles.dividerLine}></div>
     </div>
   );
-}
-
-const filterHighlightsForHotelCity = (
-  highlights: TripHighlight[],
-  hotel: Hotel,
-) => {
-  const hotelCity = hotel.location.city.toLowerCase();
-  return highlights.filter((h) => {
-    if (h.type !== 'activity') return false;
-    const highlightCity = h.location?.city?.toLowerCase();
-    return highlightCity ? highlightCity === hotelCity : true;
-  });
 };
 
-const getNightsFromHotelDateRange = (hotel: Hotel) => {
-  // Expected: "YYYY-MM-DD - YYYY-MM-DD"
-  const rangeParts = hotel.dateRange.split(' - ').map((p) => p.trim());
-  if (rangeParts.length !== 2) return 1;
-
-  const start = new Date(rangeParts[0]);
-  const end = new Date(rangeParts[1]);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 1;
-
-  const diff = Math.abs(end.getTime() - start.getTime());
-  const nights = Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  return nights;
-};
+export default TripItinerary;

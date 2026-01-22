@@ -25,9 +25,120 @@ const TripMap: React.FC<TripMapProps> = ({
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const isLoadedRef = useRef(false);
   const [hasError, setHasError] = useState(false);
   const API_KEY =
     process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "a";
+
+  const clearMarkers = (): void => {
+    for (const marker of markersRef.current) {
+      marker.remove();
+    }
+    markersRef.current = [];
+  };
+
+  const updateRouteAndMarkers = (): void => {
+    if (!map.current) return;
+    if (!isLoadedRef.current) return;
+
+    clearMarkers();
+
+    const routeId = "route";
+    const sourceId = "route";
+
+    if (map.current.getLayer(routeId)) {
+      map.current.removeLayer(routeId);
+    }
+    if (map.current.getSource(sourceId)) {
+      map.current.removeSource(sourceId);
+    }
+
+    if (!waypoints || waypoints.length === 0) return;
+
+    const bounds = new maplibregl.LngLatBounds();
+    const coordinates: [number, number][] = waypoints.map((w) => {
+      bounds.extend([w.lng, w.lat]);
+      return [w.lng, w.lat];
+    });
+
+    if (coordinates.length > 1) {
+      const first = coordinates[0];
+      const last = coordinates[coordinates.length - 1];
+      const isClosed = first[0] === last[0] && first[1] === last[1];
+      const routeCoords = isClosed ? coordinates : [...coordinates, first];
+
+      map.current.addSource(sourceId, {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "LineString",
+            coordinates: routeCoords,
+          },
+        },
+      });
+
+      map.current.addLayer({
+        id: routeId,
+        type: "line",
+        source: sourceId,
+        layout: {
+          "line-join": "round",
+          "line-cap": "round",
+        },
+        paint: {
+          "line-color": "#009688",
+          "line-width": 2.5,
+          "line-opacity": 0.95,
+        },
+      });
+    }
+
+    const uniqueForMarkers = waypoints.filter(
+      (wp, index, self) =>
+        index === self.findIndex((w) => w.lat === wp.lat && w.lng === wp.lng)
+    );
+
+    for (const waypoint of uniqueForMarkers) {
+      const pinEl = document.createElement("div");
+      pinEl.style.width = "22px";
+      pinEl.style.height = "30px";
+      pinEl.style.display = "flex";
+      pinEl.style.alignItems = "center";
+      pinEl.style.justifyContent = "center";
+      pinEl.style.pointerEvents = "auto";
+
+      pinEl.innerHTML = `
+        <svg viewBox="0 0 24 24" width="22" height="30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#0B3D91"/>
+          <circle cx="12" cy="9" r="3.5" fill="#002A5C"/>
+        </svg>
+      `;
+
+      const marker = new maplibregl.Marker({
+        element: pinEl,
+        anchor: "bottom",
+        offset: [0, 4],
+      }).setLngLat([waypoint.lng, waypoint.lat]);
+
+      if (waypoint.label) {
+        marker.setPopup(new maplibregl.Popup().setText(waypoint.label));
+      }
+
+      marker.addTo(map.current);
+      markersRef.current.push(marker);
+    }
+
+    requestAnimationFrame(() => {
+      map.current?.resize();
+      map.current?.fitBounds(bounds, {
+        padding: 60,
+        maxZoom: 15,
+      });
+    });
+  };
 
   useEffect(() => {
     if (map.current) return;
@@ -52,83 +163,11 @@ const TripMap: React.FC<TripMapProps> = ({
 
       map.current.on("load", () => {
         if (!map.current) return;
+        isLoadedRef.current = true;
 
         map.current.resize();
 
-        // Add waypoints logic
-        if (waypoints && waypoints.length > 0) {
-          const bounds = new maplibregl.LngLatBounds();
-          const coordinates: [number, number][] = [];
-
-          waypoints.forEach((waypoint) => {
-            const pinEl = document.createElement("div");
-            pinEl.style.width = "22px";
-            pinEl.style.height = "30px";
-            pinEl.style.display = "flex";
-            pinEl.style.alignItems = "center";
-            pinEl.style.justifyContent = "center";
-            pinEl.style.pointerEvents = "auto";
-
-            pinEl.innerHTML = `
-              <svg viewBox="0 0 24 24" width="22" height="30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#0B3D91"/>
-                <circle cx="12" cy="9" r="3.5" fill="#002A5C"/>
-              </svg>
-            `;
-
-            // Anchor bottom and offset downwards so the tip aligns slightly below the coordinate
-            new maplibregl.Marker({ element: pinEl, anchor: "bottom", offset: [0, 4] })
-              .setLngLat([waypoint.lng, waypoint.lat])
-              .setPopup(new maplibregl.Popup().setText(waypoint.label || ""))
-              .addTo(map.current!);
-
-            bounds.extend([waypoint.lng, waypoint.lat]);
-            coordinates.push([waypoint.lng, waypoint.lat]);
-          });
-
-          // Close loop for trip path
-          if (coordinates.length > 1) {
-            // Check if loop is already closed or we want to loop it. static map code looked like it loops
-            // const pathCoords = [...waypoints, waypoints[0]]...
-            coordinates.push(coordinates[0]);
-
-            map.current.addSource("route", {
-              type: "geojson",
-              data: {
-                type: "Feature",
-                properties: {},
-                geometry: {
-                  type: "LineString",
-                  coordinates: coordinates,
-                },
-              },
-            });
-
-            map.current.addLayer({
-              id: "route",
-              type: "line",
-              source: "route",
-              layout: {
-                "line-join": "round",
-                "line-cap": "round",
-              },
-              paint: {
-                "line-color": "#009688",
-                "line-width": 2,
-                "line-opacity": 0.95,
-                "line-dasharray": [2, 3],
-              },
-            });
-          }
-
-          requestAnimationFrame(() => {
-            map.current?.resize();
-            map.current?.fitBounds(bounds, {
-              padding: 60,
-              maxZoom: 15,
-            });
-          });
-        }
+        updateRouteAndMarkers();
       });
 
       map.current.on("error", () => {
@@ -143,6 +182,7 @@ const TripMap: React.FC<TripMapProps> = ({
     // Cleanup
     return () => {
       if (map.current) {
+        clearMarkers();
         map.current.remove();
         map.current = null;
       }
@@ -151,8 +191,14 @@ const TripMap: React.FC<TripMapProps> = ({
     center.lng,
     center.lat,
     zoom,
-    API_KEY /* waypoints - handled in init only for now to safely avoid duplicates */,
+    API_KEY,
+    interactive,
   ]);
+
+  useEffect(() => {
+    updateRouteAndMarkers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waypoints]);
 
   return (
     <div
