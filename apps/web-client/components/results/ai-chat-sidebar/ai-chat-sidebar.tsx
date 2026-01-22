@@ -8,7 +8,11 @@ interface Message {
   timestamp: number;
 }
 
-const AiChatSidebar: React.FC = () => {
+interface AiChatSidebarProps {
+  onMessageSent?: () => void;
+}
+
+const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ onMessageSent }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "init",
@@ -20,10 +24,13 @@ const AiChatSidebar: React.FC = () => {
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageListRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const messageList = messageListRef.current;
+    if (!messageList) return;
+    messageList.scrollTo({ top: messageList.scrollHeight, behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -60,9 +67,11 @@ const AiChatSidebar: React.FC = () => {
       setMessages((prev) => [...prev, newAiMessage]);
       setIsTyping(false);
 
+      onMessageSent?.();
+
       setTimeout(() => {
         try {
-          inputRef.current?.focus();
+          inputRef.current?.focus({ preventScroll: true });
         } catch (e) {
           // ignore
         }
@@ -101,7 +110,7 @@ const AiChatSidebar: React.FC = () => {
         <h3 className={styles.title}>AI Planner</h3>
       </div>
 
-      <div className={styles.messageList}>
+      <div className={styles.messageList} ref={messageListRef}>
         {messages.map((msg) => (
           <div
             key={msg.id}
