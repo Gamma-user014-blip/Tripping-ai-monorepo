@@ -48,7 +48,8 @@ const TripHighlights: React.FC<TripHighlightsProps> = ({
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.route}>
-          <span className={styles.city}>{originCity}</span>,{originCountry || ""}
+          <span className={styles.city}>{originCity}</span>,
+          {originCountry || ""}
           <span className={styles.arrow}>⟶</span>
           <span className={styles.city}>{destCity}</span>,{destCountry || ""}
         </div>

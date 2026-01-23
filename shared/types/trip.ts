@@ -55,6 +55,6 @@ export interface TripRequest {
 }
 
 export interface Trip {
-    vibe: string;
-    layout: FinalTripLayout
+  vibe: string;
+  layout: FinalTripLayout;
 }

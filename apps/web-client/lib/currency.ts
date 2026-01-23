@@ -21,7 +21,7 @@ const exchangeRatesToUSD: ExchangeRates = {
   CNY: 0.14,
   INR: 0.012,
   MXN: 0.058,
-  BRL: 0.20,
+  BRL: 0.2,
   KRW: 0.00074,
   SGD: 0.74,
   HKD: 0.13,
@@ -45,9 +45,9 @@ const exchangeRatesToUSD: ExchangeRates = {
   HUF: 0.0027,
   CLP: 0.0011,
   COP: 0.00025,
-  ARS: 0.0010,
+  ARS: 0.001,
   VND: 0.000041,
-  EGP: 0.020,
+  EGP: 0.02,
   PKR: 0.0036,
   NGN: 0.00064,
   UAH: 0.024,
@@ -90,7 +90,7 @@ const convertToUSD = (amount: number, fromCurrency: string): number => {
  */
 const convertToUSDWithDetails = (
   amount: number,
-  fromCurrency: string
+  fromCurrency: string,
 ): ConversionResult => ({
   amount: convertToUSD(amount, fromCurrency),
   currency: "USD",
@@ -128,7 +128,7 @@ const getSupportedCurrencies = (): string[] => Object.keys(exchangeRatesToUSD);
  */
 const formatUSD = (
   amount: number,
-  options?: Partial<Intl.NumberFormatOptions>
+  options?: Partial<Intl.NumberFormatOptions>,
 ): string =>
   new Intl.NumberFormat("en-US", {
     style: "currency",

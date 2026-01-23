@@ -107,8 +107,11 @@ const HotelItem: React.FC<{ hotel: HotelOption }> = ({ hotel }) => {
 
   const uniqueAmenities = Array.from(
     new Map(
-      (hotel.amenities || []).map((amenity) => [amenity.toLowerCase(), amenity])
-    ).values()
+      (hotel.amenities || []).map((amenity) => [
+        amenity.toLowerCase(),
+        amenity,
+      ]),
+    ).values(),
   );
 
   return (
@@ -137,7 +140,9 @@ const HotelItem: React.FC<{ hotel: HotelOption }> = ({ hotel }) => {
           >
             <div className={styles.imageOverlay}>
               <div className={styles.imageTitle}>{hotel.location.city}</div>
-              <div className={styles.imageSubtitle}>{hotel.rating_category}</div>
+              <div className={styles.imageSubtitle}>
+                {hotel.rating_category}
+              </div>
             </div>
           </div>
         </div>

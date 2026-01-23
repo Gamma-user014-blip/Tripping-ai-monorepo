@@ -1,5 +1,12 @@
 import { ActivityCategory } from "./enums";
-import { ComponentScores, DateRange, Location, Money, SearchMetadata, TimeRange } from "./common";
+import {
+  ComponentScores,
+  DateRange,
+  Location,
+  Money,
+  SearchMetadata,
+  TimeRange,
+} from "./common";
 
 export interface PriceDetails {
   adult_price: Money;

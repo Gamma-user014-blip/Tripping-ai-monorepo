@@ -1,4 +1,4 @@
-import { Trip } from './trip'
+import { Trip } from "./trip";
 
 export enum ChatResponseStatus {
   COMPLETE = 200,
@@ -7,28 +7,28 @@ export enum ChatResponseStatus {
 }
 
 export enum SearchStatus {
-  PENDING = 'pending',
-  COMPLETED = 'completed',
-  ERROR = 'error',
+  PENDING = "pending",
+  COMPLETED = "completed",
+  ERROR = "error",
 }
 
 export interface ChatRequest {
-  message: string
-  sessionId: string
+  message: string;
+  sessionId: string;
 }
 
 export interface ChatResponse {
-  message: string
-  status: ChatResponseStatus
-  searchId?: string
+  message: string;
+  status: ChatResponseStatus;
+  searchId?: string;
 }
 
 export interface SearchPollRequest {
-  searchId: string
+  searchId: string;
 }
 
 export interface SearchPollResponse {
-  status: SearchStatus
-  results?: Trip[]
-  error?: string
+  status: SearchStatus;
+  results?: Trip[];
+  error?: string;
 }

@@ -1,4 +1,10 @@
-import { ComponentScores, DateRange, Location, Money, SearchMetadata } from "./common";
+import {
+  ComponentScores,
+  DateRange,
+  Location,
+  Money,
+  SearchMetadata,
+} from "./common";
 import { PreferenceType } from "./enums";
 
 export interface RoomInfo {

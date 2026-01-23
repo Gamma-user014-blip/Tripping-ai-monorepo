@@ -81,7 +81,11 @@ const FlightRow: React.FC<FlightRowProps> = ({ segment, airline }) => {
       </div>
 
       <div className={styles.iconSection}>
-        <Icon icon="planeLanding" height={18} color="var(--color-text-subtle)" />
+        <Icon
+          icon="planeLanding"
+          height={18}
+          color="var(--color-text-subtle)"
+        />
         <span className={styles.code}>
           {segment.destination.airport_code || segment.destination.city}
         </span>

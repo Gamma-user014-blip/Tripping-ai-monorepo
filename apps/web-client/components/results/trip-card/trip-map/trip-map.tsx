@@ -28,8 +28,7 @@ const TripMap: React.FC<TripMapProps> = ({
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const isLoadedRef = useRef(false);
   const [hasError, setHasError] = useState(false);
-  const API_KEY =
-    process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "a";
+  const API_KEY = process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "a";
 
   const clearMarkers = (): void => {
     for (const marker of markersRef.current) {
@@ -98,7 +97,7 @@ const TripMap: React.FC<TripMapProps> = ({
 
     const uniqueForMarkers = waypoints.filter(
       (wp, index, self) =>
-        index === self.findIndex((w) => w.lat === wp.lat && w.lng === wp.lng)
+        index === self.findIndex((w) => w.lat === wp.lat && w.lng === wp.lng),
     );
 
     for (const waypoint of uniqueForMarkers) {
@@ -187,13 +186,7 @@ const TripMap: React.FC<TripMapProps> = ({
         map.current = null;
       }
     };
-  }, [
-    center.lng,
-    center.lat,
-    zoom,
-    API_KEY,
-    interactive,
-  ]);
+  }, [center.lng, center.lat, zoom, API_KEY, interactive]);
 
   useEffect(() => {
     updateRouteAndMarkers();

@@ -8,8 +8,14 @@ interface AiChatSidebarProps {
   onSearchStart?: () => void;
 }
 
-const AiChatSidebar: React.FC<AiChatSidebarProps> = ({ onTripsLoaded, onSearchStart }) => {
-  const { messages, isTyping, isSearching, sendMessage, isSending } = useChat({ onTripsLoaded, onSearchStart });
+const AiChatSidebar: React.FC<AiChatSidebarProps> = ({
+  onTripsLoaded,
+  onSearchStart,
+}) => {
+  const { messages, isTyping, isSearching, sendMessage, isSending } = useChat({
+    onTripsLoaded,
+    onSearchStart,
+  });
 
   const [inputValue, setInputValue] = React.useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);

@@ -215,19 +215,16 @@ const StayCard = ({
 
   const hotelActivities = activities.filter(
     (act) =>
-      act.location.city.toLowerCase() === hotel.location.city.toLowerCase()
+      act.location.city.toLowerCase() === hotel.location.city.toLowerCase(),
   );
 
   const nights = Math.round(
-    hotel.total_price.amount / hotel.price_per_night.amount
+    hotel.total_price.amount / hotel.price_per_night.amount,
   );
 
   return (
     <div className={styles.stayCard}>
-      <div
-        className={styles.stayImageContainer}
-        style={bgStyle}
-      >
+      <div className={styles.stayImageContainer} style={bgStyle}>
         <div className={styles.ratingBadge}>
           <span
             className="material-symbols-outlined"
@@ -247,7 +244,8 @@ const StayCard = ({
                 {isPrimary ? "Primary Stay" : "Secondary Stay"}
               </span>
               <span className={styles.stayNights}>
-                {nights} night{nights > 1 ? "s" : ""} · ${hotel.total_price.amount}
+                {nights} night{nights > 1 ? "s" : ""} · $
+                {hotel.total_price.amount}
               </span>
             </div>
             <h3 className={styles.stayTitle}>{hotel.name}</h3>

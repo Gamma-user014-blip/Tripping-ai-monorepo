@@ -14,7 +14,7 @@ services:
       - shared_network
       - hotel_private_network
     ports:
-      - "8001:8000"   # optional – expose only if needed
+      - "8001:8000" # optional – expose only if needed
 
   hotel_redis:
     image: redis:7-alpine
@@ -25,7 +25,7 @@ services:
     networks:
       - hotel_private_network
     expose:
-      - "6379"        # internal only
+      - "6379" # internal only
 
   flight_retriever:
     build:
@@ -64,7 +64,7 @@ services:
       - shared_network
       - llm_private_network
     ports:
-      - "8002:8000"   # optional – expose only if needed
+      - "8002:8000" # optional – expose only if needed
 
   trip_builder:
     build:

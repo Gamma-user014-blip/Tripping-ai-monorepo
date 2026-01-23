@@ -1,9 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@shared'],
+  transpilePackages: ["@shared"],
   webpack: (config) => {
     config.resolve.extensionAlias = {
-      '.js': ['.js', '.ts', '.tsx'],
+      ".js": [".js", ".ts", ".tsx"],
     };
     return config;
   },

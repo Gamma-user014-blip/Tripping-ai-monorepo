@@ -59,7 +59,7 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
       flights.push(data);
       totalPriceAmount += convertToUSD(
         data.total_price.amount,
-        data.total_price.currency
+        data.total_price.currency,
       );
 
       if (!origin) {
@@ -91,7 +91,7 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
       hotels.push(data.hotel);
       totalPriceAmount += convertToUSD(
         data.hotel.total_price.amount,
-        data.hotel.total_price.currency
+        data.hotel.total_price.currency,
       );
 
       if (!firstHotel) {
@@ -115,7 +115,7 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
       transfers.push(data);
       totalPriceAmount += convertToUSD(
         data.total_price.amount,
-        data.total_price.currency
+        data.total_price.currency,
       );
     }
   }
@@ -130,15 +130,17 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
 
   const uniqueWaypoints = orderedPath.filter(
     (wp, index, arr) =>
-      arr.findIndex((w) => w.lat === wp.lat && w.lng === wp.lng) === index
+      arr.findIndex((w) => w.lat === wp.lat && w.lng === wp.lng) === index,
   );
 
   const mapCenter =
     uniqueWaypoints.length > 0
       ? {
-          lat: uniqueWaypoints.reduce((sum, wp) => sum + wp.lat, 0) /
+          lat:
+            uniqueWaypoints.reduce((sum, wp) => sum + wp.lat, 0) /
             uniqueWaypoints.length,
-          lng: uniqueWaypoints.reduce((sum, wp) => sum + wp.lng, 0) /
+          lng:
+            uniqueWaypoints.reduce((sum, wp) => sum + wp.lng, 0) /
             uniqueWaypoints.length,
         }
       : { lat: 51.5, lng: -0.1 };

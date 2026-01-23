@@ -1,13 +1,17 @@
-import type { Request, Response } from 'express'
-import { Router } from 'express'
-import { getNextChatMessageCount } from '../../chat/chat-session-store'
-import { startSearch } from '../../search/search-store'
-import type { ChatRequest, ChatResponse } from '@monorepo/shared'
-import { ChatResponseStatus } from '@monorepo/shared'
-import {getSingleMissingQuestion, updateTripYaml, FillStatus} from "../../chat/essential-data-util";
+import type { Request, Response } from "express";
+import { Router } from "express";
+import { getNextChatMessageCount } from "../../chat/chat-session-store";
+import { startSearch } from "../../search/search-store";
+import type { ChatRequest, ChatResponse } from "@monorepo/shared";
+import { ChatResponseStatus } from "@monorepo/shared";
+import {
+  getSingleMissingQuestion,
+  updateTripYaml,
+  FillStatus,
+} from "../../chat/essential-data-util";
 import yaml from "js-yaml";
 
-const router: Router = Router()
+const router: Router = Router();
 
 let tripYml = `
 meta:
@@ -124,22 +128,21 @@ trip:
     blockingMissing: []
 `;
 
-
-router.post('/chat', async (req: Request, res: Response): Promise<void> => {
-  const body = req.body as Partial<ChatRequest>
-  const message = body.message
-  const sessionId = body.sessionId
+router.post("/chat", async (req: Request, res: Response): Promise<void> => {
+  const body = req.body as Partial<ChatRequest>;
+  const message = body.message;
+  const sessionId = body.sessionId;
 
   // Checks for data
 
-  if (!message || typeof message !== 'string') {
-    res.status(400).json({ error: 'Message is required' })
-    return
+  if (!message || typeof message !== "string") {
+    res.status(400).json({ error: "Message is required" });
+    return;
   }
 
-  if (!sessionId || typeof sessionId !== 'string') {
-    res.status(400).json({ error: 'Session ID is required' })
-    return
+  if (!sessionId || typeof sessionId !== "string") {
+    res.status(400).json({ error: "Session ID is required" });
+    return;
   }
 
   // Start logic of processign the data given by the user
@@ -149,41 +152,37 @@ router.post('/chat', async (req: Request, res: Response): Promise<void> => {
   const updateTripYamlResponse = await updateTripYaml(message, tripYml);
   tripYml = updateTripYamlResponse.yaml;
 
-  const getSingleMissingQuestionResponse = await getSingleMissingQuestion(updateTripYamlResponse.yaml);
+  const getSingleMissingQuestionResponse = await getSingleMissingQuestion(
+    updateTripYamlResponse.yaml,
+  );
 
   let aiResponse: string;
 
   if (getSingleMissingQuestionResponse.status != FillStatus.ready) {
     aiResponse = getSingleMissingQuestionResponse.message!;
-  }
-  else {
+  } else {
     aiResponse = yaml.load(updateTripYamlResponse.yaml) as string;
   }
 
-  const messageCount: number = getNextChatMessageCount(sessionId)
+  const messageCount: number = getNextChatMessageCount(sessionId);
 
-  const delayMs: number =
-    messageCount === 1
-      ? 2000
-      : messageCount === 2
-        ? 3000
-        : Math.floor(Math.random() * 3000) + 1000
-
-  const isComplete = messageCount === 2
-  let searchId: string | undefined
+  const isComplete = messageCount === 2;
+  let searchId: string | undefined;
 
   if (isComplete) {
-    searchId = startSearch()
+    searchId = startSearch();
   }
 
-  setTimeout(() => {
-    const response: ChatResponse = {
-      message: !isComplete ? `${aiResponse} ${messageCount}` : "Generating your trip...",
-      status: isComplete ? ChatResponseStatus.COMPLETE : ChatResponseStatus.INCOMPLETE,
-      searchId,
-    }
-    res.json(response)
-  }, delayMs)
-})
+  const response: ChatResponse = {
+    message: !isComplete
+      ? `${aiResponse} ${messageCount}`
+      : "Generating your trip...",
+    status: isComplete
+      ? ChatResponseStatus.COMPLETE
+      : ChatResponseStatus.INCOMPLETE,
+    searchId,
+  };
+  res.json(response);
+});
 
-export default router
+export default router;
