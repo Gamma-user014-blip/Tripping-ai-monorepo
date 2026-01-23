@@ -9,8 +9,8 @@ import {
 const POLL_INTERVAL_MS = 3000;
 
 interface PollOptions {
-  onComplete: (trips: Trip[]) => void;
-  onProgress?: (trips: Trip[]) => void;
+  onComplete: (trips: Trip[], tripIds: string[]) => void;
+  onProgress?: (trips: Trip[], tripIds: string[]) => void;
   onError?: (error: string) => void;
 }
 
@@ -38,13 +38,14 @@ const pollForSearchResults = (
       if (isStopped) return;
 
       const results = response.results ?? [];
+      const tripIds = response.tripIds ?? [];
 
       if (response.status === SearchStatus.COMPLETED) {
         stop();
-        options.onComplete(results);
+        options.onComplete(results, tripIds);
       } else if (response.status === SearchStatus.IN_PROGRESS && results.length > lastResultCount) {
         lastResultCount = results.length;
-        options.onProgress?.(results);
+        options.onProgress?.(results, tripIds);
       } else if (response.status === SearchStatus.ERROR) {
         stop();
         options.onError?.(response.error ?? "Unknown search error");

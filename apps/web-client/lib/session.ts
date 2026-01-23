@@ -6,6 +6,7 @@ const TRIP_IDS_KEY_PREFIX =
   process.env.NEXT_PUBLIC_TRIP_IDS_KEY_PREFIX || "trip_ids_";
 const CHAT_MESSAGES_KEY_PREFIX =
   process.env.NEXT_PUBLIC_CHAT_MESSAGES_KEY_PREFIX || "chat_messages_";
+const SEARCH_ID_KEY_PREFIX = "search_id_";
 
 const getOrCreateSessionId = (): string => {
   let storedSessionId = sessionStorage.getItem(CHAT_SESSION_ID_KEY);
@@ -23,6 +24,7 @@ const resetSession = (): string => {
     sessionStorage.removeItem(`${TRIP_RESULTS_KEY_PREFIX}${currentSessionId}`);
     sessionStorage.removeItem(`${TRIP_IDS_KEY_PREFIX}${currentSessionId}`);
     sessionStorage.removeItem(`${CHAT_MESSAGES_KEY_PREFIX}${currentSessionId}`);
+    sessionStorage.removeItem(`${SEARCH_ID_KEY_PREFIX}${currentSessionId}`);
     sessionStorage.removeItem(CHAT_SESSION_ID_KEY);
   }
 
@@ -31,11 +33,21 @@ const resetSession = (): string => {
   return newSessionId;
 };
 
+// Clear pending search state without losing results/messages
+const clearPendingSearch = (): void => {
+  const currentSessionId = sessionStorage.getItem(CHAT_SESSION_ID_KEY);
+  if (currentSessionId) {
+    sessionStorage.removeItem(`${SEARCH_ID_KEY_PREFIX}${currentSessionId}`);
+  }
+};
+
 export {
   getOrCreateSessionId,
   resetSession,
+  clearPendingSearch,
   CHAT_SESSION_ID_KEY,
   TRIP_RESULTS_KEY_PREFIX,
   TRIP_IDS_KEY_PREFIX,
   CHAT_MESSAGES_KEY_PREFIX,
+  SEARCH_ID_KEY_PREFIX,
 };

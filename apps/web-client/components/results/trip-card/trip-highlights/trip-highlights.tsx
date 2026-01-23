@@ -6,6 +6,7 @@ import styles from "./trip-highlights.module.css";
 interface TripHighlight {
   date: string;
   endDate?: string;
+  nights?: number;
   title: string;
   type: "flight" | "stay" | "activity" | "transport";
   location: Location;
@@ -18,6 +19,8 @@ interface TripHighlightsProps {
   price: Money;
   vibe?: string;
   activities?: ActivityOption[];
+  tripStartDate?: string;
+  tripEndDate?: string;
 }
 
 const formatDate = (dateStr: string): string => {
@@ -33,6 +36,11 @@ const formatDateRange = (startDate: string, endDate?: string): string => {
   if (!startDate) return "";
   if (!endDate) return formatDate(startDate);
   return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+};
+
+const formatStayNights = (nights?: number): string => {
+  if (!nights || nights <= 0) return "Stay";
+  return `${nights} Night${nights !== 1 ? "s" : ""}`;
 };
 
 // Map ActivityCategory enum to display strings
@@ -84,6 +92,8 @@ const TripHighlights: React.FC<TripHighlightsProps> = ({
   price,
   vibe = "Adventure",
   activities = [],
+  tripStartDate,
+  tripEndDate,
 }) => {
   const [originCity, originCountry] = origin ? origin.split(", ") : ["", ""];
   const [destCity, destCountry] = destination ? destination.split(", ") : ["", ""];
@@ -132,11 +142,12 @@ const TripHighlights: React.FC<TripHighlightsProps> = ({
             <span className={styles.city}>Trip Details</span>
           )}
         </div>
+
         <button className={styles.selectButton}>{vibe}</button>
       </div>
 
       <div className={styles.highlightsSection}>
-        <div className={styles.sectionTitle}>Trip Highlights</div>
+        <div className={styles.sectionTitle}>Trip Highlights • {formatDateRange(tripStartDate as string, tripEndDate)} </div>
         <div className={styles.timelineWrapper}>
           <div className={styles.timelineContainer}>
             <div className={styles.timeline}>
@@ -146,9 +157,11 @@ const TripHighlights: React.FC<TripHighlightsProps> = ({
                     <div className={styles.itemCard}>
                       <div className={styles.itemHeader}>
                         <span className={styles.itemDate}>
-                          {item.endDate
-                            ? formatDateRange(item.date, item.endDate)
-                            : formatDate(item.date)}
+                          {item.type === "stay"
+                            ? formatStayNights(item.nights)
+                            : item.endDate
+                              ? formatDateRange(item.date, item.endDate)
+                              : formatDate(item.date)}
                         </span>
                         <HighlightIcon type={item.type} />
                       </div>

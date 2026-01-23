@@ -32,6 +32,7 @@ export interface ExtractedTripData {
   destination: Location;
   startDate: string;
   endDate: string;
+  totalNights: number;
   waypoints: TripWaypoint[];
   mapCenter: { lat: number; lng: number };
   firstHotel: HotelOption | null;
@@ -88,6 +89,11 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
     }
 
     if (section.type === SectionType.STAY && isFinalStayOption(data)) {
+      // Skip empty/invalid hotel stays
+      if (!data.hotel?.id || !data.hotel?.name) {
+        continue;
+      }
+
       hotels.push(data.hotel);
       totalPriceAmount += convertToUSD(
         data.hotel.total_price.amount,
@@ -138,16 +144,19 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
     origin = firstHotel.location;
   }
 
-  // Fallback: if no dates from flights, try to get from activities
-  if (!startDate && activities.length > 0) {
-    const allDates = activities
-      .flatMap((a) => a.available_times?.map((t) => t.date) ?? [])
-      .filter(Boolean)
-      .sort();
-    if (allDates.length > 0) {
-      startDate = allDates[0];
-      endDate = allDates[allDates.length - 1];
+  // Calculate total nights from hotels
+  const totalNights = hotels.reduce((sum, h) => {
+    if (h.price_per_night.amount > 0) {
+      return sum + Math.round(h.total_price.amount / h.price_per_night.amount);
     }
+    return sum + 1;
+  }, 0);
+
+  // If we have a start date but no end date, compute end from total nights
+  if (startDate && !endDate && totalNights > 0) {
+    const start = new Date(`${startDate}T00:00:00.000Z`);
+    start.setUTCDate(start.getUTCDate() + totalNights);
+    endDate = start.toISOString().slice(0, 10);
   }
 
   const uniqueWaypoints = orderedPath.filter(
@@ -177,6 +186,7 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
     destination: mainDestination || defaultLocation,
     startDate,
     endDate,
+    totalNights,
     waypoints: uniqueWaypoints,
     mapCenter,
     firstHotel,

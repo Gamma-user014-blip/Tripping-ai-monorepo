@@ -17,6 +17,8 @@ export type SessionData = {
   updatedAtMs: number;
   tripYaml: string;
   chat: SessionChatState;
+  lastSearchYaml?: string;
+  hasCompletedSearch?: boolean;
 };
 
 export const DEFAULT_TRIP_YAML: string = `
@@ -219,4 +221,23 @@ export const setTripYaml = (
   session.tripYaml = yaml;
   touchSession(session, nowMs);
   return session;
+};
+
+export const markSearchCompleted = (
+  sessionId: string,
+  defaultTripYaml: string,
+  searchYaml: string,
+): void => {
+  const session = getOrCreateSession(sessionId, defaultTripYaml);
+  session.lastSearchYaml = searchYaml;
+  session.hasCompletedSearch = true;
+};
+
+export const resetSessionForNewSearch = (
+  sessionId: string,
+  defaultTripYaml: string,
+): void => {
+  const session = getOrCreateSession(sessionId, defaultTripYaml);
+  session.tripYaml = defaultTripYaml;
+  session.hasCompletedSearch = false;
 };

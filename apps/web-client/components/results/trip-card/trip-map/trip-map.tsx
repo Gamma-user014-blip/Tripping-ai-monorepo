@@ -1,11 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./trip-map.module.css";
-
-// Dynamic import to avoid SSR issues with maplibre-gl
-let maplibregl: typeof import("maplibre-gl") | null = null;
-if (typeof window !== "undefined") {
-  maplibregl = require("maplibre-gl");
-}
+import "maplibre-gl/dist/maplibre-gl.css";
+import type { Map, Marker, LngLatBounds, NavigationControl, Popup } from "maplibre-gl";
 
 interface MapWaypoint {
   lat: number;
@@ -29,15 +25,21 @@ const TripMap: React.FC<TripMapProps> = ({
   variant = "card",
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const map = useRef<Map | null>(null);
+  const markersRef = useRef<Marker[]>([]);
   const isLoadedRef = useRef(false);
   const [hasError, setHasError] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [maplibregl, setMaplibregl] = useState<typeof import("maplibre-gl") | null>(null);
   const API_KEY = process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "a";
 
   useEffect(() => {
     setIsMounted(true);
+    import("maplibre-gl").then((ml) => {
+      setMaplibregl(ml);
+    }).catch(() => {
+      setHasError(true);
+    });
   }, []);
 
   const clearMarkers = (): void => {
@@ -198,7 +200,7 @@ const TripMap: React.FC<TripMapProps> = ({
         map.current = null;
       }
     };
-  }, [center.lng, center.lat, zoom, API_KEY, interactive]);
+  }, [center.lng, center.lat, zoom, API_KEY, interactive, maplibregl]);
 
   useEffect(() => {
     updateRouteAndMarkers();

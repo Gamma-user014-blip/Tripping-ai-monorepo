@@ -2,16 +2,42 @@
   min-height: 100vh;
   font-family: "Inter", sans-serif;
   overflow-anchor: none;
+  background-color: var(--color-page-background);
+}
+
+.navContainer {
+  background-color: var(--color-white);
+  box-shadow: var(--shadow-card);
+}
+
+/* Hero Accent Strip */
+.heroSection {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  background: linear-gradient(90deg, var(--color-teal-primary), var(--color-teal-dark));
+}
+
+.heroOverlay {
+  display: none;
+}
+
+.heroContent {
+  display: none;
+}
+
+.heroTitle {
+  display: none;
+}
+
+.heroSubtitle {
+  display: none;
 }
 
 .mainContainer {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 24px 40px;
-}
-
-.widgetContainer {
-  padding: 20px 0;
+  padding: 24px 24px 40px;
 }
 
 .resultsAndFilters {

@@ -22,15 +22,23 @@ import {
   isTransportOption,
 } from "../../../lib/trip-type-guards";
 import { convertToUSD } from "../../../lib/currency";
+import { apiClient } from "../../../lib/api-client";
+import {
+  getOrCreateSessionId,
+  SEARCH_ID_KEY_PREFIX,
+  TRIP_IDS_KEY_PREFIX,
+} from "../../../lib/session";
 
 interface TripCardProps {
   trip: Trip;
   tripId?: string;
+  tripIndex: number;
 }
 
 interface TripHighlight {
   date: string;
   endDate?: string;
+  nights?: number;
   title: string;
   type: "flight" | "stay" | "activity" | "transport";
   location: Location;
@@ -46,6 +54,8 @@ interface ExtractedTripData {
   totalPrice: Money;
   origin: Location;
   destination: Location;
+  tripStartDate: string;
+  tripEndDate: string;
   mapCenter: { lat: number; lng: number };
   vibe: string;
 }
@@ -56,6 +66,7 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
   const activities: ActivityOption[] = [];
   const transfers: TransportOption[] = [];
   const highlights: TripHighlight[] = [];
+  const staySections: Array<{ hotel: HotelOption; activities: ActivityOption[] }> = [];
   const orderedPath: Array<{ lat: number; lng: number; label: string }> = [];
   let totalPrice = 0;
   let origin: Location | null = null;
@@ -65,6 +76,33 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
   let returnDepartureDate = "";
 
   const getIsoDate = (dateTime: string): string => dateTime.split("T")[0];
+
+  const addDays = (isoDate: string, days: number): string => {
+    const base = new Date(`${isoDate}T00:00:00.000Z`);
+    base.setUTCDate(base.getUTCDate() + days);
+    return base.toISOString().slice(0, 10);
+  };
+
+  const getDateRangeFromActivities = (
+    stayActivities: ActivityOption[],
+  ): { start: string; end: string } => {
+    const dates: string[] = [];
+
+    for (const activity of stayActivities) {
+      for (const slot of activity.available_times ?? []) {
+        if (slot.date) {
+          dates.push(slot.date);
+        }
+      }
+    }
+
+    dates.sort();
+
+    return {
+      start: dates[0] ?? "",
+      end: dates.length > 0 ? dates[dates.length - 1] : "",
+    };
+  };
 
   // First pass: collect all data and extract dates from flights
   for (const section of trip.layout.sections) {
@@ -111,7 +149,13 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
         location: flightDest,
       });
     } else if (section.type === SectionType.STAY && isFinalStayOption(data)) {
+      // Skip empty/invalid hotel stays
+      if (!data.hotel?.id || !data.hotel?.name) {
+        continue;
+      }
+
       hotels.push(data.hotel);
+      staySections.push({ hotel: data.hotel, activities: data.activities });
 
       totalPrice += convertToUSD(
         data.hotel.total_price.amount,
@@ -139,27 +183,98 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
     }
   }
 
-  // If no dates from flights, try to get dates from activities
-  if (!outboundArrivalDate && activities.length > 0) {
-    const allDates = activities
-      .flatMap((a) => a.available_times?.map((t) => t.date) ?? [])
-      .filter(Boolean)
-      .sort();
-    if (allDates.length > 0) {
-      outboundArrivalDate = allDates[0];
-      returnDepartureDate = allDates[allDates.length - 1];
+  // Calculate total nights from all hotels
+  const totalNights = hotels.reduce((sum, h) => {
+    if (h.price_per_night.amount > 0) {
+      return sum + Math.round(h.total_price.amount / h.price_per_night.amount);
     }
+    return sum + 1;
+  }, 0);
+
+  // If we have outbound date but no return date, compute from total nights
+  if (outboundArrivalDate && !returnDepartureDate && totalNights > 0) {
+    const start = new Date(`${outboundArrivalDate}T00:00:00.000Z`);
+    start.setUTCDate(start.getUTCDate() + totalNights);
+    returnDepartureDate = start.toISOString().slice(0, 10);
   }
 
-  // Add stay highlights for each hotel
-  for (const hotel of hotels) {
-    highlights.push({
-      date: outboundArrivalDate || "",
-      endDate: returnDepartureDate || undefined,
-      title: `Stay at ${hotel.name}`,
-      type: "stay",
-      location: hotel.location,
+  // Add stay highlights. Prefer per-stay date ranges from that stay's activities,
+  // but also make the stay ranges contiguous (no missing days between hotels).
+  if (staySections.length > 0) {
+    const draftRanges = staySections.map((stay) => {
+      const range = getDateRangeFromActivities(stay.activities);
+      return {
+        hotel: stay.hotel,
+        start: range.start,
+        end: range.end,
+      };
     });
+
+    // Seed missing starts.
+    for (let i = 0; i < draftRanges.length; i++) {
+      if (!draftRanges[i].start) {
+        if (i === 0) {
+          draftRanges[i].start = outboundArrivalDate || "";
+        } else if (draftRanges[i - 1].end) {
+          draftRanges[i].start = addDays(draftRanges[i - 1].end, 1);
+        }
+      }
+    }
+
+    // Fill missing ends from next start - 1.
+    for (let i = 0; i < draftRanges.length; i++) {
+      const next = draftRanges[i + 1];
+      if (!draftRanges[i].end && next?.start) {
+        draftRanges[i].end = addDays(next.start, -1);
+      }
+    }
+
+    // Ensure there are no gaps between consecutive stays.
+    for (let i = 0; i < draftRanges.length - 1; i++) {
+      const current = draftRanges[i];
+      const next = draftRanges[i + 1];
+
+      if (current.end && next.start) {
+        const expectedNextStart = addDays(current.end, 1);
+        if (expectedNextStart < next.start) {
+          current.end = addDays(next.start, -1);
+        }
+      }
+    }
+
+    // Ensure last stay reaches the trip end when available.
+    const lastIndex = draftRanges.length - 1;
+    if (returnDepartureDate) {
+      if (!draftRanges[lastIndex].end) {
+        draftRanges[lastIndex].end = returnDepartureDate;
+      } else if (draftRanges[lastIndex].end < returnDepartureDate) {
+        draftRanges[lastIndex].end = returnDepartureDate;
+      }
+    }
+
+    for (const stayRange of draftRanges) {
+      const start = stayRange.start || outboundArrivalDate || "";
+      const end = stayRange.end || "";
+      const nights =
+        stayRange.hotel.price_per_night.amount > 0
+          ? Math.max(
+              1,
+              Math.round(
+                stayRange.hotel.total_price.amount /
+                  stayRange.hotel.price_per_night.amount,
+              ),
+            )
+          : 1;
+
+      highlights.push({
+        date: start,
+        endDate: end && end !== start ? end : undefined,
+        nights,
+        title: `Stay at ${stayRange.hotel.name}`,
+        type: "stay",
+        location: stayRange.hotel.location,
+      });
+    }
   }
 
   // If no origin from flights, use first hotel location
@@ -219,12 +334,14 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
     totalPrice: { currency: "USD", amount: Math.round(totalPrice) },
     origin: origin || defaultLocation,
     destination: mainDestination || defaultLocation,
+    tripStartDate: outboundArrivalDate,
+    tripEndDate: returnDepartureDate,
     mapCenter,
     vibe: trip.vibe,
   };
 };
 
-const TripCard: React.FC<TripCardProps> = ({ trip, tripId }) => {
+const TripCard: React.FC<TripCardProps> = ({ trip, tripId, tripIndex }) => {
   const router = useRouter();
   const {
     hotels,
@@ -235,6 +352,8 @@ const TripCard: React.FC<TripCardProps> = ({ trip, tripId }) => {
     totalPrice,
     origin,
     destination,
+    tripStartDate,
+    tripEndDate,
     mapCenter,
     vibe,
   } = extractTripData(trip);
@@ -247,10 +366,55 @@ const TripCard: React.FC<TripCardProps> = ({ trip, tripId }) => {
   const outboundFlight = flights[0];
   const returnFlight = flights.length > 1 ? flights[flights.length - 1] : null;
 
+  const resolveTripId = async (): Promise<string | null> => {
+    if (tripId) return tripId;
+
+    const sessionId = getOrCreateSessionId();
+    const storedTripIdsJson = sessionStorage.getItem(
+      `${TRIP_IDS_KEY_PREFIX}${sessionId}`,
+    );
+    if (storedTripIdsJson) {
+      try {
+        const parsed = JSON.parse(storedTripIdsJson) as unknown;
+        if (Array.isArray(parsed)) {
+          const ids = parsed.filter((v) => typeof v === "string") as string[];
+          const idAtIndex = ids[tripIndex];
+          if (idAtIndex) return idAtIndex;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const searchIdFromQuery =
+      typeof router.query.searchId === "string" ? router.query.searchId : "";
+    const searchIdFromSession = sessionStorage.getItem(
+      `${SEARCH_ID_KEY_PREFIX}${sessionId}`,
+    );
+    const searchId = searchIdFromQuery || searchIdFromSession || "";
+    if (!searchId) return null;
+
+    try {
+      const response = await apiClient.get<{ tripIds: string[] }>(
+        `/api/search/${searchId}/trip-ids`,
+      );
+      sessionStorage.setItem(
+        `${TRIP_IDS_KEY_PREFIX}${sessionId}`,
+        JSON.stringify(response.tripIds),
+      );
+      return response.tripIds[tripIndex] ?? null;
+    } catch {
+      return null;
+    }
+  };
+
   const handleCardClick = (): void => {
-    if (!tripId) return;
-    const url = `/trip?tripId=${encodeURIComponent(tripId)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    void (async (): Promise<void> => {
+      const resolvedTripId = await resolveTripId();
+      if (!resolvedTripId) return;
+      const url = `/trip?tripId=${encodeURIComponent(resolvedTripId)}`;
+      window.open(url, "_blank", "noopener,noreferrer");
+    })();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
@@ -277,6 +441,8 @@ const TripCard: React.FC<TripCardProps> = ({ trip, tripId }) => {
           price={totalPrice}
           vibe={vibe}
           activities={activities}
+          tripStartDate={tripStartDate}
+          tripEndDate={tripEndDate}
         />
         {outboundFlight && (
           <FlightDetails

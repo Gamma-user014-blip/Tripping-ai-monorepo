@@ -25,7 +25,7 @@ async def flight_search(request: FlightRequest, client: httpx.AsyncClient) -> Fl
         response.raise_for_status()
         return FlightResponse.model_validate(response.json())
     except Exception as e:
-        print(f"Flight search failed: {e}")
+        print(f"Flight search failed: {type(e).__name__}: {e}")
         return FlightResponse()
 
 async def transfer_search(request: TransferRequest, client: httpx.AsyncClient) -> TransferResponse:
@@ -34,7 +34,7 @@ async def transfer_search(request: TransferRequest, client: httpx.AsyncClient) -
         response.raise_for_status()
         return TransferResponse.model_validate(response.json())
     except Exception as e:
-        print(f"Transfer search failed: {e}")
+        print(f"Transfer search failed: {type(e).__name__}: {e}")
         return TransferResponse()
 
 async def stay_search(request: StayRequest, client: httpx.AsyncClient) -> StayResponse:
@@ -46,16 +46,19 @@ async def stay_search(request: StayRequest, client: httpx.AsyncClient) -> StayRe
             res.raise_for_status()
             return HotelSearchResponse.model_validate(res.json())
         except Exception as e:
-            print(f"Hotel search failed: {e}")
+            print(f"Hotel search failed: {type(e).__name__}: {e}")
             return HotelSearchResponse()
 
     async def get_activities():
         try:
             res = await client.post(ACTIVITY_REQUEST_API, json=request.activity_request.model_dump())
             res.raise_for_status()
-            return ActivitySearchResponse.model_validate(res.json())
+            data = res.json()
+            result = ActivitySearchResponse.model_validate(data)
+            print(f"Activity search returned {len(result.options)} activities")
+            return result
         except Exception as e:
-            print(f"Activity search failed: {e}")
+            print(f"Activity search failed: {type(e).__name__}: {repr(e)}")
             return ActivitySearchResponse()
 
     hotel_data, activity_data = await asyncio.gather(get_hotels(), get_activities())
