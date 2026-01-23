@@ -2,6 +2,43 @@
 
 import html2pdf from 'html2pdf.js';
 import { Location, Money, FlightSegment, HotelOption as Hotel } from '@shared/types';
+import facilitiesData from '../../../../shared/metadata/facilities.json';
+
+const facilitiesMap = facilitiesData as Record<string, string>;
+
+const formatAmenity = (amenity: string): string => {
+  // Handle LiteAPI "Facility_XXX" format
+  const facilityMatch = amenity.match(/^Facility_(\d+)$/i);
+  if (facilityMatch) {
+    const facilityId = facilityMatch[1];
+    const facilityName = facilitiesMap[facilityId];
+    if (facilityName) {
+      return facilityName;
+    }
+  }
+
+  const amenityMap: Record<string, string> = {
+    wifi: "Free Wi-Fi",
+    breakfast: "Breakfast",
+    concierge: "Concierge",
+    pool: "Pool",
+    gym: "Gym",
+    spa: "Spa",
+    parking: "Parking",
+    restaurant: "Restaurant",
+    bar: "Bar",
+    laundry: "Laundry",
+    "room service": "Room Service",
+    "24h reception": "24h Reception",
+    onsen: "Hot Spring",
+    dinner: "Dinner",
+    shuttle: "Shuttle",
+    ac: "AC",
+  };
+
+  const key = amenity.toLowerCase();
+  return amenityMap[key] || amenity.charAt(0).toUpperCase() + amenity.slice(1);
+};
 
 interface TripHighlight {
   date: string;
@@ -104,7 +141,7 @@ const generateFlightHTML = (flight: FlightSegment, type: 'outbound' | 'return') 
 };
 
 const generateHotelHTML = (hotel: Hotel & { dateRange: string }, index: number) => {
-  const amenitiesList = hotel.amenities.slice(0, 4).join(' • ');
+  const amenitiesList = hotel.amenities.slice(0, 4).map(formatAmenity).join(' • ');
 
   return `
     <div style="margin-bottom: 20px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; background-color: white;">
@@ -118,7 +155,7 @@ const generateHotelHTML = (hotel: Hotel & { dateRange: string }, index: number) 
           <div>
             <p style="margin: 0; color: #666; font-size: 11px; font-weight: 500;">RATING</p>
             <p style="margin: 4px 0 0 0; color: #1a1a1a; font-size: 14px; font-weight: 600;">
-              ⭐ ${hotel.rating}/5 (${hotel.star_rating} stars)
+              ⭐ ${hotel.rating}/10 (${hotel.star_rating} stars)
             </p>
           </div>
           <div style="text-align: right;">
