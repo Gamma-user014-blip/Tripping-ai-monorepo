@@ -2,6 +2,7 @@ import React from 'react';
 import styles from './trip-sidebar.module.css';
 import { TripResult } from '../results/types';
 import TripMap from '../results/trip-card/trip-map';
+import { exportTripToPDF } from './trip-pdf-export';
 
 interface TripSidebarProps {
   trip: TripResult;
@@ -29,6 +30,29 @@ export default function TripSidebar({ trip }: TripSidebarProps) {
       label: trip.destination.city,
     },
   ];
+
+  const handleAddToCalendar = async (trip: TripResult) => {
+    const res = await fetch('/api/add-trip-to-calendar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(trip),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error('Failed to add trip to Google Calendar', err);
+      return;
+    }
+
+    const data = await res.json();
+    console.log('Created Google event IDs:', data.createdEventIds);
+  };
+
+  const handleExportPDF = async (trip: TripResult) => {
+    await exportTripToPDF(trip, {
+      filename: `${trip.origin.city}-to-${trip.destination.city}.pdf`,
+    });
+  };
 
   return (
     <aside className={styles.sidebarContainer}>
@@ -65,11 +89,12 @@ export default function TripSidebar({ trip }: TripSidebarProps) {
 
       {/* Action Buttons */}
       <div className={styles.buttonStack}>
-        <button className={styles.actionButton}>
+        <button className={styles.actionButton} onClick={() => handleExportPDF(trip)}>
           <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>download</span>
           Download PDF
+
         </button>
-        <button className={styles.actionButton}>
+        <button className={styles.actionButton} onClick={() => handleAddToCalendar(trip)}>
           <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>calendar_add_on</span>
           Add to Calendar
         </button>
@@ -77,13 +102,13 @@ export default function TripSidebar({ trip }: TripSidebarProps) {
 
       {/* Map Card */}
       <div className={styles.mapCard}>
-         <TripMap
-            center={trip.mapCenter}
-            zoom={trip.mapZoom - 1} // Zoom out slightly for small view
-            waypoints={allWaypoints}
-            interactive={true} // Allow interaction since it replaces the main map
-            variant="fill"
-          />
+        <TripMap
+          center={trip.mapCenter}
+          zoom={trip.mapZoom - 1} // Zoom out slightly for small view
+          waypoints={allWaypoints}
+          interactive={true} // Allow interaction since it replaces the main map
+          variant="fill"
+        />
       </div>
     </aside>
   );
