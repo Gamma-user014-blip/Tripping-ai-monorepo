@@ -5,6 +5,8 @@ import { Location, Money, FlightSegment, HotelOption as Hotel } from '@shared/ty
 
 interface TripHighlight {
   date: string;
+  endDate?: string;
+  nights?: number;
   title: string;
   type: "flight" | "activity" | "transport";
   location?: Location;
@@ -176,6 +178,14 @@ ${highlights
 
     </div>
   `;
+};
+
+const getTripDays = (start: string, end: string) => {
+  const startDate = new Date(start.split('T')[0]);
+  const endDate = new Date(end.split('T')[0]);
+  const diffMs = endDate.getTime() - startDate.getTime();
+  const days = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  return Math.max(1, days);
 };
 
 
@@ -372,12 +382,10 @@ export const exportTripToPDF = async (
             <div class="meta-item">
               <div class="meta-label">Duration</div>
               <div class="meta-value">
-                ${Math.ceil(
-    (new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) /
-    (1000 * 60 * 60 * 24)
-  )} days
+                ${trip.highlights.reduce((total, h) => total + (h.nights || 0), 0)} nights
               </div>
             </div>
+            
             <div class="meta-item">
               <div class="meta-label">Return</div>
               <div class="meta-value">${formatDate(trip.endDate)}</div>

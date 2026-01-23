@@ -45,7 +45,7 @@ export const tripToResult = (trip: Trip, tripId: string): TripResult => {
         }
     }
 
-    // Build highlights from flights and activities
+    // Build highlights from flights, activities, and stays
     const highlights: any[] = [];
 
     // Add outbound flight as highlight
@@ -56,6 +56,25 @@ export const tripToResult = (trip: Trip, tripId: string): TripResult => {
             type: "flight",
             location: outboundFlight.outbound.destination,
         });
+    }
+
+    // Add stay highlights with nights
+    for (const section of trip.layout.sections) {
+        const data = section.data as SectionData;
+        if (section.type === SectionType.STAY && isFinalStayOption(data)) {
+            const hotel = data.hotel;
+            const nights = hotel.price_per_night.amount > 0
+                ? Math.max(1, Math.round(hotel.total_price.amount / hotel.price_per_night.amount))
+                : 1;
+            
+            highlights.push({
+                date: outboundFlight?.outbound.departure_time.split("T")[0] || extracted.startDate.split("T")[0],
+                title: `Stay in ${hotel.location.city}`,
+                type: "stay",
+                location: hotel.location,
+                nights: nights,
+            });
+        }
     }
 
     // Add activities as highlights
