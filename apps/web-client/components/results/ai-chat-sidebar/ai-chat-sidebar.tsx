@@ -6,11 +6,15 @@ import { Trip } from "../../../../../shared/types";
 interface AiChatSidebarProps {
   onTripsLoaded?: (trips: Trip[]) => void;
   onSearchStart?: () => void;
+  onSearchClear?: () => void;
+  onSearchComplete?: () => void;
 }
 
 const AiChatSidebar: React.FC<AiChatSidebarProps> = ({
   onTripsLoaded,
   onSearchStart,
+  onSearchClear,
+  onSearchComplete,
 }) => {
   const {
     messages,
@@ -22,6 +26,8 @@ const AiChatSidebar: React.FC<AiChatSidebarProps> = ({
   } = useChat({
     onTripsLoaded,
     onSearchStart,
+    onSearchClear,
+    onSearchComplete,
     mode: "inline",
   });
 

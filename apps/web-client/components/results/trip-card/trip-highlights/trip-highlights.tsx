@@ -38,11 +38,6 @@ const formatDateRange = (startDate: string, endDate?: string): string => {
   return `${formatDate(startDate)} - ${formatDate(endDate)}`;
 };
 
-const formatStayNights = (nights?: number): string => {
-  if (!nights || nights <= 0) return "Stay";
-  return `${nights} Night${nights !== 1 ? "s" : ""}`;
-};
-
 // Map ActivityCategory enum to display strings
 const categoryDisplayMap: Record<ActivityCategory, string> = {
   [ActivityCategory.CATEGORY_UNKNOWN]: "✨ Experience",
@@ -167,10 +162,8 @@ const TripHighlights: React.FC<TripHighlightsProps> = ({
                       <div className={styles.itemHeader}>
                         <span className={styles.itemDate}>
                           {item.type === "stay"
-                            ? formatStayNights(item.nights)
-                            : item.endDate
-                              ? formatDateRange(item.date, item.endDate)
-                              : formatDate(item.date)}
+                            ? formatDateRange(item.date, item.endDate)
+                            : formatDate(item.date)}
                         </span>
                         <HighlightIcon type={item.type} />
                       </div>

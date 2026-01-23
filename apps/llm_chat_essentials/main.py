@@ -56,6 +56,20 @@ def extract_yaml_text(s: str) -> str:
     if m:
         return m.group(1).strip()
 
+    # Sometimes the model starts a fenced block but forgets to close it.
+    # Strip a leading ```yaml/```yml/``` line and any remaining backticks.
+    if s.startswith("```"):
+        lines = s.splitlines()
+        if len(lines) > 1:
+            s = "\n".join(lines[1:]).strip()
+        else:
+            s = ""
+
+        if s.endswith("```"):
+            s = s.rsplit("```", 1)[0].strip()
+
+        s = s.replace("```", "").strip()
+
     return s
 
 
@@ -65,10 +79,26 @@ def extract_yaml_text(s: str) -> str:
 
 def validate_yaml_root_mapping(yaml_text: str) -> Dict[str, Any]:
     """Parse YAML into dict. Raises ValueError if invalid YAML or non-mapping root."""
+    def _cleanup_common_llm_yaml_issues(text: str) -> str:
+        cleaned = extract_yaml_text(text)
+
+        # Fix common dangling quote issue (e.g. - "Some text) by removing the lone quote.
+        fixed_lines: List[str] = []
+        for line in cleaned.splitlines():
+            if line.count('"') == 1:
+                fixed_lines.append(line.replace('"', ""))
+            else:
+                fixed_lines.append(line)
+        return "\n".join(fixed_lines).strip()
+
     try:
         data = yaml.safe_load(yaml_text)
-    except Exception as e:
-        raise ValueError(f"Invalid YAML returned by LLM: {e}") from e
+    except Exception:
+        try:
+            repaired = _cleanup_common_llm_yaml_issues(yaml_text)
+            data = yaml.safe_load(repaired)
+        except Exception as e:
+            raise ValueError(f"Invalid YAML returned by LLM: {e}") from e
 
     if not isinstance(data, dict):
         raise ValueError("YAML root must be a mapping/object (dict).")

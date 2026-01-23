@@ -15,7 +15,7 @@ import os
 import re
 import unicodedata
 from pathlib import Path
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Set
 
 # Configure logging
 logging.basicConfig(
@@ -202,7 +202,7 @@ def parse_flight_action(args: List[Any]) -> FlightRequest:
     # Ensure passengers is int
     try:
         passengers = int(args[8]) if len(args) > 8 else 1
-    except:
+    except Exception:
         passengers = 1
         
     cabin = args[9] if len(args) > 9 else "economy"
@@ -243,12 +243,12 @@ def parse_stay_action(args: List[Any]) -> StayRequest:
     
     try:
         guests = int(args[4]) if len(args) > 4 else 2
-    except:
+    except Exception:
         guests = 2
         
     try:
         rooms = int(args[5]) if len(args) > 5 else 1
-    except:
+    except Exception:
         rooms = 1
         
     description = args[6] if len(args) > 6 else ""
@@ -317,14 +317,48 @@ def build_trip_request_from_instructions(actions: List[List[Any]]) -> TripReques
     return TripRequest(sections=sections)
 
 
-def generate_single_trip_plan(trip_yml: str, previous_vibes: List[str]) -> Dict[str, Any]:
+def _normalize_route_city(value: Any) -> str:
+    if not isinstance(value, str):
+        return ""
+    return re.sub(r"\s+", " ", value).strip().lower()
+
+
+def _extract_route_signature(plan: Dict[str, Any]) -> List[str]:
+    actions = plan.get("actions")
+    if not isinstance(actions, list):
+        return []
+
+    signature: List[str] = []
+    for action in actions:
+        if not isinstance(action, list) or len(action) < 2:
+            continue
+        if action[0] != "STAY":
+            continue
+        city = _normalize_route_city(action[1])
+        if city:
+            signature.append(city)
+    return signature
+
+
+def _route_signature_key(signature: List[str]) -> str:
+    return ">".join(signature)
+
+
+def generate_single_trip_plan(
+    trip_yml: str,
+    previous_vibes: List[str],
+    forbidden_route_signatures: List[List[str]],
+    diversity_directive: str,
+) -> Dict[str, Any]:
     """
     Generate a single trip plan (vibe) as a sequence of dense tool actions.
-    Ensures the vibe is distinct from previous_vibes.
+    Ensures the vibe is distinct from previous_vibes and the city route differs.
     """
     vibe_context = ""
     if previous_vibes:
         vibe_context = f"Avoid these previous vibes: {', '.join(previous_vibes)}."
+
+    forbidden_routes_json = json.dumps(forbidden_route_signatures)
 
     prompt = f"""
     You are a creative travel planner JSON Agent.
@@ -332,6 +366,16 @@ def generate_single_trip_plan(trip_yml: str, previous_vibes: List[str]) -> Dict[
     Task:
     Read the trip description and generate ONE UNIQUE trip option (Vibe).
     {vibe_context}
+    
+        DIVERSITY DIRECTIVE FOR THIS PLAN (MUST FOLLOW):
+        {diversity_directive}
+    
+        HARD DIVERSITY CONSTRAINTS (MUST FOLLOW):
+        - Define ROUTE SIGNATURE as the ordered list of STAY city names (lowercased), e.g. ["rome", "florence", "venice"].
+        - Your route signature MUST NOT match ANY of these forbidden route signatures:
+            {forbidden_routes_json}
+        - Do NOT simply reuse the same cities in the same order with different descriptions.
+        - Prefer changing at least one city and/or changing the order and number of stays.
     The option should have a unique "vibe" name (e.g., "Luxury Relax", "Adventure", "Cultural Deep Dive").
     Represent the plan as a "vibe" name and a COMPACT SEQUENCE of actions.
     
@@ -345,22 +389,38 @@ def generate_single_trip_plan(trip_yml: str, previous_vibes: List[str]) -> Dict[
        Format: ["STAY", city, country, start_date, end_date, guests, rooms, description]
        Note: description is a short string of activity preferences. USE ISO-2 COUNTRY CODES (e.g., "US", "IT", "FR", "GB", "IL").
     
+    CRITICAL FLIGHT RULES:
+    - A trip has EXACTLY TWO FLIGHTS ONLY: one OUTBOUND flight (from origin to first destination) and one RETURN flight (from last destination back to origin).
+    - NEVER add intermediate flights between destinations. Travel between cities during the trip is by ground transport (train/car), which is handled automatically - DO NOT add actions for it.
+    - Example for a multi-city trip (TLV -> Rome -> Florence -> Venice -> TLV):
+      * ONE outbound flight: TLV -> Rome
+      * STAYS: Rome, then Florence, then Venice (consecutive)
+      * ONE return flight: Venice -> TLV
+      * NO flights between Rome->Florence or Florence->Venice!
+    
     Rules:
     - Generate EXACTLY ONE option.
-    - Ensure logical flow (FLIGHT -> STAY -> FLIGHT).
+    - Ensure logical flow: FLIGHT -> STAY(s) -> FLIGHT (exactly 2 flights total).
     - Be consistent with dates.
     - Do not include any additional text or comments.
+
+    Creativity guidance (still must follow Trip Description):
+    - Choose cities that make sense geographically (contiguous travel by ground is plausible).
+    - Vary the experience focus (food, history, outdoors, nightlife, wellness) in line with the "vibe".
+    - If the Trip Description is underspecified, take initiative and propose a clear, distinct route.
 
     Trip Description:
     {trip_yml}
     
-    Output JSON Example:
+    Output JSON Example (multi-city trip with exactly 2 flights):
     {{
       "vibe": "The Classic Tourist",
       "actions": [
-        ["FLIGHT", "NYC", "USA", "JFK", "London", "UK", "LHR", "2024-05-01", "", 1, "economy"],
-        ["STAY", "London", "GB", "2024-05-01", "2024-05-05", 1, 1, "Major landmarks and museums"],
-        ["FLIGHT", "London", "GB", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "economy"]
+        ["FLIGHT", "Tel Aviv", "IL", "TLV", "Rome", "IT", "FCO", "2024-05-01", "", 2, "economy"],
+        ["STAY", "Rome", "IT", "2024-05-01", "2024-05-04", 2, 1, "Colosseum and Vatican"],
+        ["STAY", "Florence", "IT", "2024-05-04", "2024-05-07", 2, 1, "Renaissance art and Tuscan cuisine"],
+        ["STAY", "Venice", "IT", "2024-05-07", "2024-05-10", 2, 1, "Canals and architecture"],
+        ["FLIGHT", "Venice", "IT", "VCE", "Tel Aviv", "IL", "TLV", "2024-05-10", "", 2, "economy"]
       ]
     }}
     """
@@ -368,7 +428,8 @@ def generate_single_trip_plan(trip_yml: str, previous_vibes: List[str]) -> Dict[
     response = client.chat.completions.create(
         model="sonar",
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.9,
+        temperature=1.1,
+        top_p=0.95,
         response_format={
             "type": "json_schema",
             "json_schema": {
@@ -391,15 +452,42 @@ def generate_trip_plans_from_text(trip_yml: str, count: int = 3) -> List[Dict[st
     Generate 3 distinct trip plans (vibes) using separate LLM calls.
     Returns a list of dicts: [{"vibe": "...", "actions": [...]}, ...]
     """
-    plans = []
-    previous_vibes = []
-    
+    plans: List[Dict[str, Any]] = []
+    previous_vibes: List[str] = []
+    forbidden_route_signatures: List[List[str]] = []
+    forbidden_keys: Set[str] = set()
+
+    diversity_directives = [
+        "Classic highlights route: iconic sights, balanced pacing.",
+        "Offbeat/hidden-gems route: prefer secondary cities and avoid the most standard tourist triangle.",
+        "Nature/coast/wellness route: prioritize scenic towns, beaches/lakes, hiking/spas, slower travel.",
+    ]
+
     for i in range(count):
+        print(f"Generating plan {i+1}/{count}...")
+        directive = diversity_directives[i % len(diversity_directives)]
+        plan = generate_single_trip_plan(
+            trip_yml,
+            previous_vibes,
+            forbidden_route_signatures,
+            directive,
+        )
+
         logger.info(f"Generating plan {i+1}/{count}...")
-        plan = generate_single_trip_plan(trip_yml, previous_vibes)
         if plan and "vibe" in plan:
+            signature = _extract_route_signature(plan)
+            sig_key = _route_signature_key(signature)
+            if sig_key and sig_key in forbidden_keys:
+                print(
+                    f"Warning: Plan {i+1} repeated route signature: {signature}"
+                )
+
             plans.append(plan)
             previous_vibes.append(plan["vibe"])
+
+            if signature:
+                forbidden_route_signatures.append(signature)
+                forbidden_keys.add(sig_key)
         else:
             logger.info(f"Warning: Failed to generate plan {i+1}")
             
@@ -450,6 +538,10 @@ def edit_trip_plans_with_llm(plans: List[TripPlan], user_text: str) -> List[Trip
        - The 'date' is the day of travel.
     2. STAY: ["STAY", city, country, start_date, end_date, guests, rooms, description]
        - 'start_date' is check-in, 'end_date' is check-out. USE ISO-2 COUNTRY CODES.
+    
+    CRITICAL FLIGHT RULES:
+    - Each trip has EXACTLY TWO FLIGHTS: one OUTBOUND and one RETURN. NEVER add intermediate flights.
+    - Travel between cities during a trip is by ground transport (automatic, no action needed).
     
     Constraint & Logic Rules:
     - DATE ARITHMETIC: If a user asks to "shorten X by 1 day and give it to Y", this refers to the transition date BETWEEN X and Y.

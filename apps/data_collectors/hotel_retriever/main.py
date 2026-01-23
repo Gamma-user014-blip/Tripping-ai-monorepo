@@ -290,7 +290,7 @@ def extract_best_rate(availability_data: Dict) -> Optional[Dict]:
         "price": best_room.get("offerRetailRate"),
         "suggested_price": best_room.get("suggestedSellingPrice"),
         "initial_price": best_room.get("offerInitialPrice"),
-        "taxes_and_fees": first_rate.get("retailRate", {}).get("taxesAndFees", []),
+        "taxes_and_fees": first_rate.get("retailRate", {}).get("taxesAndFees") if first_rate.get("retailRate", {}).get("taxesAndFees") else [],
         "cancellation_policies": first_rate.get("cancellationPolicies"),
         "rate_id": first_rate.get("rateId"),
         "offer_id": best_room.get("offerId"),

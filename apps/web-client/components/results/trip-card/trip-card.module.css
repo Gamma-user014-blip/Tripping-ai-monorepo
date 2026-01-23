@@ -7,7 +7,7 @@
   display: flex;
   overflow: hidden;
   font-family: "Inter", sans-serif;
-  max-height: 420px;
+  max-height: 440px;
   transition:
     transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
     box-shadow 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);

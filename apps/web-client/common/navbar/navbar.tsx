@@ -8,8 +8,6 @@ const Navbar: React.FC = (): JSX.Element => {
   const router = useRouter();
 
   const handleBrandClick = (): void => {
-    // If already on homepage, do nothing
-
     // Reset session and navigate to homepage
     resetSession();
     window.location.href = "/";
@@ -26,7 +24,7 @@ const Navbar: React.FC = (): JSX.Element => {
         <Image
           src={require("../../assets/logo.png")}
           alt="Tripping.ai"
-          height={140}
+          height={90}
           width={165}
           style={{ objectFit: "contain" }}
           priority

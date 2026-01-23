@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import type { Trip } from "@shared/types";
 import styles from "./trip-header.module.css";
 import extractTripData from "../../lib/trip-extract";
+import { formatLocationLabel } from "../../lib/location-format";
 
 interface TripHeaderProps {
   trip: Trip;
@@ -28,21 +29,44 @@ const handleShare = async (): Promise<void> => {
 };
 
 const TripHeader: React.FC<TripHeaderProps> = ({ trip }) => {
-  const { origin, destination, startDate, endDate, totalNights, firstHotel } =
-    extractTripData(trip);
+  const {
+    flights,
+    origin,
+    destination,
+    startDate,
+    endDate,
+    totalNights,
+    firstHotel,
+  } = extractTripData(trip);
+
+  // Calculate nights from date range (more accurate than hotel sum)
+  const nightsFromDates = (() => {
+    if (!startDate || !endDate) return totalNights;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffMs = end.getTime() - start.getTime();
+    const nights = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    return Math.max(nights, 1);
+  })();
+
+  const displayNights = nightsFromDates > 0 ? nightsFromDates : totalNights;
 
   const getTitle = (): string => {
-    const destCity = destination.city || firstHotel?.location.city || "Unknown";
-    const destCountry =
-      destination.country || firstHotel?.location.country || "";
-    const origCity = origin.city || "";
+    const outbound = flights[0];
+    const titleOrigin = formatLocationLabel(outbound?.outbound.origin ?? origin);
+    const titleDestination = formatLocationLabel(
+      outbound?.outbound.destination ?? destination ?? firstHotel?.location ?? null,
+    );
 
-    if (!origCity || origCity === destCity) {
-      return destCountry
-        ? `Trip to ${destCity}, ${destCountry}`
-        : `Trip to ${destCity}`;
+    if (titleOrigin && titleDestination) {
+      return `${titleOrigin} → ${titleDestination}`;
     }
-    return `${origCity} to ${destCity}`;
+
+    if (titleDestination) {
+      return titleDestination;
+    }
+
+    return "Trip";
   };
 
   const title = getTitle();
@@ -87,8 +111,8 @@ const TripHeader: React.FC<TripHeaderProps> = ({ trip }) => {
               </span>{" "}
               {((): string => {
                 if (!startDate) {
-                  return totalNights > 0
-                    ? `${totalNights} Night${totalNights !== 1 ? "s" : ""}`
+                  return displayNights > 0
+                    ? `${displayNights} Night${displayNights !== 1 ? "s" : ""}`
                     : "Flexible dates";
                 }
                 const todayMidnight = new Date(
@@ -113,8 +137,8 @@ const TripHeader: React.FC<TripHeaderProps> = ({ trip }) => {
               date_range
             </span>{" "}
             {dateRangeText ? `${dateRangeText} • ` : ""}
-            {totalNights > 0
-              ? `${totalNights} Night${totalNights !== 1 ? "s" : ""} • `
+            {displayNights > 0
+              ? `${displayNights} Night${displayNights !== 1 ? "s" : ""} • `
               : "Dates TBD • "}
             <span
               className="material-symbols-outlined"

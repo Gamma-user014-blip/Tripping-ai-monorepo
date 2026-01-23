@@ -69,7 +69,8 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
       }
 
       const flightDest = data.outbound.destination;
-      endDate = data.outbound.arrival_time.split("T")[0] || endDate;
+      // Use departure_time for end date (when you leave, not when you arrive back)
+      endDate = data.outbound.departure_time.split("T")[0] || endDate;
 
       const isReturnFlight =
         origin &&
@@ -144,8 +145,8 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
     origin = firstHotel.location;
   }
 
-  // Calculate total nights from hotels
-  const totalNights = hotels.reduce((sum, h) => {
+  // Calculate total nights from hotels as fallback
+  const totalNightsFromHotels = hotels.reduce((sum, h) => {
     if (h.price_per_night.amount > 0) {
       return sum + Math.round(h.total_price.amount / h.price_per_night.amount);
     }
@@ -153,11 +154,23 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
   }, 0);
 
   // If we have a start date but no end date, compute end from total nights
-  if (startDate && !endDate && totalNights > 0) {
+  if (startDate && !endDate && totalNightsFromHotels > 0) {
     const start = new Date(`${startDate}T00:00:00.000Z`);
-    start.setUTCDate(start.getUTCDate() + totalNights);
+    start.setUTCDate(start.getUTCDate() + totalNightsFromHotels);
     endDate = start.toISOString().slice(0, 10);
   }
+
+  // Calculate nights from date range (preferred) or fallback to hotel sum
+  const totalNights = (() => {
+    if (startDate && endDate) {
+      const start = new Date(`${startDate}T00:00:00.000Z`);
+      const end = new Date(`${endDate}T00:00:00.000Z`);
+      const diffMs = end.getTime() - start.getTime();
+      const nights = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      return Math.max(nights, 1);
+    }
+    return totalNightsFromHotels;
+  })();
 
   const uniqueWaypoints = orderedPath.filter(
     (wp, index, arr) =>
