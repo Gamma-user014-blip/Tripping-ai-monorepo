@@ -11,17 +11,20 @@ const searchTripIndexStore: Map<string, SearchTripIndex> = new Map();
 const SEARCH_EXPIRY_MS = 5 * 60 * 1000;
 
 const registerSearchTrips = (searchId: string, trips: Trip[]): string[] => {
-  const tripIds: string[] = [];
+  const existingEntry = searchTripIndexStore.get(searchId);
+  const existingTripIds = existingEntry?.tripIds ?? [];
+  const tripIds: string[] = [...existingTripIds];
 
-  for (const trip of trips) {
+  // Only register new trips (trips beyond what we've already registered)
+  for (let i = existingTripIds.length; i < trips.length; i++) {
     const tripId = crypto.randomUUID();
-    tripStore.set(tripId, trip);
+    tripStore.set(tripId, trips[i]);
     tripIds.push(tripId);
   }
 
   searchTripIndexStore.set(searchId, {
     tripIds,
-    createdAt: Date.now(),
+    createdAt: existingEntry?.createdAt ?? Date.now(),
   });
 
   return tripIds;

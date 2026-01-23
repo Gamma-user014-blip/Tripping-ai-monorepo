@@ -11,6 +11,8 @@ import {
   getOrCreateSessionId as getBaseSessionId,
   CHAT_MESSAGES_KEY_PREFIX,
   TRIP_IDS_KEY_PREFIX,
+  SEARCH_ID_KEY_PREFIX,
+  TRIP_RESULTS_KEY_PREFIX,
 } from "../lib/session";
 
 interface Message {
@@ -20,9 +22,14 @@ interface Message {
   timestamp: number;
 }
 
+type ChatMode = "inline" | "redirect";
+
 interface UseChatOptions {
   onTripsLoaded?: (trips: Trip[]) => void;
   onSearchStart?: () => void;
+  onSearchClear?: () => void;
+  onRedirect?: (searchId: string) => void;
+  mode?: ChatMode;
 }
 
 interface UseChatReturn {
@@ -31,6 +38,7 @@ interface UseChatReturn {
   isSearching: boolean;
   sendMessage: (text: string) => Promise<void>;
   isSending: boolean;
+  startPollingFromSession: () => void;
 }
 
 const getOrCreateSessionId = (
@@ -45,6 +53,9 @@ const getOrCreateSessionId = (
 const useChat = ({
   onTripsLoaded,
   onSearchStart,
+  onSearchClear,
+  onRedirect,
+  mode = "inline",
 }: UseChatOptions = {}): UseChatReturn => {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -94,36 +105,44 @@ const useChat = ({
     };
   }, []);
 
+  const clearSearchData = useCallback((): void => {
+    const sessionId = getOrCreateSessionId(sessionIdRef);
+    sessionStorage.removeItem(`${TRIP_RESULTS_KEY_PREFIX}${sessionId}`);
+    sessionStorage.removeItem(`${TRIP_IDS_KEY_PREFIX}${sessionId}`);
+    sessionStorage.removeItem(`${SEARCH_ID_KEY_PREFIX}${sessionId}`);
+    onSearchClear?.();
+  }, [onSearchClear]);
+
   const startPolling = useCallback(
     (searchId: string): void => {
       stopPollingRef.current?.();
+
+      // Clear old search data when starting a new search
+      clearSearchData();
 
       setIsSearching(true);
       onSearchStart?.();
 
       const sessionId = getOrCreateSessionId(sessionIdRef);
 
+      // Store the new search ID
+      sessionStorage.setItem(`${SEARCH_ID_KEY_PREFIX}${sessionId}`, searchId);
+
       stopPollingRef.current = pollForSearchResults(searchId, {
-        onProgress: (trips) => {
+        onProgress: (trips, tripIds) => {
+          sessionStorage.setItem(
+            `${TRIP_IDS_KEY_PREFIX}${sessionId}`,
+            JSON.stringify(tripIds),
+          );
           onTripsLoaded?.(trips);
         },
-        onComplete: (trips) => {
-          void (async (): Promise<void> => {
-            try {
-              const response = await apiClient.get<{ tripIds: string[] }>(
-                `/api/search/${searchId}/trip-ids`,
-              );
-              sessionStorage.setItem(
-                `${TRIP_IDS_KEY_PREFIX}${sessionId}`,
-                JSON.stringify(response.tripIds),
-              );
-            } catch {
-              // ignore
-            } finally {
-              setIsSearching(false);
-              onTripsLoaded?.(trips);
-            }
-          })();
+        onComplete: (trips, tripIds) => {
+          sessionStorage.setItem(
+            `${TRIP_IDS_KEY_PREFIX}${sessionId}`,
+            JSON.stringify(tripIds),
+          );
+          setIsSearching(false);
+          onTripsLoaded?.(trips);
         },
         onError: (error) => {
           setIsSearching(false);
@@ -131,8 +150,18 @@ const useChat = ({
         },
       });
     },
-    [onTripsLoaded, onSearchStart],
+    [onTripsLoaded, onSearchStart, clearSearchData],
   );
+
+  const startPollingFromSession = useCallback((): void => {
+    const sessionId = getOrCreateSessionId(sessionIdRef);
+    const storedSearchId = sessionStorage.getItem(
+      `${SEARCH_ID_KEY_PREFIX}${sessionId}`,
+    );
+    if (storedSearchId) {
+      startPolling(storedSearchId);
+    }
+  }, [startPolling]);
 
   const sendMessage = useCallback(
     async (text: string): Promise<void> => {
@@ -178,7 +207,18 @@ const useChat = ({
           response.status === ChatResponseStatus.COMPLETE &&
           response.searchId
         ) {
-          startPolling(response.searchId);
+          if (mode === "redirect") {
+            // Store searchId in session and redirect
+            sessionStorage.setItem(
+              `${SEARCH_ID_KEY_PREFIX}${sessionId}`,
+              response.searchId,
+            );
+            setIsSearching(true);
+            onRedirect?.(response.searchId);
+          } else {
+            // Inline mode: start polling directly
+            startPolling(response.searchId);
+          }
         }
       } catch (error) {
         console.error("Failed to send message:", error);
@@ -194,7 +234,7 @@ const useChat = ({
         setIsSending(false);
       }
     },
-    [isTyping, isSending, startPolling],
+    [isTyping, isSending, startPolling, mode, onRedirect],
   );
 
   return {
@@ -203,6 +243,7 @@ const useChat = ({
     isSearching,
     sendMessage,
     isSending,
+    startPollingFromSession,
   };
 };
 

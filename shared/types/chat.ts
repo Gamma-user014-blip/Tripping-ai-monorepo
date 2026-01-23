@@ -3,6 +3,8 @@ import { Trip } from "./trip";
 export enum ChatResponseStatus {
   COMPLETE = 200,
   INCOMPLETE = 202,
+  FOLLOWUP = 201,
+  DUPLICATE_SEARCH = 204,
   ERROR = 500,
 }
 
@@ -31,5 +33,6 @@ export interface SearchPollRequest {
 export interface SearchPollResponse {
   status: SearchStatus;
   results?: Trip[];
+  tripIds?: string[];
   error?: string;
 }

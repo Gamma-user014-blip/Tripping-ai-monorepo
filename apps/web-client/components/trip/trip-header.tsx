@@ -28,7 +28,7 @@ const handleShare = async (): Promise<void> => {
 };
 
 const TripHeader: React.FC<TripHeaderProps> = ({ trip }) => {
-  const { origin, destination, startDate, endDate, firstHotel } =
+  const { origin, destination, startDate, endDate, totalNights, firstHotel } =
     extractTripData(trip);
 
   const getTitle = (): string => {
@@ -62,6 +62,11 @@ const TripHeader: React.FC<TripHeaderProps> = ({ trip }) => {
     });
   };
 
+  const dateRangeText =
+    startDate && endDate
+      ? `${formatDate(startDate)} - ${formatDate(endDate)}`
+      : "";
+
   return (
     <div className={styles.heroContainer}>
       <div
@@ -81,7 +86,11 @@ const TripHeader: React.FC<TripHeaderProps> = ({ trip }) => {
                 calendar_month
               </span>{" "}
               {((): string => {
-                if (!startDate) return "Starts soon";
+                if (!startDate) {
+                  return totalNights > 0
+                    ? `${totalNights} Night${totalNights !== 1 ? "s" : ""}`
+                    : "Flexible dates";
+                }
                 const todayMidnight = new Date(
                   new Date().getFullYear(),
                   new Date().getMonth(),
@@ -103,8 +112,10 @@ const TripHeader: React.FC<TripHeaderProps> = ({ trip }) => {
             >
               date_range
             </span>{" "}
-            {formatDate(startDate)} - {formatDate(endDate)}
-            <span style={{ margin: "0 4px" }}>•</span>
+            {dateRangeText ? `${dateRangeText} • ` : ""}
+            {totalNights > 0
+              ? `${totalNights} Night${totalNights !== 1 ? "s" : ""} • `
+              : "Dates TBD • "}
             <span
               className="material-symbols-outlined"
               style={{ fontSize: 18 }}

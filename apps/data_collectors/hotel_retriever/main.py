@@ -435,6 +435,11 @@ async def search_hotels(
             if max_price_per_night and hotel_option.price_per_night.amount > max_price_per_night:
                 continue
             
+            # Validate hotel has essential data before caching
+            if not hotel_option.id or not hotel_option.name:
+                print(f"Skipping invalid hotel with missing id or name")
+                continue
+            
             # Cache the transformed hotel option
             hotel_dict = hotel_option.model_dump()
             await cache_set(cache_key, hotel_dict, HOTEL_CACHE_TTL)
@@ -455,6 +460,9 @@ async def search_hotels(
         return response.model_dump()
         
     except Exception as e:
+        import traceback
+        print(f"ERROR in hotel search: {type(e).__name__}: {e}")
+        print(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Error fetching hotels: {str(e)}")
 
 

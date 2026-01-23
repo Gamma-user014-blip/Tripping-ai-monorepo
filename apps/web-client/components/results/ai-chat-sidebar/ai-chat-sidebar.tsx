@@ -12,15 +12,31 @@ const AiChatSidebar: React.FC<AiChatSidebarProps> = ({
   onTripsLoaded,
   onSearchStart,
 }) => {
-  const { messages, isTyping, isSearching, sendMessage, isSending } = useChat({
+  const {
+    messages,
+    isTyping,
+    isSearching,
+    sendMessage,
+    isSending,
+    startPollingFromSession,
+  } = useChat({
     onTripsLoaded,
     onSearchStart,
+    mode: "inline",
   });
 
   const [inputValue, setInputValue] = React.useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const hasStartedPollingRef = useRef(false);
+
+  // On mount, check if we have a pending searchId from homepage redirect
+  useEffect(() => {
+    if (hasStartedPollingRef.current) return;
+    hasStartedPollingRef.current = true;
+    startPollingFromSession();
+  }, [startPollingFromSession]);
 
   const scrollToBottom = (): void => {
     const messageList = messageListRef.current;

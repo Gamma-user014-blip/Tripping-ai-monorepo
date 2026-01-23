@@ -11,6 +11,7 @@ import {
   appendChatMessage,
   getOrCreateSession,
   setTripYaml,
+  markSearchCompleted,
   DEFAULT_TRIP_YAML,
 } from "../../session/session-store";
 import { startSearch, startMockSearch } from "../../search/search-service";
@@ -18,6 +19,18 @@ import { startSearch, startMockSearch } from "../../search/search-service";
 const MOCK_TRIGGER = "/mock";
 
 const router: Router = Router();
+
+const normalizeYamlForComparison = (yaml: string): string => {
+  return yaml
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"))
+    .join("\n");
+};
+
+const areSearchParamsSame = (yaml1: string, yaml2: string): boolean => {
+  return normalizeYamlForComparison(yaml1) === normalizeYamlForComparison(yaml2);
+};
 
 router.post("/chat", async (req: Request, res: Response): Promise<void> => {
   const { message, sessionId } = req.body as Partial<ChatRequest>;
@@ -32,6 +45,8 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  const session = getOrCreateSession(sessionId, DEFAULT_TRIP_YAML);
+
   // Check for mock trigger
   if (message.trim().toLowerCase() === MOCK_TRIGGER) {
     appendChatMessage(sessionId, DEFAULT_TRIP_YAML, "user", message);
@@ -39,6 +54,7 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
     appendChatMessage(sessionId, DEFAULT_TRIP_YAML, "assistant", aiResponse);
 
     const searchId = startMockSearch();
+    markSearchCompleted(sessionId, DEFAULT_TRIP_YAML, "mock");
 
     const response: ChatResponse = {
       message: aiResponse,
@@ -51,19 +67,39 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
 
   appendChatMessage(sessionId, DEFAULT_TRIP_YAML, "user", message);
 
-  const session = getOrCreateSession(sessionId, DEFAULT_TRIP_YAML);
   const yamlResponse = await updateTripYaml(message, session.tripYaml);
   setTripYaml(sessionId, DEFAULT_TRIP_YAML, yamlResponse.yaml);
 
   const questionResponse = await getSingleMissingQuestion(yamlResponse.yaml);
   const isComplete = questionResponse.status === FillStatus.ready;
+
+  // If search would be complete, check if it's a duplicate
+  if (isComplete && session.lastSearchYaml) {
+    if (areSearchParamsSame(yamlResponse.yaml, session.lastSearchYaml)) {
+      const aiResponse =
+        "It looks like you're searching for the same trip again. Try changing some details like dates, destination, or number of travelers.";
+      appendChatMessage(sessionId, DEFAULT_TRIP_YAML, "assistant", aiResponse);
+
+      const response: ChatResponse = {
+        message: aiResponse,
+        status: ChatResponseStatus.DUPLICATE_SEARCH,
+      };
+      res.json(response);
+      return;
+    }
+  }
+
   const aiResponse = isComplete
-    ? "Generating your trip..."
+    ? "Great! I have all the information I need. Generating your trip..."
     : questionResponse.message!;
 
   appendChatMessage(sessionId, DEFAULT_TRIP_YAML, "assistant", aiResponse);
 
   const searchId = isComplete ? startSearch(yamlResponse.yaml) : undefined;
+
+  if (isComplete && searchId) {
+    markSearchCompleted(sessionId, DEFAULT_TRIP_YAML, yamlResponse.yaml);
+  }
 
   const response: ChatResponse = {
     message: aiResponse,
