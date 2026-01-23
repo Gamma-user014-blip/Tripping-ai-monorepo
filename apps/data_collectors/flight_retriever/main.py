@@ -11,7 +11,13 @@ from shared.data_types.models import *
 from fastapi import FastAPI, HTTPException
 from amadeus import Client, ResponseError
 from dotenv import load_dotenv
+<<<<<<< Updated upstream
 import os
+=======
+
+from .data_processor import transform_flight_data, generate_unique_flight_id
+from .default_flights import get_default_flights_by_route, get_default_flight_by_id
+>>>>>>> Stashed changes
 # ----------------------------
 # Config
 # ----------------------------
@@ -285,9 +291,6 @@ def explore(obj, prefix=""):
 @app.post("/api/flight_retriever/search", response_model=FlightSearchResponse)
 async def flight_search(request: FlightSearchRequest):
 
-    if not AMADEUS_CLIENT_ID or not AMADEUS_CLIENT_SECRET:
-        raise HTTPException(status_code=500, detail="Missing AMADEUS_CLIENT_ID / AMADEUS_CLIENT_SECRET env vars")
-
     if not request.origin.airport_code or not request.destination.airport_code or not request.departure_date:
         raise HTTPException(
             status_code=400,
@@ -302,6 +305,19 @@ async def flight_search(request: FlightSearchRequest):
     max_results = 250  # your decision
 
     try:
+<<<<<<< Updated upstream
+=======
+        if not AMADEUS_CLIENT_ID or not AMADEUS_CLIENT_SECRET:
+            raise RuntimeError("Missing AMADEUS_CLIENT_ID / AMADEUS_CLIENT_SECRET env vars")
+        # Check if entire search is cached (Optional, but good for performance)
+        search_cache_key = f"flight_search:{origin_code}:{dest_code}:{departure_date}:{adults}"
+        cached_response = await cache_get(search_cache_key)
+        if cached_response:
+            print(f"Cache hit for search {search_cache_key}")
+            return FlightSearchResponse.model_validate(cached_response)
+
+        print(f"Cache miss for search {search_cache_key}, calling Amadeus...")
+>>>>>>> Stashed changes
         resp = amadeus.shopping.flight_offers_search.get(
             originLocationCode=origin_code,
             destinationLocationCode=dest_code,
@@ -339,6 +355,7 @@ async def flight_search(request: FlightSearchRequest):
 
         return FlightSearchResponse(options=flight_options, metadata=metadata)
 
+<<<<<<< Updated upstream
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Amadeus error: {e}")
 
@@ -382,6 +399,81 @@ def _parse_amenities_from_fds(fds: Dict[str, Any]) -> AmenityInfo:
 
     # legroom_inches is not provided by Flight Offers Search -> keep default 0
     return info
+=======
+        return response
+
+    except (ResponseError, Exception) as e:
+        # Fallback to default flights
+        print(f"Amadeus API failed or error occurred: {e}. Falling back to default flights...")
+        
+        default_flights_data = get_default_flights_by_route(request.origin.city, request.destination.city)
+        
+        if not default_flights_data:
+            # Try by airport codes if city names didn't match
+            default_flights_data = get_default_flights_by_route(origin_code, dest_code)
+
+        if default_flights_data:
+            flight_options = [FlightOption.model_validate(f) for f in default_flights_data]
+            
+            metadata = SearchMetadata(
+                total_results=len(flight_options),
+                search_id=f"default_flight_search_{datetime.now(timezone.utc).timestamp()}",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                data_source="Default Fallback Data",
+            )
+            
+            return FlightSearchResponse(options=flight_options, metadata=metadata)
+
+        # If no default flights either, then raise the original error
+        if isinstance(e, ResponseError):
+            status_code = getattr(e.response, "status_code", 502)
+            error_body = getattr(e.response, "body", None) or {}
+            errors = error_body.get("errors", []) if isinstance(error_body, dict) else []
+            detail_msg = errors[0].get("detail", str(e)) if errors else str(e)
+            raise HTTPException(status_code=status_code, detail=f"Amadeus error (and no fallback available): {detail_msg}")
+        
+        raise HTTPException(status_code=502, detail=f"Amadeus error (and no fallback available): {e}")
+
+
+@app.get("/api/flight_retriever/flights/{flight_id}")
+async def get_flight_details(flight_id: str):
+    """Get raw offer details from provider using unique mapping or default data"""
+    # Check if it's a default flight
+    if flight_id.startswith("default_f_"):
+        default_flight = get_default_flight_by_id(flight_id)
+        if default_flight:
+            return default_flight
+            
+    offer = await get_provider_offer(flight_id)
+    if not offer:
+        raise HTTPException(status_code=404, detail="Flight offer not found in cache or expired")
+    return offer
+
+
+@app.post("/api/flight_retriever/flights/{flight_id}/price")
+async def verify_price(flight_id: str):
+    """Verify current price and availability for a flight offer or default data"""
+    # Check if it's a default flight
+    if flight_id.startswith("default_f_"):
+        default_flight = get_default_flight_by_id(flight_id)
+        if default_flight:
+            # For default flights, we just return the flight itself as "verified"
+            return {"data": default_flight, "status": "verified", "source": "default_data"}
+
+    offer = await get_provider_offer(flight_id)
+    if not offer:
+        raise HTTPException(status_code=404, detail="Flight offer not found in cache or expired")
+    
+    try:
+        # Call Amadeus Pricing API to verify
+        # Note: This requires the full raw offer object
+        price_resp = amadeus.shopping.flight_offers.pricing.post(offer)
+        return price_resp.result
+    except ResponseError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+>>>>>>> Stashed changes
 
 
 def _parse_luggage_from_fds(fds: Dict[str, Any]) -> LuggageInfo:
