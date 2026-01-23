@@ -1,8 +1,3 @@
-export type HealthResponse = {
-  status: string
-  timestamp: string
-}
-
 export * from './enums';
 export * from './common';
 export * from './hotel';

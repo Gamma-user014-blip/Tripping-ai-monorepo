@@ -1,10 +1,9 @@
 import type { Request, Response } from 'express'
 import { Router } from 'express'
 import { getNextChatMessageCount } from '../../chat/chat-session-store'
-import type { ChatRequest, ChatResponse } from '@monorepo/shared'
-import { ChatResponseStatus } from '@monorepo/shared'
-import { generatePlans } from '../../chat/json-agent-util'
-import { TripPlan } from '../../chat/json-agent-util'
+import type { ChatRequest, ChatResponse } from '../../../../../shared/types'
+import { ChatResponseStatus } from '../../../../../shared/types'
+import { startSearch } from '../../search/search-store'
 
 const router: Router = Router()
 
@@ -38,11 +37,18 @@ router.post('/chat', async (req: Request, res: Response): Promise<void> => {
         ? 3000
         : Math.floor(Math.random() * 3000) + 1000
 
+  const isComplete = messageCount === 2
+  let searchId: string | undefined
+
+  if (isComplete) {
+    searchId = startSearch()
+  }
+
   setTimeout(() => {
     const response: ChatResponse = {
-      message: aiResponse,
-      status: ChatResponseStatus.INCOMPLETE,
-      searchId: "",
+      message: !isComplete ? `${aiResponse} ${messageCount}` : "Generating your trip...",
+      status: isComplete ? ChatResponseStatus.COMPLETE : ChatResponseStatus.INCOMPLETE,
+      searchId,
     }
     res.json(response)
   }, delayMs)

@@ -53,3 +53,8 @@ export interface TripSection {
 export interface TripRequest {
   sections: TripSection[];
 }
+
+export interface Trip {
+    vibe: string;
+    layout: FinalTripLayout
+}

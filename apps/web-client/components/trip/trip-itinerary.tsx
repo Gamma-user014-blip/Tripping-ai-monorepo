@@ -1,22 +1,22 @@
 import React from "react";
 import styles from "./trip-itinerary.module.css";
 import {
-  TripResponse,
-  TripSectionResponse,
   SectionType,
-  FlightResponse,
-  StayResponse,
-  TransferResponse,
   FlightOption,
-  FlightSegment,
   HotelOption,
   ActivityOption,
-  TransportOption,
+  Trip,
 } from "../results/types";
 import { Icon } from "../results/icon";
+import {
+  SectionData,
+  isFlightOption,
+  isFinalStayOption,
+  isTransportOption,
+} from "../../lib/trip-type-guards";
 
 interface TripItineraryProps {
-  trip: TripResponse;
+  trip: Trip;
 }
 
 const formatDate = (dateString: string): string => {
@@ -42,83 +42,50 @@ const formatDuration = (minutes: number): string => {
   return `${hours}h ${mins}m`;
 };
 
-const isFlightResponse = (data: unknown): data is FlightResponse => {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    "options" in data &&
-    Array.isArray((data as FlightResponse).options) &&
-    (data as FlightResponse).options.length > 0 &&
-    "outbound" in (data as FlightResponse).options[0]
-  );
-};
-
-const isStayResponse = (data: unknown): data is StayResponse => {
-  return typeof data === "object" && data !== null && "hotel_options" in data;
-};
-
-const isTransferResponse = (data: unknown): data is TransferResponse => {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    "options" in data &&
-    Array.isArray((data as TransferResponse).options) &&
-    (data as TransferResponse).options.length > 0 &&
-    "mode" in (data as TransferResponse).options[0]
-  );
-};
-
 const TripItinerary = ({ trip }: TripItineraryProps): JSX.Element => {
-  return (
-    <main className={styles.timelineContainer}>
-      {trip.sections.map((section, index) => (
-        <SectionRenderer key={index} section={section} index={index} />
-      ))}
-    </main>
-  );
-};
+  const rendered: JSX.Element[] = [];
+  let flightCount = 0;
+  let stayCount = 0;
 
-const SectionRenderer = ({
-  section,
-  index,
-}: {
-  section: TripSectionResponse;
-  index: number;
-}): JSX.Element | null => {
-  if (section.type === SectionType.FLIGHT && isFlightResponse(section.data)) {
-    const flight = section.data.options[0];
-    return (
-      <FlightCard
-        type={index === 0 ? "outbound" : "return"}
-        flight={flight}
-      />
-    );
+  for (const section of trip.layout.sections) {
+    const data = section.data as SectionData;
+
+    if (section.type === SectionType.FLIGHT && isFlightOption(data)) {
+      flightCount += 1;
+      rendered.push(
+        <FlightCard
+          key={`flight-${data.id}`}
+          type={flightCount === 1 ? "outbound" : "return"}
+          flight={data}
+        />,
+      );
+      continue;
+    }
+
+    if (section.type === SectionType.STAY && isFinalStayOption(data)) {
+      stayCount += 1;
+      rendered.push(
+        <StayCard
+          key={`stay-${data.hotel.id}`}
+          hotel={data.hotel}
+          activities={data.activities}
+          isPrimary={stayCount === 1}
+        />,
+      );
+      continue;
+    }
+
+    if (section.type === SectionType.TRANSFER && isTransportOption(data)) {
+      rendered.push(
+        <TransferDivider
+          key={`transfer-${data.id}`}
+          label={`${data.provider} to ${data.destination.city}`}
+        />,
+      );
+    }
   }
 
-  if (section.type === SectionType.STAY && isStayResponse(section.data)) {
-    const stayData = section.data;
-    const selectedHotel = stayData.hotel_options[0];
-    if (!selectedHotel) return null;
-    return (
-      <StayCard
-        key={selectedHotel.id}
-        hotel={selectedHotel}
-        activities={stayData.activity_options}
-        isPrimary={true}
-      />
-    );
-  }
-
-  if (section.type === SectionType.TRANSFER && isTransferResponse(section.data)) {
-    const transfer = section.data.options[0];
-    return (
-      <TransferDivider
-        label={`${transfer.provider} to ${transfer.destination.city}`}
-      />
-    );
-  }
-
-  return null;
+  return <main className={styles.timelineContainer}>{rendered}</main>;
 };
 
 const FlightCard = ({
@@ -151,7 +118,7 @@ const FlightCard = ({
             {formatDate(date)} • {departureTime}
           </div>
           <h4 className={styles.flightTitle}>
-            Flight to{" "}
+            {isDeparture ? "Flight to" : "Return flight to"}{" "}
             {segment.destination.airport_code || segment.destination.city}
           </h4>
           <p className={styles.flightSub}>
@@ -237,18 +204,29 @@ const StayCard = ({
   activities: ActivityOption[];
   isPrimary: boolean;
 }): JSX.Element => {
-  const bgImage = getStayGradient(hotel.id);
+  const gradientBg = getStayGradient(hotel.id);
+  const bgStyle = hotel.image
+    ? {
+        backgroundImage: `linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.3)), url("${hotel.image}")`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : { background: gradientBg };
 
   const hotelActivities = activities.filter(
     (act) =>
       act.location.city.toLowerCase() === hotel.location.city.toLowerCase()
   );
 
+  const nights = Math.round(
+    hotel.total_price.amount / hotel.price_per_night.amount
+  );
+
   return (
     <div className={styles.stayCard}>
       <div
         className={styles.stayImageContainer}
-        style={{ background: bgImage }}
+        style={bgStyle}
       >
         <div className={styles.ratingBadge}>
           <span
@@ -269,7 +247,7 @@ const StayCard = ({
                 {isPrimary ? "Primary Stay" : "Secondary Stay"}
               </span>
               <span className={styles.stayNights}>
-                ${hotel.total_price.amount}
+                {nights} night{nights > 1 ? "s" : ""} · ${hotel.total_price.amount}
               </span>
             </div>
             <h3 className={styles.stayTitle}>{hotel.name}</h3>

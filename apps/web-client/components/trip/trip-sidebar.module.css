@@ -67,6 +67,10 @@
 .detailValueMono {
     font-family: monospace;
     letter-spacing: 0.05em;
+    word-break: break-all;
+    text-align: right;
+    max-width: 140px;
+    font-size: 0.75rem;
 }
 
 .confirmedText {
