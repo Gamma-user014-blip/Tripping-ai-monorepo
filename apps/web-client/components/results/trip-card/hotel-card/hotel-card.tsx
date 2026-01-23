@@ -2,12 +2,25 @@ import React from "react";
 import { HotelOption } from "../../types";
 import { Icon } from "../../icon";
 import styles from "./hotel-card.module.css";
+import facilitiesData from "@monorepo/shared/metadata/facilities.json";
 
 interface HotelCardProps {
   hotels: HotelOption[];
 }
 
+const facilitiesMap = facilitiesData as Record<string, string>;
+
 const formatAmenity = (amenity: string): string => {
+  // Handle LiteAPI "Facility_XXX" format
+  const facilityMatch = amenity.match(/^Facility_(\d+)$/i);
+  if (facilityMatch) {
+    const facilityId = facilityMatch[1];
+    const facilityName = facilitiesMap[facilityId];
+    if (facilityName) {
+      return facilityName;
+    }
+  }
+
   const amenityMap: Record<string, string> = {
     wifi: "Free Wi-Fi",
     breakfast: "Breakfast",
@@ -100,10 +113,11 @@ const getHotelImageStyle = (hotel: HotelOption): React.CSSProperties => {
 
 const HotelItem: React.FC<{ hotel: HotelOption }> = ({ hotel }) => {
   const address = `${hotel.location.city}, ${hotel.location.country}`;
+  const roundedPrice = Math.ceil(hotel.price_per_night.amount);
   const priceText =
     hotel.price_per_night.currency === "USD"
-      ? `$${hotel.price_per_night.amount}/night`
-      : `${hotel.price_per_night.amount} ${hotel.price_per_night.currency}/night`;
+      ? `$${roundedPrice}/night`
+      : `${roundedPrice} ${hotel.price_per_night.currency}/night`;
 
   const uniqueAmenities = Array.from(
     new Map(

@@ -1,69 +1,61 @@
-import type { Trip } from "../../../../shared/types";
-import { SearchStatus } from "../../../../shared/types";
+/**
+ * @deprecated This file contains legacy mock-based search.
+ * Use search-service.ts for the real trip-builder integration.
+ * Keeping for reference/testing purposes.
+ */
+
+import type { Trip } from "@monorepo/shared";
+import { SearchStatus } from "@monorepo/shared";
 import mockData from "./mock-data";
 import { registerSearchTrips } from "./trip-registry";
 
-interface SearchEntry {
+interface MockSearchEntry {
   status: SearchStatus;
   results?: Trip[];
   error?: string;
   createdAt: number;
 }
 
-const searchStore: Map<string, SearchEntry> = new Map();
+const mockSearchStore: Map<string, MockSearchEntry> = new Map();
 
-const SEARCH_DELAY_MS = 10000;
-const SEARCH_EXPIRY_MS = 5 * 60 * 1000;
+const MOCK_SEARCH_DELAY_MS = 10_000;
+const MOCK_SEARCH_EXPIRY_MS = 5 * 60 * 1000;
 
-const generateSearchId = (): string => {
-  return `search_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-};
+const generateMockSearchId = (): string =>
+  `mock_search_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-const startSearch = (): string => {
-  const searchId = generateSearchId();
+export const startMockSearch = (_tripYaml: string): string => {
+  const searchId = generateMockSearchId();
 
-  searchStore.set(searchId, {
+  mockSearchStore.set(searchId, {
     status: SearchStatus.PENDING,
     createdAt: Date.now(),
   });
 
   setTimeout(() => {
-    const entry = searchStore.get(searchId);
+    const entry = mockSearchStore.get(searchId);
     if (!entry) return;
 
     registerSearchTrips(searchId, mockData);
 
-    searchStore.set(searchId, {
+    mockSearchStore.set(searchId, {
       ...entry,
       status: SearchStatus.COMPLETED,
       results: mockData,
     });
-  }, SEARCH_DELAY_MS);
+  }, MOCK_SEARCH_DELAY_MS);
 
   return searchId;
 };
 
-const getSearchStatus = (searchId: string): SearchEntry | null => {
-  const entry = searchStore.get(searchId);
+export const getMockSearchStatus = (searchId: string): MockSearchEntry | null => {
+  const entry = mockSearchStore.get(searchId);
   if (!entry) return null;
 
-  if (Date.now() - entry.createdAt > SEARCH_EXPIRY_MS) {
-    searchStore.delete(searchId);
+  if (Date.now() - entry.createdAt > MOCK_SEARCH_EXPIRY_MS) {
+    mockSearchStore.delete(searchId);
     return null;
   }
 
   return entry;
 };
-
-const cleanupExpiredSearches = (): void => {
-  const now = Date.now();
-  for (const [searchId, entry] of searchStore.entries()) {
-    if (now - entry.createdAt > SEARCH_EXPIRY_MS) {
-      searchStore.delete(searchId);
-    }
-  }
-};
-
-setInterval(cleanupExpiredSearches, 60000);
-
-export { startSearch, getSearchStatus };

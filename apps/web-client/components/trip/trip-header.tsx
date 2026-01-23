@@ -1,4 +1,5 @@
 import React from "react";
+import toast from "react-hot-toast";
 import type { Trip } from "@shared/types";
 import styles from "./trip-header.module.css";
 import extractTripData from "../../lib/trip-extract";
@@ -16,14 +17,35 @@ const getDurationDays = (startDate: string, endDate: string): number => {
   return Math.max(1, diffDays + 1);
 };
 
+const handleShare = async (): Promise<void> => {
+  const url = window.location.href;
+  try {
+    await navigator.clipboard.writeText(url);
+    toast.success("Link copied to clipboard!");
+  } catch {
+    toast.error("Failed to copy link");
+  }
+};
+
 const TripHeader: React.FC<TripHeaderProps> = ({ trip }) => {
   const { origin, destination, startDate, endDate, firstHotel } =
     extractTripData(trip);
 
-  const title =
-    origin.city === destination.city
-      ? `Trip to ${destination.city}, ${destination.country}`
-      : `${origin.city} to ${destination.city}`;
+  const getTitle = (): string => {
+    const destCity = destination.city || firstHotel?.location.city || "Unknown";
+    const destCountry =
+      destination.country || firstHotel?.location.country || "";
+    const origCity = origin.city || "";
+
+    if (!origCity || origCity === destCity) {
+      return destCountry
+        ? `Trip to ${destCity}, ${destCountry}`
+        : `Trip to ${destCity}`;
+    }
+    return `${origCity} to ${destCity}`;
+  };
+
+  const title = getTitle();
 
   const bgImage =
     firstHotel?.image ||
@@ -58,7 +80,19 @@ const TripHeader: React.FC<TripHeaderProps> = ({ trip }) => {
               >
                 calendar_month
               </span>{" "}
-              {getDurationDays(startDate, endDate) || 5} Days
+              {((): string => {
+                if (!startDate) return "Starts soon";
+                const todayMidnight = new Date(
+                  new Date().getFullYear(),
+                  new Date().getMonth(),
+                  new Date().getDate(),
+                );
+                const start = new Date(startDate);
+                const diffMs = start.getTime() - todayMidnight.getTime();
+                const daysUntil = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                if (daysUntil <= 0) return "Starts today";
+                return `${daysUntil} day${daysUntil !== 1 ? "s" : ""}`;
+              })()}
             </span>
           </div>
           <h1 className={styles.title}>{title}</h1>
@@ -81,7 +115,7 @@ const TripHeader: React.FC<TripHeaderProps> = ({ trip }) => {
           </h2>
         </div>
         <div className={styles.buttonGroup}>
-          <button className={styles.shareButton}>
+          <button className={styles.shareButton} onClick={handleShare}>
             <span className="material-symbols-outlined">share</span>
           </button>
         </div>

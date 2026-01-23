@@ -128,6 +128,28 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
     longitude: 0,
   };
 
+  // Fallback: if no destination from flights, use first hotel location
+  if (!mainDestination && firstHotel) {
+    mainDestination = firstHotel.location;
+  }
+
+  // Fallback: if no origin from flights, use first hotel location as well
+  if (!origin && firstHotel) {
+    origin = firstHotel.location;
+  }
+
+  // Fallback: if no dates from flights, try to get from activities
+  if (!startDate && activities.length > 0) {
+    const allDates = activities
+      .flatMap((a) => a.available_times?.map((t) => t.date) ?? [])
+      .filter(Boolean)
+      .sort();
+    if (allDates.length > 0) {
+      startDate = allDates[0];
+      endDate = allDates[allDates.length - 1];
+    }
+  }
+
   const uniqueWaypoints = orderedPath.filter(
     (wp, index, arr) =>
       arr.findIndex((w) => w.lat === wp.lat && w.lng === wp.lng) === index,

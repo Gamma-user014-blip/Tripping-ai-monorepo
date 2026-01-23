@@ -163,12 +163,54 @@
   overflow: visible;
 }
 
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.activitiesRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.activityChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.activityChip {
+  background-color: #fef3c7;
+  color: #92400e;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.activityCount {
+  font-size: 10px;
+  color: var(--color-text-subtle);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.moreActivities {
+  font-size: 10px;
+  color: var(--color-text-subtle);
+  font-weight: 500;
+}
+
 .priceTag {
-  align-self: flex-end;
+  flex-shrink: 0;
   font-size: 24px;
   font-weight: 700;
   color: var(--color-teal-dark);
-  margin-top: -2px;
-  margin-right: 8px;
-  margin-bottom: 0px;
 }

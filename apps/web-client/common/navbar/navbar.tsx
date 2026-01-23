@@ -2,16 +2,18 @@ import React from "react";
 import styles from "./navbar.module.css";
 
 const Navbar: React.FC = (): JSX.Element => {
+  const navigateToHome = () => {
+    window.location.href = "/";
+  };
   return (
     <nav className={styles.container}>
-      <div className={styles.brand}>Tripping.ai</div>
-      <div className={styles.actions}>
-        <button className={styles.btn}>Explore</button>
-        <button className={styles.btn}>Bookings</button>
-        <button className={styles.btn}>Support</button>
-        <button className={`${styles.btn} ${styles.btnPrimary}`}>
-          Get started
-        </button>
+      <div
+        className={styles.brand}
+        onClick={navigateToHome}
+        role="button"
+        tabIndex={0}
+      >
+        Tripping.ai
       </div>
     </nav>
   );

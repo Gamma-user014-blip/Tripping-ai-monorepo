@@ -10,6 +10,7 @@ const POLL_INTERVAL_MS = 3000;
 
 interface PollOptions {
   onComplete: (trips: Trip[]) => void;
+  onProgress?: (trips: Trip[]) => void;
   onError?: (error: string) => void;
 }
 
@@ -21,6 +22,7 @@ const pollForSearchResults = (
 ): StopPolling => {
   let intervalId: NodeJS.Timeout | null = null;
   let isStopped = false;
+  let lastResultCount = 0;
 
   const poll = async (): Promise<void> => {
     if (isStopped) return;
@@ -35,9 +37,14 @@ const pollForSearchResults = (
 
       if (isStopped) return;
 
-      if (response.status === SearchStatus.COMPLETED && response.results) {
+      const results = response.results ?? [];
+
+      if (response.status === SearchStatus.COMPLETED) {
         stop();
-        options.onComplete(response.results);
+        options.onComplete(results);
+      } else if (response.status === SearchStatus.IN_PROGRESS && results.length > lastResultCount) {
+        lastResultCount = results.length;
+        options.onProgress?.(results);
       } else if (response.status === SearchStatus.ERROR) {
         stop();
         options.onError?.(response.error ?? "Unknown search error");

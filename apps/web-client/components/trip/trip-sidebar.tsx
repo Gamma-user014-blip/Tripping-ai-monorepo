@@ -17,7 +17,7 @@ const TripSidebar = ({ trip, bookingRef }: TripSidebarProps): JSX.Element => {
       style: "currency",
       currency: currency,
       maximumFractionDigits: 0,
-    }).format(amount);
+    }).format(Math.ceil(amount));
   };
 
   return (
@@ -38,7 +38,7 @@ const TripSidebar = ({ trip, bookingRef }: TripSidebarProps): JSX.Element => {
             <span className={styles.detailValue}>2 Adults</span>
           </div>
           <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>Booking Ref</span>
+            <span className={styles.detailLabel}>Trip ID</span>
             <span className={`${styles.detailValue} ${styles.detailValueMono}`}>
               {bookingRef}
             </span>

@@ -18,8 +18,15 @@
     "Helvetica Neue",
     Arial;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 20px;
   color: var(--color-gray-700);
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0px;
+  cursor: pointer;
+  height: 30px;
 }
 
 .actions {

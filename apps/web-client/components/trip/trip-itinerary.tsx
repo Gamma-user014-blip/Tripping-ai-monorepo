@@ -14,6 +14,18 @@ import {
   isFinalStayOption,
   isTransportOption,
 } from "../../lib/trip-type-guards";
+import facilitiesData from "@monorepo/shared/metadata/facilities.json";
+
+const facilitiesMap = facilitiesData as Record<string, string>;
+
+const formatAmenity = (amenity: string): string => {
+  const facilityMatch = amenity.match(/^Facility_(\d+)$/i);
+  if (facilityMatch) {
+    const facilityName = facilitiesMap[facilityMatch[1]];
+    if (facilityName) return facilityName;
+  }
+  return amenity.charAt(0).toUpperCase() + amenity.slice(1);
+};
 
 interface TripItineraryProps {
   trip: Trip;
@@ -245,7 +257,7 @@ const StayCard = ({
               </span>
               <span className={styles.stayNights}>
                 {nights} night{nights > 1 ? "s" : ""} · $
-                {hotel.total_price.amount}
+                {Math.ceil(hotel.total_price.amount)}
               </span>
             </div>
             <h3 className={styles.stayTitle}>{hotel.name}</h3>
@@ -265,7 +277,7 @@ const StayCard = ({
         <div className={styles.amenities}>
           {hotel.amenities.slice(0, 5).map((tag, i) => (
             <span key={i} className={styles.amenityTag}>
-              {tag}
+              {formatAmenity(tag)}
             </span>
           ))}
         </div>
