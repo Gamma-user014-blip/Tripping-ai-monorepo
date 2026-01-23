@@ -9,11 +9,11 @@ interface TripItineraryProps {
 
 // Helper to ensure consistent date formatting on server/client
 const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-GB', { 
-        weekday: 'short', 
-        day: 'numeric', 
-        month: 'short' 
-    });
+  return new Date(dateString).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
 };
 
 export default function TripItinerary({ trip }: TripItineraryProps) {
@@ -22,9 +22,9 @@ export default function TripItinerary({ trip }: TripItineraryProps) {
   return (
     <main className={styles.timelineContainer}>
       {/* 1. Outbound Flight */}
-      <FlightCard 
-        type="outbound" 
-        segment={trip.outboundFlight} 
+      <FlightCard
+        type="outbound"
+        segment={trip.outboundFlight}
         date={trip.startDate}
       />
 
@@ -50,9 +50,9 @@ export default function TripItinerary({ trip }: TripItineraryProps) {
       <TransferDivider label="Transfer to Airport" />
 
       {/* 3. Return Flight */}
-      <FlightCard 
-        type="return" 
-        segment={trip.returnFlight} 
+      <FlightCard
+        type="return"
+        segment={trip.returnFlight}
         date={trip.endDate}
       />
     </main>
@@ -61,14 +61,20 @@ export default function TripItinerary({ trip }: TripItineraryProps) {
 
 // --- Subcomponents ---
 
-function FlightCard({ type, segment, date }: { type: 'outbound' | 'return', segment: FlightSegment, date: string }) {
+function FlightCard({
+  type,
+  segment,
+  date,
+}: {
+  type: 'outbound' | 'return';
+  segment: FlightSegment;
+  date: string;
+}) {
   const isDeparture = type === 'outbound';
-  
+
   return (
     <div className={styles.flightCard}>
-        {/*
-      <div className={styles.confirmedBadge}>Confirmed</div>
-      */}
+      {/* <div className={styles.confirmedBadge}>Confirmed</div> */}
       <div className={styles.flightContent}>
         <div className={styles.flightIconBox}>
           <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>
@@ -76,16 +82,17 @@ function FlightCard({ type, segment, date }: { type: 'outbound' | 'return', segm
           </span>
         </div>
         <div className={styles.flightDetails}>
-            <div className={styles.dateTime}>
-                {formatDate(date)} • {segment.departureTime}
-            </div>
+          <div className={styles.dateTime}>
+            {formatDate(date)} • {segment.departureTime}
+          </div>
           <h4 className={styles.flightTitle}>
             Flight to {segment.destination.airportCode || segment.destination.city}
           </h4>
           <p className={styles.flightSub}>
-            {segment.airline} • {segment.duration} • {segment.stops === 0 ? 'Direct' : `${segment.stops} Stop(s)`}
+            {segment.airline} • {segment.duration} •{' '}
+            {segment.stops === 0 ? 'Direct' : `${segment.stops} Stop(s)`}
           </p>
-          
+
           <div className={styles.flightRouteRow}>
             <div className={styles.flightTimeSection}>
               <span className={styles.flightTime}>{segment.departureTime}</span>
@@ -106,9 +113,7 @@ function FlightCard({ type, segment, date }: { type: 'outbound' | 'return', segm
                   <div className={styles.flightStopMarker}>
                     <div className={styles.flightStopDot} />
                     {segment.stopInfo && (
-                      <span className={styles.flightStopText}>
-                        {segment.stopInfo}
-                      </span>
+                      <span className={styles.flightStopText}>{segment.stopInfo}</span>
                     )}
                   </div>
                 )}
@@ -148,23 +153,47 @@ function StayCard({
   nights: number;
   isPrimary: boolean;
 }) {
-  const bgImage = hotel.image && hotel.image.startsWith('http') ? `url("${hotel.image}")` : undefined;
+  const [selectedActivity, setSelectedActivity] =
+    React.useState<TripHighlight | null>(null);
+  const [isActivityOpen, setIsActivityOpen] = React.useState(false);
+
+  const bgImage =
+    hotel.image && hotel.image.startsWith('http')
+      ? `url("${hotel.image}")`
+      : undefined;
 
   return (
     <div className={styles.stayCard}>
-      <div className={styles.stayImageContainer} style={{ backgroundImage: bgImage }}>
-        {!bgImage && <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#9ca3af' }}>hotel</span>}
+      <div
+        className={styles.stayImageContainer}
+        style={{ backgroundImage: bgImage }}
+      >
+        {!bgImage && (
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: '48px', color: '#9ca3af' }}
+          >
+            hotel
+          </span>
+        )}
         <div className={styles.ratingBadge}>
-          <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#eab308' }}>star</span>
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: '14px', color: '#eab308' }}
+          >
+            star
+          </span>
           {hotel.rating}
         </div>
       </div>
-      
+
       <div className={styles.stayContent}>
         <div className={styles.stayHeader}>
           <div>
             <div className={styles.stayTags}>
-              <span className={styles.stayBadge}>{isPrimary ? 'Primary Stay' : 'Secondary Stay'}</span>
+              <span className={styles.stayBadge}>
+                {isPrimary ? 'Primary Stay' : 'Secondary Stay'}
+              </span>
               <span className={styles.stayNights}>{nights} Nights</span>
             </div>
             <h3 className={styles.stayTitle}>{hotel.name}</h3>
@@ -172,38 +201,82 @@ function StayCard({
         </div>
 
         <div className={styles.locationRow}>
-          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>location_on</span>
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: '16px' }}
+          >
+            location_on
+          </span>
           {hotel.location.city}, {hotel.location.country}
         </div>
 
         <div className={styles.amenities}>
           {hotel.amenities.slice(0, 5).map((tag, i) => (
-            <span key={i} className={styles.amenityTag}>{tag}</span>
+            <span key={i} className={styles.amenityTag}>
+              {tag}
+            </span>
           ))}
         </div>
 
         <div className={styles.activitiesSection}>
           <h4 className={styles.activitiesTitle}>
-            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#0d9488' }}>attractions</span>
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: '18px', color: '#0d9488' }}
+            >
+              attractions
+            </span>
             Planned Activities
           </h4>
           <div className={styles.activitiesGrid}>
-            {highlights.filter(h => h.type === 'activity').map((act, idx) => (
-              <div key={idx} className={styles.activityCard}>
-                <div className={styles.activityIcon}>
+            {highlights
+              .filter((h) => h.type === 'activity')
+              .map((act, idx) => (
+                <div
+                  key={idx}
+                  className={styles.activityCard}
+                  onClick={() => {
+                    setSelectedActivity(act);
+                    setIsActivityOpen(true);
+                  }}
+                >
+                  <div className={styles.activityIcon}>
                     <span className="material-symbols-outlined">attractions</span>
+                  </div>
+                  <div className={styles.activityInfo}>
+                    <h5 className={styles.activityName}>{act.title}</h5>
+                    <span className={styles.activityMeta}>
+                      {formatDate(act.date)}
+                    </span>
+                  </div>
                 </div>
-                <div className={styles.activityInfo}>
-                  <h5 className={styles.activityName}>{act.title}</h5>
-                  <span className={styles.activityMeta}>
-                    {formatDate(act.date)}
-                  </span>
-                </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       </div>
+
+      {isActivityOpen && selectedActivity && (
+        <div
+          className={styles.activityModalBackdrop}
+          onClick={() => setIsActivityOpen(false)}
+        >
+          <div
+            className={styles.activityModal}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h4 className={styles.activityModalTitle}>{selectedActivity.title}</h4>
+            <p className={styles.activityModalDate}>
+              {formatDate(selectedActivity.date)}
+            </p>
+            <button
+              className={styles.activityModalClose}
+              onClick={() => setIsActivityOpen(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -213,7 +286,9 @@ function TransferDivider({ label }: { label: string }) {
     <div className={styles.transferDivider}>
       <div className={styles.dividerLine}></div>
       <div className={styles.transferLabel}>
-        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>directions_car</span>
+        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+          directions_car
+        </span>
         {label}
       </div>
       <div className={styles.dividerLine}></div>

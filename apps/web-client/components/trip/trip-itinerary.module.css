@@ -350,7 +350,61 @@
         transform 160ms ease,
         border-color 160ms ease,
         box-shadow 160ms ease;
+
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none;     /* IE 10+ */
+    user-select: none;         /* Standard */
+    cursor: pointer;
+
 }
+
+
+.activityModalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.activityModal {
+  background: var(--color-white);
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  max-width: 320px;
+  width: 90%;
+  box-shadow: var(--shadow-card-hover);
+}
+
+.activityModalTitle {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.activityModalDate {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.activityModalDesc {
+  font-size: 0.875rem;
+  color: var(--color-text-main);
+  margin-bottom: 1rem;
+}
+
+.activityModalClose {
+  font-size: 0.8rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--color-border-light);
+  background: #f8fafc;
+  cursor: pointer;
+}
+
 
 .activityCard:hover {
     border-color: var(--color-primary-dark);
