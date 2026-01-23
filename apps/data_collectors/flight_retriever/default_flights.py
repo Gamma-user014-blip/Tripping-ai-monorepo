@@ -8,6 +8,44 @@ import uuid
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 
+# Airport code to country mapping
+AIRPORT_COUNTRIES: Dict[str, str] = {
+    # Israel
+    "TLV": "Israel", "SDV": "Israel",
+    # Italy
+    "FCO": "Italy", "MXP": "Italy", "VCE": "Italy", "NAP": "Italy", "FLR": "Italy", "BGY": "Italy", "PSA": "Italy", "BLQ": "Italy",
+    # Spain
+    "MAD": "Spain", "BCN": "Spain", "PMI": "Spain", "AGP": "Spain", "VLC": "Spain",
+    # France
+    "CDG": "France", "ORY": "France", "NCE": "France", "LYS": "France", "MRS": "France",
+    # UK
+    "LHR": "United Kingdom", "LGW": "United Kingdom", "STN": "United Kingdom", "MAN": "United Kingdom", "EDI": "United Kingdom",
+    # Germany
+    "FRA": "Germany", "MUC": "Germany", "BER": "Germany", "DUS": "Germany", "HAM": "Germany",
+    # USA
+    "JFK": "USA", "LAX": "USA", "ORD": "USA", "SFO": "USA", "MIA": "USA", "DFW": "USA", "ATL": "USA", "BOS": "USA",
+    # Greece
+    "ATH": "Greece", "SKG": "Greece", "HER": "Greece", "JTR": "Greece", "JMK": "Greece",
+    # Netherlands
+    "AMS": "Netherlands",
+    # Portugal
+    "LIS": "Portugal", "OPO": "Portugal", "FAO": "Portugal",
+    # Turkey
+    "IST": "Turkey", "SAW": "Turkey", "AYT": "Turkey",
+    # UAE
+    "DXB": "United Arab Emirates", "AUH": "United Arab Emirates",
+    # Thailand
+    "BKK": "Thailand", "HKT": "Thailand",
+    # Japan
+    "NRT": "Japan", "HND": "Japan", "KIX": "Japan",
+    # Australia
+    "SYD": "Australia", "MEL": "Australia", "BNE": "Australia",
+}
+
+def get_country_for_airport(airport_code: str) -> str:
+    """Get the country name for an airport code, or a reasonable default."""
+    return AIRPORT_COUNTRIES.get(airport_code.upper(), "Unknown")
+
 # ======================
 # POPULAR ROUTES
 # ======================
@@ -139,19 +177,22 @@ def generate_mock_flights(origin_city: str, origin_code: str, dest_city: str, de
         
         flight_id = f"mock_f_{origin_code}_{dest_code}_{uuid.uuid4().hex[:6]}"
         
+        origin_country = get_country_for_airport(origin_code)
+        dest_country = get_country_for_airport(dest_code)
+        
         mock_flight = {
             "id": flight_id,
             "outbound": {
                 "origin": {
                     "city": origin_city,
-                    "country": "MockCountry",
+                    "country": origin_country,
                     "airport_code": origin_code.upper(),
                     "latitude": 0.0,
                     "longitude": 0.0,
                 },
                 "destination": {
                     "city": dest_city,
-                    "country": "MockCountry",
+                    "country": dest_country,
                     "airport_code": dest_code.upper(),
                     "latitude": 1.0,
                     "longitude": 1.0,
@@ -163,8 +204,8 @@ def generate_mock_flights(origin_city: str, origin_code: str, dest_city: str, de
                 "layovers": [] if is_direct else [
                     {
                         "airport": {
-                            "city": "Intermediate City",
-                            "country": "MockCountry",
+                            "city": "Transit Hub",
+                            "country": "",
                             "airport_code": "HUB",
                             "latitude": 0.5,
                             "longitude": 0.5,

@@ -42,11 +42,14 @@ async def stay_search(request: StayRequest, client: httpx.AsyncClient) -> StayRe
     
     async def get_hotels():
         try:
+            print(f"Searching hotels in {request.hotel_request.location.city}...")
             res = await client.post(HOTEL_REQUEST_API, json=request.hotel_request.model_dump())
             res.raise_for_status()
-            return HotelSearchResponse.model_validate(res.json())
+            result = HotelSearchResponse.model_validate(res.json())
+            print(f"Hotel search returned {len(result.options)} hotels for {request.hotel_request.location.city}")
+            return result
         except Exception as e:
-            print(f"Hotel search failed: {type(e).__name__}: {e}")
+            print(f"Hotel search failed for {request.hotel_request.location.city}: {type(e).__name__}: {e}")
             return HotelSearchResponse()
 
     async def get_activities():

@@ -119,23 +119,32 @@ const TripHighlights: React.FC<TripHighlightsProps> = ({
 
   const hasOrigin = originCity && originCity.trim() !== "";
   const hasDestination = destCity && destCity.trim() !== "";
-  const showArrow = hasOrigin && hasDestination && originCity !== destCity;
+  // Always show route if we have both origin and destination
+  const showRoute = hasOrigin && hasDestination;
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.route}>
-          {hasOrigin && showArrow && (
+          {showRoute && (
             <>
               <span className={styles.city}>{originCity}</span>
-              {originCountry ? `, ${originCountry}` : ""}
-              <span className={styles.arrow}>⟶</span>
+              {originCountry && originCountry !== "MockCountry" ? `, ${originCountry}` : ""}
+              <span className={styles.arrow}>→</span>
+              <span className={styles.city}>{destCity}</span>
+              {destCountry && destCountry !== "MockCountry" ? `, ${destCountry}` : ""}
             </>
           )}
-          {hasDestination && (
+          {!showRoute && hasOrigin && (
+            <>
+              <span className={styles.city}>{originCity}</span>
+              {originCountry && originCountry !== "MockCountry" ? `, ${originCountry}` : ""}
+            </>
+          )}
+          {!showRoute && !hasOrigin && hasDestination && (
             <>
               <span className={styles.city}>{destCity}</span>
-              {destCountry ? `, ${destCountry}` : ""}
+              {destCountry && destCountry !== "MockCountry" ? `, ${destCountry}` : ""}
             </>
           )}
           {!hasOrigin && !hasDestination && (

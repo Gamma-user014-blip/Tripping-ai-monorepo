@@ -72,8 +72,7 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
   let origin: Location | null = null;
   let mainDestination: Location | null = null;
 
-  let outboundArrivalDate = "";
-  let returnDepartureDate = "";
+  const flightDates: string[] = [];
 
   const getIsoDate = (dateTime: string): string => dateTime.split("T")[0];
 
@@ -81,27 +80,6 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
     const base = new Date(`${isoDate}T00:00:00.000Z`);
     base.setUTCDate(base.getUTCDate() + days);
     return base.toISOString().slice(0, 10);
-  };
-
-  const getDateRangeFromActivities = (
-    stayActivities: ActivityOption[],
-  ): { start: string; end: string } => {
-    const dates: string[] = [];
-
-    for (const activity of stayActivities) {
-      for (const slot of activity.available_times ?? []) {
-        if (slot.date) {
-          dates.push(slot.date);
-        }
-      }
-    }
-
-    dates.sort();
-
-    return {
-      start: dates[0] ?? "",
-      end: dates.length > 0 ? dates[dates.length - 1] : "",
-    };
   };
 
   // First pass: collect all data and extract dates from flights
@@ -125,6 +103,9 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
         flightDest.latitude === origin.latitude &&
         flightDest.longitude === origin.longitude;
 
+      // Track all flight dates for stay date calculation
+      flightDates.push(getIsoDate(data.outbound.departure_time));
+
       if (!isReturnFlight) {
         mainDestination = flightDest;
         orderedPath.push({
@@ -132,12 +113,6 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
           lng: flightDest.longitude,
           label: flightDest.city,
         });
-
-        if (!outboundArrivalDate) {
-          outboundArrivalDate = getIsoDate(data.outbound.arrival_time);
-        }
-      } else {
-        returnDepartureDate = getIsoDate(data.outbound.departure_time);
       }
 
       highlights.push({
@@ -191,88 +166,39 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
     return sum + 1;
   }, 0);
 
-  // If we have outbound date but no return date, compute from total nights
-  if (outboundArrivalDate && !returnDepartureDate && totalNights > 0) {
-    const start = new Date(`${outboundArrivalDate}T00:00:00.000Z`);
-    start.setUTCDate(start.getUTCDate() + totalNights);
-    returnDepartureDate = start.toISOString().slice(0, 10);
-  }
+  // Trip dates come from flights only
+  const tripStartDate = flightDates.length > 0 ? flightDates[0] : "";
+  const tripEndDate = flightDates.length > 1 ? flightDates[flightDates.length - 1] : 
+    (tripStartDate && totalNights > 0 ? addDays(tripStartDate, totalNights) : "");
 
-  // Add stay highlights. Prefer per-stay date ranges from that stay's activities,
-  // but also make the stay ranges contiguous (no missing days between hotels).
+  // Add stay highlights - use flight dates as boundaries
+  // Each stay starts after a flight and ends before the next flight
   if (staySections.length > 0) {
-    const draftRanges = staySections.map((stay) => {
-      const range = getDateRangeFromActivities(stay.activities);
-      return {
-        hotel: stay.hotel,
-        start: range.start,
-        end: range.end,
-      };
-    });
-
-    // Seed missing starts.
-    for (let i = 0; i < draftRanges.length; i++) {
-      if (!draftRanges[i].start) {
-        if (i === 0) {
-          draftRanges[i].start = outboundArrivalDate || "";
-        } else if (draftRanges[i - 1].end) {
-          draftRanges[i].start = addDays(draftRanges[i - 1].end, 1);
-        }
-      }
-    }
-
-    // Fill missing ends from next start - 1.
-    for (let i = 0; i < draftRanges.length; i++) {
-      const next = draftRanges[i + 1];
-      if (!draftRanges[i].end && next?.start) {
-        draftRanges[i].end = addDays(next.start, -1);
-      }
-    }
-
-    // Ensure there are no gaps between consecutive stays.
-    for (let i = 0; i < draftRanges.length - 1; i++) {
-      const current = draftRanges[i];
-      const next = draftRanges[i + 1];
-
-      if (current.end && next.start) {
-        const expectedNextStart = addDays(current.end, 1);
-        if (expectedNextStart < next.start) {
-          current.end = addDays(next.start, -1);
-        }
-      }
-    }
-
-    // Ensure last stay reaches the trip end when available.
-    const lastIndex = draftRanges.length - 1;
-    if (returnDepartureDate) {
-      if (!draftRanges[lastIndex].end) {
-        draftRanges[lastIndex].end = returnDepartureDate;
-      } else if (draftRanges[lastIndex].end < returnDepartureDate) {
-        draftRanges[lastIndex].end = returnDepartureDate;
-      }
-    }
-
-    for (const stayRange of draftRanges) {
-      const start = stayRange.start || outboundArrivalDate || "";
-      const end = stayRange.end || "";
+    for (let i = 0; i < staySections.length; i++) {
+      const stay = staySections[i];
       const nights =
-        stayRange.hotel.price_per_night.amount > 0
+        stay.hotel.price_per_night.amount > 0
           ? Math.max(
               1,
               Math.round(
-                stayRange.hotel.total_price.amount /
-                  stayRange.hotel.price_per_night.amount,
+                stay.hotel.total_price.amount /
+                  stay.hotel.price_per_night.amount,
               ),
             )
           : 1;
 
+      // Stay starts on the arrival date of the previous flight (flight i for stay i)
+      // and ends on departure of next flight (flight i+1 for stay i)
+      const stayStart = flightDates[i] || "";
+      const stayEnd = flightDates[i + 1] || (stayStart ? addDays(stayStart, nights) : "");
+
       highlights.push({
-        date: start,
-        endDate: end && end !== start ? end : undefined,
+        date: stayStart,
+        endDate: stayEnd && stayEnd !== stayStart ? stayEnd : undefined,
         nights,
-        title: `Stay at ${stayRange.hotel.name}`,
+        title: `Stay in ${stay.hotel.location.city}`,
         type: "stay",
-        location: stayRange.hotel.location,
+        location: stay.hotel.location,
       });
     }
   }
@@ -324,18 +250,23 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
     longitude: 0,
   };
 
+  // Sort all highlights by date and type
+  const sortedHighlights = [...highlights].sort(
+    (a, b) => a.date.localeCompare(b.date) || typeRank[a.type] - typeRank[b.type]
+  );
+
   return {
     hotels,
     flights,
     activities,
     transfers,
-    highlights: highlights.slice(0, 4),
+    highlights: sortedHighlights,
     waypoints: uniqueWaypoints,
     totalPrice: { currency: "USD", amount: Math.round(totalPrice) },
     origin: origin || defaultLocation,
     destination: mainDestination || defaultLocation,
-    tripStartDate: outboundArrivalDate,
-    tripEndDate: returnDepartureDate,
+    tripStartDate,
+    tripEndDate,
     mapCenter,
     vibe: trip.vibe,
   };
