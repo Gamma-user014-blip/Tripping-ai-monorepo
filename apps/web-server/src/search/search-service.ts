@@ -69,8 +69,11 @@ const processPlans = async (searchId: string, tripYaml: string): Promise<void> =
     });
 
     try {
+      console.log(`Processing trip plan with vibe: ${plan.vibe}`);
       const { trip_request: tripRequest } = await buildTripRequest(plan.vibe, plan.actions);
+      console.log(`Built trip request for vibe: ${plan.vibe}`);
       const layout = await createTrip(tripRequest);
+      console.log(`Created trip layout for vibe: ${plan.vibe}!!!!`);
 
       const trip: Trip = { vibe: plan.vibe, layout };
 

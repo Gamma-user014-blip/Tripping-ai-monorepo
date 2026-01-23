@@ -4,6 +4,15 @@ import sys
 from fastapi import FastAPI, HTTPException, Request
 from shared.data_types.models import TripResponse
 import uvicorn
+import logging
+import time
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 from .packages_builder import build_package
 
 app = FastAPI(
@@ -11,6 +20,14 @@ app = FastAPI(
     description="Optimizes travel packages using shared models.",
     version="2.0.0"
 )
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration = time.time() - start_time
+    logger.info(f"Handled {request.method} {request.url.path} in {duration:.4f} seconds")
+    return response
 
 @app.post("/api/build-package")
 async def create_package(request: Request):
@@ -48,8 +65,7 @@ async def create_package(request: Request):
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        print(f"[ERROR] {error_details}")
-        sys.stdout.flush()
+        logger.info(f"[ERROR] {error_details}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

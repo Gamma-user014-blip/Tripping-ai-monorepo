@@ -1,5 +1,8 @@
-from fastapi import FastAPI, HTTPException, Body
-from typing import List, Optional, Dict
+from fastapi import FastAPI, HTTPException, Body, Request
+import logging
+import time
+import base64
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from .data_processor import transform_hotel_data, generate_unique_hotel_id
 import redis.asyncio as redis
@@ -10,6 +13,13 @@ from dotenv import load_dotenv
 from shared.data_types import models
 
 from .custom_liteapi import CustomLiteApi
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Hotel Data Service")
 
@@ -43,11 +53,11 @@ async def cache_get(key: str) -> Optional[Dict]:
         data = await client.get(key)
         if data:
             return json.loads(data)
-        print(f"DEBUG: cache_get returning None for key: {key}")
+        logger.info(f"DEBUG: cache_get returning None for key: {key}")
         return None
     except Exception as e:
-        print(f"Cache get error: {e}")
-        print(f"DEBUG: cache_get returning None due to exception for key: {key}")
+        logger.info(f"Cache get error: {e}")
+        logger.info(f"DEBUG: cache_get returning None due to exception for key: {key}")
         return None
 
 
@@ -57,7 +67,7 @@ async def cache_set(key: str, value: Dict, ttl: int = HOTEL_CACHE_TTL):
         client = await get_redis_client()
         await client.setex(key, ttl, json.dumps(value))
     except Exception as e:
-        print(f"Cache set error: {e}")
+        logger.info(f"Cache set error: {e}")
 
 
 async def map_provider_id(unique_id: str, provider_id: str):
@@ -67,7 +77,7 @@ async def map_provider_id(unique_id: str, provider_id: str):
         key = f"map:provider_id:{unique_id}"
         await client.setex(key, HOTEL_CACHE_TTL * 24, provider_id) # Keep mapping longer
     except Exception as e:
-        print(f"Mapping error: {e}")
+        logger.info(f"Mapping error: {e}")
 
 
 async def get_provider_id(unique_id: str) -> Optional[str]:
@@ -77,8 +87,8 @@ async def get_provider_id(unique_id: str) -> Optional[str]:
         key = f"map:provider_id:{unique_id}"
         return await client.get(key)
     except Exception as e:
-        print(f"Mapping lookup error: {e}")
-        print(f"DEBUG: get_provider_id returning None for unique_id: {unique_id}")
+        logger.info(f"Mapping lookup error: {e}")
+        logger.info(f"DEBUG: get_provider_id returning None for unique_id: {unique_id}")
         return None
 
 
@@ -127,10 +137,10 @@ async def check_hotel_availability(
     # Check cache first
     cached_availability = await cache_get(availability_cache_key)
     if cached_availability:
-        print(f"Cache hit for availability {cache_id} ({checkin} to {checkout})")
+        logger.info(f"Cache hit for availability {cache_id} ({checkin} to {checkout})")
         return cached_availability
     
-    print(f"Cache miss for availability {cache_id} ({checkin} to {checkout})")
+    logger.info(f"Cache miss for availability {cache_id} ({checkin} to {checkout})")
     
     try:
         # Build occupancies
@@ -149,18 +159,18 @@ async def check_hotel_availability(
 
         # Check if we got valid data
         if not rates_response or "data" not in rates_response:
-            print(f"DEBUG: check_hotel_availability returning None - invalid rates_response for {hotel_id}")
+            logger.info(f"DEBUG: check_hotel_availability returning None - invalid rates_response for {hotel_id}")
             return None
         
         # Check for errors
         if "error" in rates_response:
-            print(f"No availability for {hotel_id}: {rates_response['error'].get('message')}")
-            print(f"DEBUG: check_hotel_availability returning None - error in rates_response for {hotel_id}")
+            logger.info(f"No availability for {hotel_id}: {rates_response['error'].get('message')}")
+            logger.info(f"DEBUG: check_hotel_availability returning None - error in rates_response for {hotel_id}")
             return None
         
         hotel_rates = rates_response["data"]
         if not hotel_rates or len(hotel_rates) == 0:
-            print(f"DEBUG: check_hotel_availability returning None - no hotel_rates for {hotel_id}")
+            logger.info(f"DEBUG: check_hotel_availability returning None - no hotel_rates for {hotel_id}")
             return None
         
         # Get the first hotel's rate data
@@ -168,7 +178,7 @@ async def check_hotel_availability(
         
         # Check if hotel has room types available
         if "roomTypes" not in hotel_rate_data or len(hotel_rate_data["roomTypes"]) == 0:
-            print(f"DEBUG: check_hotel_availability returning None - no roomTypes for {hotel_id}")
+            logger.info(f"DEBUG: check_hotel_availability returning None - no roomTypes for {hotel_id}")
             return None
         
         # Cache the availability data (shorter TTL than hotel data)
@@ -177,8 +187,8 @@ async def check_hotel_availability(
         return hotel_rate_data
         
     except Exception as e:
-        print(f"Error checking availability for {hotel_id}: {e}")
-        print(f"DEBUG: check_hotel_availability returning None due to exception for {hotel_id}")
+        logger.info(f"Error checking availability for {hotel_id}: {e}")
+        logger.info(f"DEBUG: check_hotel_availability returning None due to exception for {hotel_id}")
         return None
 
 
@@ -188,12 +198,12 @@ def extract_room_data_from_availability(availability_data: Dict) -> Optional[Dic
     Uses the best rate's room information.
     """
     if not availability_data or "roomTypes" not in availability_data:
-        print("DEBUG: extract_room_data_from_availability returning None - missing availability_data or roomTypes")
+        logger.info("DEBUG: extract_room_data_from_availability returning None - missing availability_data or roomTypes")
         return None
     
     room_types = availability_data["roomTypes"]
     if not room_types:
-        print("DEBUG: extract_room_data_from_availability returning None - no room_types")
+        logger.info("DEBUG: extract_room_data_from_availability returning None - no room_types")
         return None
     
     # Find the cheapest room type
@@ -208,13 +218,13 @@ def extract_room_data_from_availability(availability_data: Dict) -> Optional[Dic
                 best_room = room_type
     
     if not best_room:
-        print("DEBUG: extract_room_data_from_availability returning None - no best_room found")
+        logger.info("DEBUG: extract_room_data_from_availability returning None - no best_room found")
         return None
     
     # Get the first rate from the best room type
     rates = best_room.get("rates", [])
     if not rates:
-        print("DEBUG: extract_room_data_from_availability returning None - no rates in best_room")
+        logger.info("DEBUG: extract_room_data_from_availability returning None - no rates in best_room")
         return None
     
     first_rate = rates[0]
@@ -240,12 +250,12 @@ def extract_best_rate(availability_data: Dict) -> Optional[Dict]:
     Returns rate info with pricing
     """
     if not availability_data or "roomTypes" not in availability_data:
-        print("DEBUG: extract_best_rate returning None - missing availability_data or roomTypes")
+        logger.info("DEBUG: extract_best_rate returning None - missing availability_data or roomTypes")
         return None
     
     room_types = availability_data["roomTypes"]
     if not room_types:
-        print("DEBUG: extract_best_rate returning None - no room_types")
+        logger.info("DEBUG: extract_best_rate returning None - no room_types")
         return None
     
     # Find the cheapest room type
@@ -260,13 +270,13 @@ def extract_best_rate(availability_data: Dict) -> Optional[Dict]:
                 best_room = room_type
     
     if not best_room:
-        print("DEBUG: extract_best_rate returning None - no best_room found")
+        logger.info("DEBUG: extract_best_rate returning None - no best_room found")
         return None
     
     # Extract rate details from first rate in the room type
     rates = best_room.get("rates", [])
     if not rates:
-        print("DEBUG: extract_best_rate returning None - no rates in best_room")
+        logger.info("DEBUG: extract_best_rate returning None - no rates in best_room")
         return None
     
     first_rate = rates[0]
@@ -294,7 +304,7 @@ def extract_best_rate(availability_data: Dict) -> Optional[Dict]:
 async def startup():
     """Initialize connections on startup"""
     await get_redis_client()
-    print("Redis connection initialized")
+    logger.info("Redis connection initialized")
 
 
 @app.on_event("shutdown")
@@ -308,6 +318,15 @@ async def shutdown():
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration = time.time() - start_time
+    logger.info(f"Handled {request.method} {request.url.path} in {duration:.4f} seconds")
+    return response
 
 
 @app.post("/api/hotels/search")
@@ -346,7 +365,7 @@ async def search_hotels(
             city_name=city,
             limit=max_results
         )
-        print(f"Found {len(hotel_data.get('data', []))} hotels in {city}")
+        logger.info(f"Found {len(hotel_data.get('data', []))} hotels in {city}")
         
         hotels = hotel_data.get("data", [])
         
@@ -381,7 +400,7 @@ async def search_hotels(
             cached_hotel = await cache_get(cache_key)
             
             if cached_hotel:
-                print(f"Cache hit for transformed hotel {unique_id}")
+                logger.info(f"Cache hit for transformed hotel {unique_id}")
                 hotel_option = models.HotelOption.model_validate(cached_hotel)
                 
                 # Filter by max price if specified
@@ -393,7 +412,7 @@ async def search_hotels(
                 continue # Path optimized: Skip availability API check
 
             # Cache miss: Check hotel availability for the requested dates
-            print(f"Cache miss for transformed hotel {unique_id}, checking live availability...")
+            logger.info(f"Cache miss for transformed hotel {unique_id}, checking live availability...")
             availability_data = await check_hotel_availability(
                 hotel_id=hotel_id,
                 checkin=start_date,
@@ -407,13 +426,13 @@ async def search_hotels(
             
             # Skip if not available
             if not availability_data:
-                print(f"Hotel {unique_id} ({hotel_id}) not available for {start_date} to {end_date}")
+                logger.info(f"Hotel {unique_id} ({hotel_id}) not available for {start_date} to {end_date}")
                 continue
             
             # Extract best rate
             best_rate = extract_best_rate(availability_data)
             if not best_rate:
-                print(f"No rates found for hotel {unique_id}")
+                logger.info(f"No rates found for hotel {unique_id}")
                 continue
             
             # Extract room data from the availability response
@@ -436,7 +455,7 @@ async def search_hotels(
             
             # Validate hotel has essential data before caching
             if not hotel_option.id or not hotel_option.name:
-                print("Skipping invalid hotel with missing id or name")
+                logger.info(f"Skipping invalid hotel with missing id or name")
                 continue
             
             # Cache the transformed hotel option
@@ -446,7 +465,7 @@ async def search_hotels(
             response.options.append(hotel_option)
             available_count += 1
         
-        print(f"Found {available_count} available hotels out of {len(hotels)} total")
+        logger.info(f"Found {available_count} available hotels out of {len(hotels)} total")
         
         # Set metadata
         search_id = f"search_{datetime.now(timezone.utc).timestamp()}"
@@ -460,8 +479,8 @@ async def search_hotels(
         
     except Exception as e:
         import traceback
-        print(f"ERROR in hotel search: {type(e).__name__}: {e}")
-        print(f"Traceback: {traceback.format_exc()}")
+        logger.info(f"ERROR in hotel search: {type(e).__name__}: {e}")
+        logger.info(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Error fetching hotels: {str(e)}")
 
 
@@ -475,15 +494,15 @@ async def get_hotel_details(hotel_id: str):
     # Try cache first
     cached = await cache_get(cache_key)
     if cached:
-        print(f"Cache hit for hotel details {hotel_id}")
+        logger.info(f"Cache hit for hotel details {hotel_id}")
         return cached
     
-    print(f"Cache miss for hotel details {hotel_id}")
+    logger.info(f"Cache miss for hotel details {hotel_id}")
     
     # Resolve provider ID from unique ID mapping
     provider_id = await get_provider_id(hotel_id)
     if not provider_id:
-        print(f"No provider mapping found for {hotel_id}, assuming direct ID")
+        logger.info(f"No provider mapping found for {hotel_id}, assuming direct ID")
         provider_id = hotel_id
     
     # Use SDK to fetch from API

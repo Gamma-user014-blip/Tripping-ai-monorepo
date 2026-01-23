@@ -9,8 +9,17 @@ import uvicorn
 import requests
 from dotenv import load_dotenv
 from datetime import date, datetime
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
+import logging
+import time
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 from shared.data_types.llm_models import *
 from apps.llm_chat_essentials.settings import (
     YAML_TRIP_INTAKE_SCHEMA_V11,
@@ -22,7 +31,7 @@ app = FastAPI(title="LLM Chat Essentials Service")
 
 PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
 if not PERPLEXITY_API_KEY:
-    print("WARNING: PERPLEXITY_API_KEY not found in environment.")
+    logger.info("WARNING: PERPLEXITY_API_KEY not found in environment.")
 
 
 # -------------------------
@@ -145,7 +154,7 @@ def call_llm(
 
     data = resp.json()
     text = data["choices"][0]["message"]["content"]
-    print("LLM RESPONSE:", text)
+    logger.info(f"LLM RESPONSE: {text}")
     return text
 # -------------------------
 # Update state (YAML)
@@ -432,6 +441,15 @@ def _get_single_missing_question(
 @app.get("/health")
 def health_check():
     return {"status": "ok", "service": "llm_chat_essentials"}
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration = time.time() - start_time
+    logger.info(f"Handled {request.method} {request.url.path} in {duration:.4f} seconds")
+    return response
 
 
 @app.post("/api/get_single_missing_question", response_model=FillResponse)

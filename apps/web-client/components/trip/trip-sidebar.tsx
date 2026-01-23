@@ -1,16 +1,16 @@
 import React from "react";
 import styles from "./trip-sidebar.module.css";
-import type { Trip } from "@shared/types";
 import TripMap from "../results/trip-card/trip-map";
-import extractTripData from "../../lib/trip-extract";
+import { exportTripToPDF, TripResult } from './trip-pdf-export';
 
 interface TripSidebarProps {
-  trip: Trip;
-  bookingRef: string;
+  trip: TripResult;
 }
 
-const TripSidebar = ({ trip, bookingRef }: TripSidebarProps): JSX.Element => {
-  const { totalPrice, waypoints, mapCenter } = extractTripData(trip);
+const TripSidebar = ({ trip }: TripSidebarProps): JSX.Element => {
+  const totalPrice = trip.price;
+  const waypoints = trip.waypoints;
+  const mapCenter = trip.mapCenter;
 
   const formatPrice = (amount: number, currency: string): string => {
     return new Intl.NumberFormat("en-US", {
@@ -18,6 +18,29 @@ const TripSidebar = ({ trip, bookingRef }: TripSidebarProps): JSX.Element => {
       currency: currency,
       maximumFractionDigits: 0,
     }).format(Math.ceil(amount));
+  };
+
+  const handleAddToCalendar = async (trip: TripResult) => {
+    const res = await fetch('/api/add-trip-to-calendar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(trip),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error('Failed to add trip to Google Calendar', err);
+      return;
+    }
+
+    const data = await res.json();
+    console.log('Created Google event IDs:', data.createdEventIds);
+  };
+
+  const handleExportPDF = async (trip: TripResult) => {
+    await exportTripToPDF(trip, {
+      filename: `${trip.origin.city}-to-${trip.destination.city}.pdf`,
+    });
   };
 
   return (
@@ -40,7 +63,7 @@ const TripSidebar = ({ trip, bookingRef }: TripSidebarProps): JSX.Element => {
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Trip ID</span>
             <span className={`${styles.detailValue} ${styles.detailValueMono}`}>
-              {bookingRef}
+              {trip.tripId}
             </span>
           </div>
           <div className={styles.detailRow}>
@@ -58,14 +81,13 @@ const TripSidebar = ({ trip, bookingRef }: TripSidebarProps): JSX.Element => {
           <div className={`${styles.detailRow} ${styles.priceRow}`}>
             <span className={styles.priceLabel}>Total Cost</span>
             <span className={styles.priceValue}>
-              {formatPrice(totalPrice.amount, totalPrice.currency)}
             </span>
           </div>
         </div>
       </div>
 
       <div className={styles.buttonStack}>
-        <button className={styles.actionButton}>
+        <button className={styles.actionButton} onClick={() => handleExportPDF(trip)}>
           <span
             className="material-symbols-outlined"
             style={{ fontSize: "18px" }}
@@ -73,8 +95,9 @@ const TripSidebar = ({ trip, bookingRef }: TripSidebarProps): JSX.Element => {
             download
           </span>
           Download PDF
+
         </button>
-        <button className={styles.actionButton}>
+        <button className={styles.actionButton} onClick={() => handleAddToCalendar(trip)}>
           <span
             className="material-symbols-outlined"
             style={{ fontSize: "18px" }}

@@ -1,9 +1,18 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from shared.data_types.models import *
 import os
+import logging
+import time
 from dotenv import load_dotenv
 import httpx
 import asyncio
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -19,13 +28,22 @@ PACKAGE_BUILDER_API = os.getenv("PACKAGE_BUILDER_API", "http://localhost:8000/ap
 def read_root():
     return {"message": "Trip Builder Service"}
 
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration = time.time() - start_time
+    logger.info(f"Handled {request.method} {request.url.path} in {duration:.4f} seconds")
+    return response
+
 async def flight_search(request: FlightRequest, client: httpx.AsyncClient) -> FlightResponse:
     try:
         response = await client.post(FLIGHT_REQUEST_API, json=request.model_dump())
         response.raise_for_status()
         return FlightResponse.model_validate(response.json())
     except Exception as e:
-        print(f"Flight search failed: {type(e).__name__}: {e}")
+        logger.info(f"Flight search failed: {type(e).__name__}: {e}")
         return FlightResponse()
 
 async def transfer_search(request: TransferRequest, client: httpx.AsyncClient) -> TransferResponse:
@@ -34,7 +52,7 @@ async def transfer_search(request: TransferRequest, client: httpx.AsyncClient) -
         response.raise_for_status()
         return TransferResponse.model_validate(response.json())
     except Exception as e:
-        print(f"Transfer search failed: {type(e).__name__}: {e}")
+        logger.info(f"Transfer search failed: {type(e).__name__}: {e}")
         return TransferResponse()
 
 async def stay_search(request: StayRequest, client: httpx.AsyncClient) -> StayResponse:
@@ -42,14 +60,14 @@ async def stay_search(request: StayRequest, client: httpx.AsyncClient) -> StayRe
     
     async def get_hotels():
         try:
-            print(f"Searching hotels in {request.hotel_request.location.city}...")
+            logger.info(f"Searching hotels in {request.hotel_request.location.city}...")
             res = await client.post(HOTEL_REQUEST_API, json=request.hotel_request.model_dump())
             res.raise_for_status()
             result = HotelSearchResponse.model_validate(res.json())
-            print(f"Hotel search returned {len(result.options)} hotels for {request.hotel_request.location.city}")
+            logger.info(f"Hotel search returned {len(result.options)} hotels for {request.hotel_request.location.city}")
             return result
         except Exception as e:
-            print(f"Hotel search failed for {request.hotel_request.location.city}: {type(e).__name__}: {e}")
+            logger.info(f"Hotel search failed for {request.hotel_request.location.city}: {type(e).__name__}: {e}")
             return HotelSearchResponse()
 
     async def get_activities():
@@ -58,10 +76,10 @@ async def stay_search(request: StayRequest, client: httpx.AsyncClient) -> StayRe
             res.raise_for_status()
             data = res.json()
             result = ActivitySearchResponse.model_validate(data)
-            print(f"Activity search returned {len(result.options)} activities")
+            logger.info(f"Activity search returned {len(result.options)} activities")
             return result
         except Exception as e:
-            print(f"Activity search failed: {type(e).__name__}: {repr(e)}")
+            logger.info(f"Activity search failed: {type(e).__name__}: {repr(e)}")
             return ActivitySearchResponse()
 
     hotel_data, activity_data = await asyncio.gather(get_hotels(), get_activities())
@@ -90,7 +108,7 @@ async def process_sections(request: TripRequest) -> TripResponse:
                 return TripSectionResponse(type=SectionType.STAY, data=data)
             
             # Fallback for unknown types if needed, or raise
-            print(f"DEBUG: process_section returning None for unknown section type: {section.type}")
+            logger.info(f"DEBUG: process_section returning None for unknown section type: {section.type}")
             return None
 
         # Create tasks for all sections
@@ -114,13 +132,13 @@ async def build_package(trip_response: TripResponse) -> FinalTripLayout:
 async def create_trip(
     request: TripRequest
 ):
-    print(f"Received create_trip request with {len(request.sections)} sections")
+    logger.info(f"Received create_trip request with {len(request.sections)} sections")
     trip_response = await process_sections(request)
-    print(f"Processed sections, got {len(trip_response.sections)} responses")
+    logger.info(f"Processed sections, got {len(trip_response.sections)} responses")
     
-    print("Calling package builder...")
+    logger.info("Calling package builder...")
     package = await build_package(trip_response)
-    print("Package builder returned")
+    logger.info("Package builder returned")
     
     # Inject images back from search results into final package
     hotel_images = {

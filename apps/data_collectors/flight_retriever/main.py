@@ -5,9 +5,18 @@ import redis.asyncio as redis
 from typing import Optional, Dict, List, Any, Tuple
 from datetime import datetime, timezone, timedelta
 from shared.data_types.models import *
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Request
 from amadeus import Client, ResponseError
 from dotenv import load_dotenv
+import logging
+import time
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 from .data_processor import transform_flight_data, generate_unique_flight_id
 from .default_flights import get_default_flights_by_route, get_default_flight_by_id
@@ -34,7 +43,7 @@ async def get_redis_client():
         try:
             redis_client = await redis.from_url(REDIS_URL, decode_responses=True)
         except Exception as e:
-            print(f"Redis connection error: {e}")
+            logger.info(f"Redis connection error: {e}")
             return None
     return redis_client
 
@@ -47,7 +56,7 @@ async def cache_get(key: str) -> Optional[Dict]:
             return json.loads(data)
         return None
     except Exception as e:
-        print(f"Cache get error: {e}")
+        logger.info(f"Cache get error: {e}")
         return None
 
 async def cache_set(key: str, value: Dict, ttl: int = FLIGHT_CACHE_TTL):
@@ -55,7 +64,7 @@ async def cache_set(key: str, value: Dict, ttl: int = FLIGHT_CACHE_TTL):
         client = await get_redis_client()
         await client.setex(key, ttl, json.dumps(value))
     except Exception as e:
-        print(f"Cache set error: {e}")
+        logger.info(f"Cache set error: {e}")
 
 async def map_provider_id(unique_id: str, provider_offer: Dict):
     """Map generated unique ID to raw provider offer data"""
@@ -65,7 +74,7 @@ async def map_provider_id(unique_id: str, provider_offer: Dict):
         key = f"map:flight_offer:{unique_id}"
         await client.setex(key, FLIGHT_CACHE_TTL * 3, json.dumps(provider_offer))
     except Exception as e:
-        print(f"Mapping error: {e}")
+        logger.info(f"Mapping error: {e}")
 
 async def get_provider_offer(unique_id: str) -> Optional[Dict]:
     """Get raw provider offer from unique ID"""
@@ -78,7 +87,7 @@ async def get_provider_offer(unique_id: str) -> Optional[Dict]:
             return json.loads(data)
         return None
     except Exception as e:
-        print(f"Mapping lookup error: {e}")
+        logger.info(f"Mapping lookup error: {e}")
         return None
 
 # Amadeus Client
@@ -103,10 +112,19 @@ async def root():
 async def health():
     return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
 
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration = time.time() - start_time
+    logger.info(f"Handled {request.method} {request.url.path} in {duration:.4f} seconds")
+    return response
+
 @app.on_event("startup")
 async def startup():
     await get_redis_client()
-    print("Startup: Service initialized")
+    logger.info("Startup: Service initialized")
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -136,7 +154,7 @@ async def flight_search(request: FlightSearchRequest):
             if cached_response:
                 return FlightSearchResponse.model_validate(cached_response)
 
-            print(f"Calling Amadeus for {origin_code}->{dest_code}...")
+            logger.info(f"Calling Amadeus for {origin_code}->{dest_code}...")
             resp = amadeus.shopping.flight_offers_search.get(
                 originLocationCode=origin_code,
                 destinationLocationCode=dest_code,
@@ -180,9 +198,9 @@ async def flight_search(request: FlightSearchRequest):
             return response
 
         except (ResponseError, Exception) as e:
-            print(f"Amadeus API error: {e}. Falling back to default flights.")
+            logger.info(f"Amadeus API error: {e}. Falling back to default flights.")
     else:
-        print("Amadeus not configured. Falling back to default flights.")
+        logger.info("Amadeus not configured. Falling back to default flights.")
 
     # FALLBACK: Use default_flights generator
     try:
@@ -206,7 +224,7 @@ async def flight_search(request: FlightSearchRequest):
         
         return FlightSearchResponse(options=flight_options, metadata=metadata)
     except Exception as fe:
-        print(f"Fallback generation error: {fe}")
+        logger.info(f"Fallback generation error: {fe}")
         raise HTTPException(status_code=502, detail=f"Flight service unavailable: {fe}")
 
 @app.get("/api/flight_retriever/flights/{flight_id}")

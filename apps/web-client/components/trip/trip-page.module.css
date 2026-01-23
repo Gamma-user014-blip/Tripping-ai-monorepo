@@ -10,28 +10,33 @@
 }
 
 .mainContainer {
-  max-width: 80rem; /* max-w-7xl */
+  max-width: 80rem;
+  /* max-w-7xl */
   margin: 0 auto;
-  padding: 2rem 1rem; /* py-8 px-4 */
+  padding: 2rem 1rem;
+  /* py-8 px-4 */
   width: 100%;
 }
 
 @media (min-width: 768px) {
   .mainContainer {
-    padding: 2rem 2.5rem; /* px-10 */
+    padding: 2rem 2.5rem;
+    /* px-10 */
   }
 }
 
 @media (min-width: 1024px) {
   .mainContainer {
-    padding: 2rem 5rem; /* px-20 */
+    padding: 2rem 5rem;
+    /* px-20 */
   }
 }
 
 .contentGrid {
   display: flex;
   flex-direction: column;
-  gap: 2rem; /* gap-8 */
+  gap: 2rem;
+  /* gap-8 */
   align-items: flex-start;
 }
 
@@ -68,14 +73,16 @@
 
 @media (min-width: 1024px) {
   .sidebarSection {
-    width: 20rem; /* w-80 */
+    width: 20rem;
+    /* w-80 */
     position: sticky;
     top: 1.4rem;
     max-height: calc(100vh - 1.7rem);
     padding-top: 0.3rem;
     overflow-y: auto;
     order: 1;
-    scrollbar-width: none; /* no-scrollbar */
+    scrollbar-width: none;
+    /* no-scrollbar */
   }
 
   .sidebarSection::-webkit-scrollbar {
