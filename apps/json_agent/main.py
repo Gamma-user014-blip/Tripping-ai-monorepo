@@ -293,6 +293,7 @@ def generate_single_trip_plan(trip_yml: str, previous_vibes: List[str]) -> Dict[
         return json.loads(content)
     except json.JSONDecodeError:
         print(f"Failed to decode JSON from LLM: {content}")
+        print("DEBUG: generate_single_trip_plan returning None due to JSONDecodeError")
         return None
 
 

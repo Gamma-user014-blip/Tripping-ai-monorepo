@@ -42,9 +42,13 @@ async def cache_get(key: str) -> Optional[Dict]:
     try:
         client = await get_redis_client()
         data = await client.get(key)
-        return json.loads(data) if data else None
+        if data:
+            return json.loads(data)
+        print(f"DEBUG: cache_get returning None for key: {key}")
+        return None
     except Exception as e:
         print(f"Cache get error: {e}")
+        print(f"DEBUG: cache_get returning None due to exception for key: {key}")
         return None
 
 
@@ -75,6 +79,7 @@ async def get_provider_id(unique_id: str) -> Optional[str]:
         return await client.get(key)
     except Exception as e:
         print(f"Mapping lookup error: {e}")
+        print(f"DEBUG: get_provider_id returning None for unique_id: {unique_id}")
         return None
 
 
@@ -141,18 +146,22 @@ async def check_hotel_availability(
             guest_nationality=guest_nationality,
             occupancies=occupancies
         )
-        
+
+
         # Check if we got valid data
         if not rates_response or "data" not in rates_response:
+            print(f"DEBUG: check_hotel_availability returning None - invalid rates_response for {hotel_id}")
             return None
         
         # Check for errors
         if "error" in rates_response:
             print(f"No availability for {hotel_id}: {rates_response['error'].get('message')}")
+            print(f"DEBUG: check_hotel_availability returning None - error in rates_response for {hotel_id}")
             return None
         
         hotel_rates = rates_response["data"]
         if not hotel_rates or len(hotel_rates) == 0:
+            print(f"DEBUG: check_hotel_availability returning None - no hotel_rates for {hotel_id}")
             return None
         
         # Get the first hotel's rate data
@@ -160,6 +169,7 @@ async def check_hotel_availability(
         
         # Check if hotel has room types available
         if "roomTypes" not in hotel_rate_data or len(hotel_rate_data["roomTypes"]) == 0:
+            print(f"DEBUG: check_hotel_availability returning None - no roomTypes for {hotel_id}")
             return None
         
         # Cache the availability data (shorter TTL than hotel data)
@@ -169,6 +179,7 @@ async def check_hotel_availability(
         
     except Exception as e:
         print(f"Error checking availability for {hotel_id}: {e}")
+        print(f"DEBUG: check_hotel_availability returning None due to exception for {hotel_id}")
         return None
 
 
@@ -178,10 +189,12 @@ def extract_room_data_from_availability(availability_data: Dict) -> Optional[Dic
     Uses the best rate's room information.
     """
     if not availability_data or "roomTypes" not in availability_data:
+        print("DEBUG: extract_room_data_from_availability returning None - missing availability_data or roomTypes")
         return None
     
     room_types = availability_data["roomTypes"]
     if not room_types:
+        print("DEBUG: extract_room_data_from_availability returning None - no room_types")
         return None
     
     # Find the cheapest room type
@@ -196,11 +209,13 @@ def extract_room_data_from_availability(availability_data: Dict) -> Optional[Dic
                 best_room = room_type
     
     if not best_room:
+        print("DEBUG: extract_room_data_from_availability returning None - no best_room found")
         return None
     
     # Get the first rate from the best room type
     rates = best_room.get("rates", [])
     if not rates:
+        print("DEBUG: extract_room_data_from_availability returning None - no rates in best_room")
         return None
     
     first_rate = rates[0]
@@ -226,10 +241,12 @@ def extract_best_rate(availability_data: Dict) -> Optional[Dict]:
     Returns rate info with pricing
     """
     if not availability_data or "roomTypes" not in availability_data:
+        print("DEBUG: extract_best_rate returning None - missing availability_data or roomTypes")
         return None
     
     room_types = availability_data["roomTypes"]
     if not room_types:
+        print("DEBUG: extract_best_rate returning None - no room_types")
         return None
     
     # Find the cheapest room type
@@ -244,11 +261,13 @@ def extract_best_rate(availability_data: Dict) -> Optional[Dict]:
                 best_room = room_type
     
     if not best_room:
+        print("DEBUG: extract_best_rate returning None - no best_room found")
         return None
     
     # Extract rate details from first rate in the room type
     rates = best_room.get("rates", [])
     if not rates:
+        print("DEBUG: extract_best_rate returning None - no rates in best_room")
         return None
     
     first_rate = rates[0]

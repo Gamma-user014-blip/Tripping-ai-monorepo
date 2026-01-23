@@ -96,6 +96,7 @@ def set_activity_scores(activity: ActivityOption):
 
 def get_best_flight(flights: List[FlightOption]):
     if not flights:
+        print("DEBUG: get_best_flight returning None - no flights provided")
         return None
     if flights[0].scores.preference_score == 0.0:
         set_flights_scores(flights)
@@ -104,6 +105,7 @@ def get_best_flight(flights: List[FlightOption]):
 
 def get_best_hotel(hotels: List[HotelOption]):
     if not hotels:
+        print("DEBUG: get_best_hotel returning None - no hotels provided")
         return None
     if hotels[0].scores.preference_score == 0.0:
         set_hotels_scores(hotels)
