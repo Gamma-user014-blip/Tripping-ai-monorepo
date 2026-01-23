@@ -58,11 +58,23 @@ const TripItinerary = ({ trip }: TripItineraryProps): JSX.Element => {
   const rendered: JSX.Element[] = [];
   let flightCount = 0;
   let stayCount = 0;
+  let lastSectionType: SectionType | null = null;
+  let lastCity = "";
 
   for (const section of trip.layout.sections) {
     const data = section.data as SectionData;
 
     if (section.type === SectionType.FLIGHT && isFlightOption(data)) {
+      // Add fake transfer between stay and flight if needed
+      if (lastSectionType === SectionType.STAY && lastCity) {
+        rendered.push(
+          <TransferDivider
+            key={`transfer-to-airport-${flightCount}`}
+            label={`Transfer to ${data.outbound.origin.airport_code || data.outbound.origin.city} airport`}
+          />,
+        );
+      }
+
       flightCount += 1;
       rendered.push(
         <FlightCard
@@ -71,10 +83,34 @@ const TripItinerary = ({ trip }: TripItineraryProps): JSX.Element => {
           flight={data}
         />,
       );
+      lastSectionType = SectionType.FLIGHT;
+      lastCity = data.outbound.destination.city;
       continue;
     }
 
     if (section.type === SectionType.STAY && isFinalStayOption(data)) {
+      // Skip empty/invalid hotel stays
+      if (!data.hotel?.id || !data.hotel?.name) {
+        continue;
+      }
+
+      // Add fake transfer between flight and stay, or between stays
+      if (lastSectionType === SectionType.FLIGHT) {
+        rendered.push(
+          <TransferDivider
+            key={`transfer-from-airport-${stayCount}`}
+            label={`Transfer to ${data.hotel.name}`}
+          />,
+        );
+      } else if (lastSectionType === SectionType.STAY && lastCity && lastCity !== data.hotel.location.city) {
+        rendered.push(
+          <TransferDivider
+            key={`transfer-between-stays-${stayCount}`}
+            label={`Travel to ${data.hotel.location.city}`}
+          />,
+        );
+      }
+
       stayCount += 1;
       rendered.push(
         <StayCard
@@ -84,6 +120,8 @@ const TripItinerary = ({ trip }: TripItineraryProps): JSX.Element => {
           isPrimary={stayCount === 1}
         />,
       );
+      lastSectionType = SectionType.STAY;
+      lastCity = data.hotel.location.city;
       continue;
     }
 
@@ -94,6 +132,8 @@ const TripItinerary = ({ trip }: TripItineraryProps): JSX.Element => {
           label={`${data.provider} to ${data.destination.city}`}
         />,
       );
+      lastSectionType = SectionType.TRANSFER;
+      lastCity = data.destination.city;
     }
   }
 

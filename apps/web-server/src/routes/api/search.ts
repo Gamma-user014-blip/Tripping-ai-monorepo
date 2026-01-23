@@ -26,13 +26,15 @@ router.post("/poll", (req: Request, res: Response): void => {
     return;
   }
 
+  let tripIds: string[] | undefined;
   if ((entry.status === SearchStatus.COMPLETED || entry.status === SearchStatus.IN_PROGRESS) && entry.results.length > 0) {
-    registerSearchTrips(searchId, entry.results);
+    tripIds = registerSearchTrips(searchId, entry.results);
   }
 
   const response: SearchPollResponse = {
     status: entry.status,
     results: entry.results,
+    tripIds,
     error: entry.error,
   };
 

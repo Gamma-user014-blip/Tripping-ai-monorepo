@@ -2,31 +2,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
+  padding: 8px 24px;
   gap: 12px;
-  width: 85%;
+  width: 100%;
+  max-width: 1400px;
   margin: 0 auto;
+  height: 80px;
 }
 
 .brand {
-  font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial;
-  font-weight: 700;
-  font-size: 20px;
-  color: var(--color-gray-700);
   user-select: none;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 8px 0px;
+  justify-content: flex-start;
+  padding: 0;
   cursor: pointer;
-  height: 30px;
+  height: 80px;
+  transition: opacity 0.2s;
+}
+
+.brand:hover {
+  opacity: 0.8;
 }
 
 .actions {

@@ -1,6 +1,6 @@
 from .score_algorithms import *
 from shared.data_types.models import (
-    TripResponse, SectionType, FlightResponse, StayResponse, TransferResponse,
+    TripResponse, SectionType,
     FinalTripLayout, FinalTripSection, FinalStayOption
 )
 
@@ -14,8 +14,10 @@ def build_package(trip: TripResponse) -> FinalTripLayout:
     for section in trip.sections:
         if section.type == SectionType.FLIGHT:
             data = section.data
-            if isinstance(data, FlightResponse) and data.options:
-                best_flight = get_best_flight(data.options)
+            # Use duck typing - check for options attribute directly
+            options = getattr(data, 'options', None)
+            if options:
+                best_flight = get_best_flight(options)
                 if best_flight:
                     layout.sections.append(
                         FinalTripSection(type=SectionType.FLIGHT, data=best_flight)
@@ -23,29 +25,39 @@ def build_package(trip: TripResponse) -> FinalTripLayout:
                     
         elif section.type == SectionType.STAY:
             data = section.data
-            if isinstance(data, StayResponse):
-                stay_option = FinalStayOption()
-                
-                if data.hotel_options:
-                    best_hotel = get_best_hotel(data.hotel_options)
-                    if best_hotel:
-                        stay_option.hotel = best_hotel
-                
-                if data.activity_options:
-                    # Activities scoring implemented simple head for now
-                    #stay_option.activities = get_best_activities(data.activity_options)
-                    stay_option.activities = data.activity_options[:5]
-                
-                layout.sections.append(
-                    FinalTripSection(type=SectionType.STAY, data=stay_option)
-                )
+            # Use duck typing - check for hotel_options attribute
+            hotel_options = getattr(data, 'hotel_options', None)
+            activity_options = getattr(data, 'activity_options', None)
+            
+            # Only create stay section if we have a valid hotel
+            best_hotel = None
+            if hotel_options:
+                best_hotel = get_best_hotel(hotel_options)
+            
+            # Skip this stay section entirely if no hotel is available
+            if not best_hotel or not best_hotel.id or not best_hotel.name:
+                print(f"Skipping stay section - no valid hotel available")
+                continue
+            
+            stay_option = FinalStayOption()
+            stay_option.hotel = best_hotel
+            
+            if activity_options:
+                # Activities scoring implemented simple head for now
+                stay_option.activities = activity_options[:5]
+            
+            layout.sections.append(
+                FinalTripSection(type=SectionType.STAY, data=stay_option)
+            )
                     
         elif section.type == SectionType.TRANSFER:
             data = section.data
-            if isinstance(data, TransferResponse) and data.options:
+            # Use duck typing - check for options attribute
+            options = getattr(data, 'options', None)
+            if options:
                 # Transfer scoring to be implemented
                 layout.sections.append(
-                    FinalTripSection(type=SectionType.TRANSFER, data=data.options[0])
+                    FinalTripSection(type=SectionType.TRANSFER, data=options[0])
                 )
 
     return layout
