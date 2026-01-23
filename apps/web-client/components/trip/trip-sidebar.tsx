@@ -97,15 +97,6 @@ const TripSidebar = ({ trip }: TripSidebarProps): JSX.Element => {
           Download PDF
 
         </button>
-        <button className={styles.actionButton} onClick={() => handleAddToCalendar(trip)}>
-          <span
-            className="material-symbols-outlined"
-            style={{ fontSize: "18px" }}
-          >
-            calendar_add_on
-          </span>
-          Add to Calendar
-        </button>
       </div>
 
       <div className={styles.mapCard}>
