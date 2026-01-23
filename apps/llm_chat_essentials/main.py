@@ -5,10 +5,10 @@ import re
 from typing import Any, Dict, List, Optional
 
 import yaml
+import uvicorn
+import requests
 from dotenv import load_dotenv
-from google import genai
-from google.genai import types
-from datetime import date
+from datetime import date, datetime
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from shared.data_types.llm_models import *
@@ -18,8 +18,11 @@ from apps.llm_chat_essentials.settings import (
 )
 
 load_dotenv()
-app = FastAPI()
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+app = FastAPI(title="LLM Chat Essentials Service")
+
+PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
+if not PERPLEXITY_API_KEY:
+    print("WARNING: PERPLEXITY_API_KEY not found in environment.")
 
 
 # -------------------------
@@ -81,24 +84,37 @@ def _destination_item_is_set(item: Any) -> bool:
 def call_llm(
     prompt: str,
     *,
-    model: str = "gemini-2.5-flash-lite",
+    model: str = "sonar",
     max_tokens: int = 1000,
     system_message: Optional[str] = None,
 ) -> str:
-    
-    config = types.GenerateContentConfig(
-        max_output_tokens=max_tokens,
-        temperature=0.2,
-        system_instruction=system_message or None,
-    )
+    if not PERPLEXITY_API_KEY:
+        raise ValueError("Set PERPLEXITY_API_KEY environment variable")
 
-    completion = client.models.generate_content(
-        model=model,
-        contents=prompt,
-        config=config,
-    )
+    url = "https://api.perplexity.ai/chat/completions"
 
-    text = completion.text or ""
+    messages = []
+    if system_message:
+        messages.append({"role": "system", "content": system_message})
+    messages.append({"role": "user", "content": prompt})
+
+    payload = {
+        "model": model,
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": 0.2,
+    }
+
+    headers = {
+        "Authorization": f"Bearer {PERPLEXITY_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    resp = requests.post(url, headers=headers, json=payload, timeout=60)
+    resp.raise_for_status()
+
+    data = resp.json()
+    text = data["choices"][0]["message"]["content"]
     print("LLM RESPONSE:", text)
     return text
 # -------------------------
@@ -377,10 +393,15 @@ def _get_single_missing_question(
         question = fallback.get(missing, "What detail is missing so I can continue?")
 
     return FillResponse(
-        yaml="",
+        yaml=yaml_state_clean,
         status=FillStatus.needs_more_info if missing else FillStatus.ready,
         message=question if missing else None,
     )
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "service": "llm_chat_essentials"}
 
 
 @app.post("/api/get_single_missing_question", response_model=FillResponse)
@@ -403,69 +424,5 @@ def update_trip_yaml_state(request: UpdateTripRequest) -> FillResponse:
     )
 
 
-# -------------------------
-# Demo
-# -------------------------
-def run_interactive_loop():
-    print("\n" + "="*60)
-    print("TRIP PLANNER: Interactive Session")
-    print("="*60 + "\n")
-
-    # Start with an empty YAML state
-    current_state = ""
-    
-    while True:
-        # 1. Get user input from terminal
-        user_input = input("User >> ")
-        
-        if user_input.lower() in ['exit', 'quit', 'bye']:
-            print("Closing session...")
-            break
-
-        try:
-            # 2. Prepare the request using your UpdateTripRequest model
-            request_data = UpdateTripRequest(
-                raw_user_message=user_input,
-                current_yaml_state=current_state
-            )
-
-            # 3. Call your LLM logic (Update the YAML)
-            # This returns a FillResponse object
-            response: FillResponse = update_trip_yaml_state(request_data)
-            
-            # Update the local state with the new YAML returned by the AI
-            current_state = response.yaml
-
-            print("\n" + "-"*30)
-            print(f"SYSTEM STATUS: {response.status.value.upper()}")
-            print(f"CURRENT YAML:\n{current_state}")
-            print("-"*30)
-
-            # 4. Check status to see if we need more info
-            if response.status == FillStatus.needs_more_info:
-                # Ask the LLM what exactly is missing
-                fill_req = UpdateTripRequest(current_yaml_state=current_state, raw_user_message="")
-                missing_question = get_single_missing_question(fill_req)
-                
-                print(f"\nAI QUESTION: {missing_question}")
-                print("="*60 + "\n")
-            
-            elif response.status == FillStatus.ready:
-                print("\n TRIP CONFIGURATION COMPLETE!")
-                print("Finalizing details...")
-                break
-                
-            elif response.status == FillStatus.error:
-                print(f"\n ERROR: {response.message}")
-                break
-
-        except Exception as e:
-            if "429" in str(e):
-                print("\n[QUOTA EXCEEDED]: You have reached the 20-request limit for Gemini 3 Flash.")
-                print("Try switching to an other gemini model in your code.")
-            else:
-                print(f"\n[CRITICAL ERROR]: {e}")
-            break
-
 if __name__ == "__main__":
-    run_interactive_loop()
+    uvicorn.run(app, host="0.0.0.0", port=8000)
