@@ -9,7 +9,6 @@ const Navbar: React.FC = (): JSX.Element => {
 
   const handleBrandClick = (): void => {
     // If already on homepage, do nothing
-    if (router.pathname === "/") return;
 
     // Reset session and navigate to homepage
     resetSession();

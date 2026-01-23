@@ -209,7 +209,7 @@ def parse_flight_action(args: List[Any]) -> FlightRequest:
         return_date=return_date,
         passengers=passengers,
         cabin_class=cabin,
-        max_results=20,
+        max_results=10,
         max_stops=2
     )
 
@@ -251,7 +251,7 @@ def parse_stay_action(args: List[Any]) -> StayRequest:
         dates=dates,
         guests=guests,
         rooms=rooms,
-        max_results=20,
+        max_results=10,
         min_rating=3.0
     )
     
@@ -259,7 +259,7 @@ def parse_stay_action(args: List[Any]) -> StayRequest:
         location=location,
         dates=dates,
         description=description,
-        max_results=10,
+        max_results=3,
         min_rating=3.0
     )
     
