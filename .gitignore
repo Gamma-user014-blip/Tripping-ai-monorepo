@@ -46,4 +46,7 @@ next-env.d.ts
 
 # Testing
 coverage/
-
+test_result.txt
+trip_builder_test.py
+full_system_test.py
+test.py
