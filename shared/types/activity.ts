@@ -46,11 +46,11 @@ export interface ActivitySearchRequest {
   location: Location;
   dates: DateRange;
   description: string;
-  max_results?: number;
-  max_price?: number;
-  min_rating?: number;
-  max_distance_km?: number;
-  preferred_time?: TimeRange;
+  max_results: number;
+  max_price: number;
+  min_rating: number;
+  max_distance_km: number;
+  preferred_time: TimeRange;
 }
 
 export interface ActivitySearchResponse {

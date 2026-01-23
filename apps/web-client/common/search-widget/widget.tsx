@@ -17,6 +17,7 @@ import {
   popularAirportCodes,
   popularCountryCodes,
 } from "./popular-destinations";
+import { resetSession } from "../../lib/session";
 
 type People = { adults: number; children: number };
 type WidgetType = "primary" | "secondary";
@@ -169,6 +170,8 @@ const Widget: React.FC<WidgetProps> = ({
       console.log("Please fill out the search parameters");
       return;
     }
+
+    resetSession();
 
     const formattedDates = Array.isArray(dates)
       ? dates.map((dt) =>

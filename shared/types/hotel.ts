@@ -1,4 +1,5 @@
 import { ComponentScores, DateRange, Location, Money, SearchMetadata } from "./common";
+import { PreferenceType } from "./enums";
 
 export interface RoomInfo {
   type: string;
@@ -21,6 +22,7 @@ export interface HotelOption {
   description: string;
   location: Location;
   distance_to_center_km: number;
+  image: string;
   rating: number;
   review_count: number;
   rating_category: string;
@@ -42,11 +44,11 @@ export interface HotelSearchRequest {
   dates: DateRange;
   guests: number;
   rooms: number;
-  preferences?: number[];
-  max_results?: number;
-  max_price_per_night?: number;
-  min_rating?: number;
-  amenities?: number[];
+  preferences: PreferenceType[];
+  max_results: number;
+  max_price_per_night: number;
+  min_rating: number;
+  amenities: number[];
 }
 
 export interface HotelSearchResponse {

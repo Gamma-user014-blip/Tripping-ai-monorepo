@@ -1,4 +1,5 @@
 import { ComponentScores, Location, Money, SearchMetadata } from "./common";
+import { PreferenceType } from "./enums";
 
 export interface AmenityInfo {
   wifi: boolean;
@@ -61,13 +62,13 @@ export interface FlightSearchRequest {
   origin: Location;
   destination: Location;
   departure_date: string;
-  return_date?: string;
+  return_date: string;
   passengers: number;
   cabin_class: string;
-  preferences?: number[];
-  max_results?: number;
-  max_price?: number;
-  max_stops?: number;
+  preferences: PreferenceType[];
+  max_results: number;
+  max_price: number;
+  max_stops: number;
 }
 
 export interface FlightSearchResponse {

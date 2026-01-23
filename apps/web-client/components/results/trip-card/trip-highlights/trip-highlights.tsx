@@ -1,25 +1,13 @@
 import React from "react";
-import { Money, Location, PreferenceType } from "../../types";
+import { Money, Location } from "../../types";
 import { Icon } from "../../icon";
 import styles from "./trip-highlights.module.css";
 
-const TRIP_KINDS: Record<number, string> = {
-  [PreferenceType.LUXURY]: "Luxury",
-  [PreferenceType.BUDGET]: "Budget",
-  [PreferenceType.ROMANTIC]: "Romantic",
-  [PreferenceType.FAMILY]: "Family",
-  [PreferenceType.ADVENTURE]: "Adventure",
-  [PreferenceType.CULTURE]: "Culture",
-  [PreferenceType.FOOD]: "Foodie",
-  [PreferenceType.NATURE]: "Nature",
-  [PreferenceType.BEACH]: "Beach",
-  [PreferenceType.CITY]: "City Break",
-};
-
 interface TripHighlight {
   date: string;
+  endDate?: string;
   title: string;
-  type: "flight" | "activity" | "transport";
+  type: "flight" | "stay" | "activity" | "transport";
   location: Location;
 }
 
@@ -28,7 +16,7 @@ interface TripHighlightsProps {
   origin: string;
   destination: string;
   price: Money;
-  tripKind?: PreferenceType;
+  vibe?: string;
 }
 
 const formatDate = (dateStr: string): string => {
@@ -40,16 +28,21 @@ const formatDate = (dateStr: string): string => {
   });
 };
 
+const formatDateRange = (startDate: string, endDate?: string): string => {
+  if (!startDate) return "";
+  if (!endDate) return formatDate(startDate);
+  return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+};
+
 const TripHighlights: React.FC<TripHighlightsProps> = ({
   highlights,
   origin,
   destination,
   price,
-  tripKind = PreferenceType.ADVENTURE,
+  vibe = "Adventure",
 }) => {
   const [originCity, originCountry] = origin.split(", ");
   const [destCity, destCountry] = destination.split(", ");
-  const tripKindLabel = TRIP_KINDS[tripKind] || "Adventure";
 
   return (
     <div className={styles.container}>
@@ -59,7 +52,7 @@ const TripHighlights: React.FC<TripHighlightsProps> = ({
           <span className={styles.arrow}>⟶</span>
           <span className={styles.city}>{destCity}</span>,{destCountry || ""}
         </div>
-        <button className={styles.selectButton}>{tripKindLabel}</button>
+        <button className={styles.selectButton}>{vibe}</button>
       </div>
 
       <div className={styles.highlightsSection}>
@@ -73,7 +66,9 @@ const TripHighlights: React.FC<TripHighlightsProps> = ({
                     <div className={styles.itemCard}>
                       <div className={styles.itemHeader}>
                         <span className={styles.itemDate}>
-                          {formatDate(item.date)}
+                          {item.endDate
+                            ? formatDateRange(item.date, item.endDate)
+                            : formatDate(item.date)}
                         </span>
                         <HighlightIcon type={item.type} />
                       </div>
@@ -109,6 +104,10 @@ const HighlightIcon: React.FC<{ type: string }> = ({ type }) => {
   switch (type) {
     case "flight":
       return <Icon icon="flight" height={12} color="var(--color-text-muted)" />;
+    case "stay":
+      return (
+        <Icon icon="location" height={12} color="var(--color-text-muted)" />
+      );
     case "activity":
       return (
         <Icon icon="activity" height={12} color="var(--color-text-muted)" />

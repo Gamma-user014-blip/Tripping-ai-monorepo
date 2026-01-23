@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import styles from "./results-page.module.css";
 import Widget from "common/search-widget/widget";
 import AiChatSidebar from "./ai-chat-sidebar";
 import TripCard from "./trip-card";
-import type { TripResponse } from "./types";
+import type { Trip } from "./types";
+import {
+  getOrCreateSessionId,
+  TRIP_RESULTS_KEY_PREFIX,
+  TRIP_IDS_KEY_PREFIX,
+} from "../../lib/session";
 
 type LoadingState = 'idle' | 'loading' | 'loaded'
 
@@ -12,12 +17,37 @@ const ResultsPage: React.FC = (): JSX.Element => {
   const router = useRouter();
   const query = router.query;
 
-  const [results, setResults] = useState<TripResponse[] | null>(null)
+  const [trips, setTrips] = useState<Trip[]>([])
+  const [tripIds, setTripIds] = useState<string[]>([])
   const [loadingState, setLoadingState] = useState<LoadingState>('idle')
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  useEffect(() => {
+    const sessionId = getOrCreateSessionId()
+    const storedTripsJson = sessionStorage.getItem(`${TRIP_RESULTS_KEY_PREFIX}${sessionId}`)
+    const storedTripIdsJson = sessionStorage.getItem(`${TRIP_IDS_KEY_PREFIX}${sessionId}`)
+    if (!storedTripsJson) return
+
+    try {
+      const parsed = JSON.parse(storedTripsJson) as unknown
+      if (!Array.isArray(parsed)) return
+      setTrips(parsed as Trip[])
+
+      if (storedTripIdsJson) {
+        const parsedTripIds = JSON.parse(storedTripIdsJson) as unknown
+        if (Array.isArray(parsedTripIds)) {
+          setTripIds(parsedTripIds as string[])
+        }
+      }
+
+      setLoadingState('loaded')
+    } catch {
+      // ignore
+    }
+  }, [])
 
   const from = Array.isArray(query.from) ? query.from[0] : (query.from as string | undefined);
   const to = Array.isArray(query.to) ? query.to[0] : (query.to as string | undefined);
@@ -25,25 +55,29 @@ const ResultsPage: React.FC = (): JSX.Element => {
   const adults = query.adults ? Number(Array.isArray(query.adults) ? query.adults[0] : query.adults) : undefined;
   const children = query.children ? Number(Array.isArray(query.children) ? query.children[0] : query.children) : undefined;
 
-  const loadResults = async (): Promise<void> => {
-    setLoadingState('loading')
-    try {
-      const res = await fetch('/api/results')
-      if (!res.ok) throw new Error('Network response was not ok')
-      const data = await res.json()
+  const handleTripsLoaded = useCallback((loadedTrips: Trip[]): void => {
+    const sessionId = getOrCreateSessionId()
+    sessionStorage.setItem(`${TRIP_RESULTS_KEY_PREFIX}${sessionId}`, JSON.stringify(loadedTrips))
 
-      setResults(Array.isArray(data) ? data : data.results ?? [])
-      setLoadingState('loaded')
-    } catch (err) {
-      console.error('Failed to load results:', err)
-      setResults([])
-      setLoadingState('loaded')
+    const storedTripIdsJson = sessionStorage.getItem(`${TRIP_IDS_KEY_PREFIX}${sessionId}`)
+    if (storedTripIdsJson) {
+      try {
+        const parsedTripIds = JSON.parse(storedTripIdsJson) as unknown
+        if (Array.isArray(parsedTripIds)) {
+          setTripIds(parsedTripIds as string[])
+        }
+      } catch {
+        // ignore
+      }
     }
-  }
 
-  const handleLoadTrips = (): void => {
-    loadResults()
-  }
+    setTrips(loadedTrips)
+    setLoadingState('loaded')
+  }, [])
+
+  const handleSearchStart = useCallback((): void => {
+    setLoadingState('loading')
+  }, [])
 
   return (
     <div className={styles.resultsPage}>
@@ -60,7 +94,7 @@ const ResultsPage: React.FC = (): JSX.Element => {
         </div>
         <div className={styles.resultsAndFilters}>
           <div className={styles.filterContainer}>
-            <AiChatSidebar loadTrips={handleLoadTrips} />
+            <AiChatSidebar onTripsLoaded={handleTripsLoaded} onSearchStart={handleSearchStart} />
           </div>
           <div className={styles.resultsContainer}>
             <div>
@@ -143,8 +177,8 @@ const ResultsPage: React.FC = (): JSX.Element => {
                 </div>
               ) : (
                 <div className={styles.cardsList}>
-                  {results && results.map((result, index) => (
-                    <TripCard key={index} trip={result} />
+                  {trips.map((trip, index) => (
+                    <TripCard key={index} trip={trip} tripId={tripIds[index]} />
                   ))}
                 </div>
               )}

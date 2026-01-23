@@ -58,12 +58,12 @@ export interface TransportSearchRequest {
   origin: Location;
   destination: Location;
   date: string;
-  time?: string;
+  time: string;
   passengers: number;
-  preferred_modes?: TransportMode[];
-  max_results?: number;
-  max_price?: number;
-  max_duration_minutes?: number;
+  preferred_modes: TransportMode[];
+  max_results: number;
+  max_price: number;
+  max_duration_minutes: number;
 }
 
 export interface TransportSearchResponse {

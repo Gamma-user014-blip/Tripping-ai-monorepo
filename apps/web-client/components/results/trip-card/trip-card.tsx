@@ -1,53 +1,40 @@
 import React from "react";
 import { useRouter } from "next/router";
 import {
-  TripResponse,
+  Trip,
   SectionType,
-  FlightResponse,
-  StayResponse,
-  TransferResponse,
   FlightOption,
   HotelOption,
   Money,
   Location,
   ActivityOption,
   TransportOption,
-  PreferenceType,
 } from "../types";
 import HotelCard from "./hotel-card";
 import TripHighlights from "./trip-highlights";
 import FlightDetails from "./flight-details";
 import TripMap from "./trip-map";
 import styles from "./trip-card.module.css";
+import {
+  SectionData,
+  isFlightOption,
+  isFinalStayOption,
+  isTransportOption,
+} from "../../../lib/trip-type-guards";
+import { convertToUSD } from "../../../lib/currency";
 
 interface TripCardProps {
-  trip: TripResponse;
+  trip: Trip;
+  tripId?: string;
 }
 
 interface TripHighlight {
   date: string;
+  endDate?: string;
   title: string;
-  type: "flight" | "activity" | "transport";
+  type: "flight" | "stay" | "activity" | "transport";
   location: Location;
 }
-
-const isFlightResponse = (
-  data: FlightResponse | StayResponse | TransferResponse
-): data is FlightResponse => {
-  return "options" in data && data.options.length > 0 && "outbound" in data.options[0];
-};
-
-const isStayResponse = (
-  data: FlightResponse | StayResponse | TransferResponse
-): data is StayResponse => {
-  return "hotel_options" in data;
-};
-
-const isTransferResponse = (
-  data: FlightResponse | StayResponse | TransferResponse
-): data is TransferResponse => {
-  return "options" in data && data.options.length > 0 && "mode" in data.options[0];
-};
 
 interface ExtractedTripData {
   hotels: HotelOption[];
@@ -60,10 +47,10 @@ interface ExtractedTripData {
   origin: Location;
   destination: Location;
   mapCenter: { lat: number; lng: number };
-  tripKind: PreferenceType;
+  vibe: string;
 }
 
-const extractTripData = (trip: TripResponse): ExtractedTripData => {
+const extractTripData = (trip: Trip): ExtractedTripData => {
   const hotels: HotelOption[] = [];
   const flights: FlightOption[] = [];
   const activities: ActivityOption[] = [];
@@ -72,110 +59,123 @@ const extractTripData = (trip: TripResponse): ExtractedTripData => {
   const orderedPath: Array<{ lat: number; lng: number; label: string }> = [];
   let totalPrice = 0;
   let origin: Location | null = null;
-  let destination: Location | null = null;
+  let mainDestination: Location | null = null;
 
-  for (const section of trip.sections) {
-    if (section.type === SectionType.FLIGHT && isFlightResponse(section.data)) {
-      const flight = section.data.options[0];
-      if (!flight) continue;
+  let outboundArrivalDate = "";
+  let returnDepartureDate = "";
+  let primaryHotel: HotelOption | null = null;
 
-      flights.push(flight);
-      totalPrice += flight.total_price.amount;
+  const getIsoDate = (dateTime: string): string => dateTime.split("T")[0];
+
+  for (const section of trip.layout.sections) {
+    const data = section.data as SectionData;
+
+    if (section.type === SectionType.FLIGHT && isFlightOption(data)) {
+      flights.push(data);
+      totalPrice += convertToUSD(
+        data.total_price.amount,
+        data.total_price.currency
+      );
 
       if (!origin) {
-        origin = flight.outbound.origin;
-        orderedPath.push({
-          lat: origin.latitude,
-          lng: origin.longitude,
-          label: origin.city,
-        });
+        origin = data.outbound.origin;
       }
 
-      destination = flight.outbound.destination;
-      orderedPath.push({
-        lat: destination.latitude,
-        lng: destination.longitude,
-        label: destination.city,
-      });
+      const flightDest = data.outbound.destination;
+      const isReturnFlight =
+        origin &&
+        flightDest.latitude === origin.latitude &&
+        flightDest.longitude === origin.longitude;
+
+      if (!isReturnFlight) {
+        mainDestination = flightDest;
+        orderedPath.push({
+          lat: flightDest.latitude,
+          lng: flightDest.longitude,
+          label: flightDest.city,
+        });
+
+        if (!outboundArrivalDate) {
+          outboundArrivalDate = getIsoDate(data.outbound.arrival_time);
+        }
+      } else {
+        returnDepartureDate = getIsoDate(data.outbound.departure_time);
+      }
 
       highlights.push({
-        date: flight.outbound.departure_time.split("T")[0],
-        title: `Flight to ${flight.outbound.destination.city}`,
+        date: getIsoDate(data.outbound.departure_time),
+        title: isReturnFlight
+          ? `Flight back to ${flightDest.city}`
+          : `Flight to ${flightDest.city}`,
         type: "flight",
-        location: flight.outbound.destination,
+        location: flightDest,
       });
-    } else if (section.type === SectionType.STAY && isStayResponse(section.data)) {
-      const stayData = section.data;
+    } else if (section.type === SectionType.STAY && isFinalStayOption(data)) {
+      hotels.push(data.hotel);
 
-      for (const hotel of stayData.hotel_options) {
-        hotels.push(hotel);
+      if (!primaryHotel) {
+        primaryHotel = data.hotel;
       }
 
-      const selectedHotel = stayData.hotel_options[0];
-      if (selectedHotel) {
-        totalPrice += selectedHotel.total_price.amount;
-        orderedPath.push({
-          lat: selectedHotel.location.latitude,
-          lng: selectedHotel.location.longitude,
-          label: selectedHotel.location.city,
-        });
-      }
+      totalPrice += convertToUSD(
+        data.hotel.total_price.amount,
+        data.hotel.total_price.currency
+      );
 
-      for (const activity of stayData.activity_options) {
+      orderedPath.push({
+        lat: data.hotel.location.latitude,
+        lng: data.hotel.location.longitude,
+        label: data.hotel.location.city,
+      });
+
+      for (const activity of data.activities) {
         activities.push(activity);
       }
-
-      const selectedActivity = stayData.activity_options[0];
-      if (selectedActivity) {
-        highlights.push({
-          date: selectedActivity.available_times[0]?.date || "",
-          title: selectedActivity.name,
-          type: "activity",
-          location: selectedActivity.location,
-        });
-      }
-    } else if (
-      section.type === SectionType.TRANSFER &&
-      isTransferResponse(section.data)
-    ) {
-      const transfer = section.data.options[0];
-      if (!transfer) continue;
-
-      transfers.push(transfer);
-      totalPrice += transfer.total_price.amount;
-
-      orderedPath.push({
-        lat: transfer.destination.latitude,
-        lng: transfer.destination.longitude,
-        label: transfer.destination.city,
-      });
-
-      highlights.push({
-        date: transfer.departure_time.split("T")[0],
-        title: `${transfer.provider} to ${transfer.destination.city}`,
-        type: "transport",
-        location: transfer.destination,
-      });
+    } else if (section.type === SectionType.TRANSFER && isTransportOption(data)) {
+      transfers.push(data);
+      totalPrice += convertToUSD(
+        data.total_price.amount,
+        data.total_price.currency
+      );
     }
   }
 
-  const closedPath =
-    orderedPath.length > 1
-      ? (() => {
-          const first = orderedPath[0];
-          const last = orderedPath[orderedPath.length - 1];
-          const isClosed = first.lat === last.lat && first.lng === last.lng;
-          return isClosed ? orderedPath : [...orderedPath, first];
-        })()
-      : orderedPath;
+  if (primaryHotel && outboundArrivalDate) {
+    const checkInDate = outboundArrivalDate;
+    const checkOutDate = returnDepartureDate || "";
+
+    highlights.push({
+      date: checkInDate,
+      endDate: checkOutDate || undefined,
+      title: `Stay at ${primaryHotel.name}`,
+      type: "stay",
+      location: primaryHotel.location,
+    });
+  }
+
+  const typeRank: Record<TripHighlight["type"], number> = {
+    stay: 0,
+    flight: 1,
+    transport: 2,
+    activity: 3,
+  };
+
+  highlights.sort(
+    (a, b) => a.date.localeCompare(b.date) || typeRank[a.type] - typeRank[b.type]
+  );
+
+  const uniqueWaypoints = orderedPath.filter(
+    (wp, index, arr) =>
+      arr.findIndex((w) => w.lat === wp.lat && w.lng === wp.lng) === index
+  );
 
   const mapCenter =
-    closedPath.length > 0
+    uniqueWaypoints.length > 0
       ? {
           lat:
-            closedPath.reduce((sum, wp) => sum + wp.lat, 0) / closedPath.length,
+            uniqueWaypoints.reduce((sum, wp) => sum + wp.lat, 0) / uniqueWaypoints.length,
           lng:
-            closedPath.reduce((sum, wp) => sum + wp.lng, 0) / closedPath.length,
+            uniqueWaypoints.reduce((sum, wp) => sum + wp.lng, 0) / uniqueWaypoints.length,
         }
       : { lat: 51.5, lng: -0.1 };
 
@@ -187,42 +187,22 @@ const extractTripData = (trip: TripResponse): ExtractedTripData => {
     longitude: 0,
   };
 
-  const TRIP_KINDS_LIST = [
-    PreferenceType.LUXURY,
-    PreferenceType.BUDGET,
-    PreferenceType.ROMANTIC,
-    PreferenceType.FAMILY,
-    PreferenceType.ADVENTURE,
-    PreferenceType.CULTURE,
-    PreferenceType.FOOD,
-    PreferenceType.NATURE,
-    PreferenceType.BEACH,
-    PreferenceType.CITY,
-  ];
-
-  const tripId = flights[0]?.id || hotels[0]?.id || "default";
-  let tripKindHash = 0;
-  for (const char of tripId) {
-    tripKindHash = (tripKindHash * 31 + char.charCodeAt(0)) % TRIP_KINDS_LIST.length;
-  }
-  const tripKind = TRIP_KINDS_LIST[tripKindHash];
-
   return {
     hotels,
     flights,
     activities,
     transfers,
     highlights: highlights.slice(0, 4),
-    waypoints: closedPath,
-    totalPrice: { currency: "USD", amount: totalPrice },
+    waypoints: uniqueWaypoints,
+    totalPrice: { currency: "USD", amount: Math.round(totalPrice) },
     origin: origin || defaultLocation,
-    destination: destination || defaultLocation,
+    destination: mainDestination || defaultLocation,
     mapCenter,
-    tripKind,
+    vibe: trip.vibe,
   };
 };
 
-const TripCard: React.FC<TripCardProps> = ({ trip }) => {
+const TripCard: React.FC<TripCardProps> = ({ trip, tripId }) => {
   const router = useRouter();
   const {
     hotels,
@@ -233,7 +213,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip }) => {
     origin,
     destination,
     mapCenter,
-    tripKind,
+    vibe,
   } = extractTripData(trip);
 
   const originStr = origin.city ? `${origin.city}, ${origin.country}` : "";
@@ -245,7 +225,8 @@ const TripCard: React.FC<TripCardProps> = ({ trip }) => {
   const returnFlight = flights.length > 1 ? flights[flights.length - 1] : null;
 
   const handleCardClick = (): void => {
-    router.push(`/trip?tripId=${outboundFlight?.id || "unknown"}`);
+    if (!tripId) return
+    router.push(`/trip?tripId=${tripId}`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
@@ -270,7 +251,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip }) => {
           origin={originStr}
           destination={destinationStr}
           price={totalPrice}
-          tripKind={tripKind}
+          vibe={vibe}
         />
         {outboundFlight && (
           <FlightDetails
