@@ -3,9 +3,18 @@ FastAPI service for all vacation planning data types.
 Accepts JSON requests and returns JSON responses.
 """
 
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Request
 from typing import Optional, Dict, Any
 import json
+import logging
+import time
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Import Pydantic models
 from shared.data_types import models
@@ -28,6 +37,15 @@ def health_check():
     return {"status": "healthy", "service": "vacation-planning"}
 
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration = time.time() - start_time
+    logger.info(f"Handled {request.method} {request.url.path} in {duration:.4f} seconds")
+    return response
+
+
 # ===== Flights =====
 
 @app.post("/api/flights/search", response_model=models.FlightSearchResponse)
@@ -48,11 +66,14 @@ async def get_flight_data(
 async def get_activity_data(
     query: models.ActivitySearchRequest = Body(..., description="Activity search request")
 ):
+    logger.info("Searching activities...")
     resp = generate_json_from_model(
         model_cls=models.ActivitySearchResponse,
         preferences=query.model_dump(),
         list_size=query.max_results or 15
     )
+    logger.info("Activity search returned")
+
     return resp
 
 

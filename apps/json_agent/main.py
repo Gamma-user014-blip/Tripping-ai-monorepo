@@ -1,4 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+import logging
+import time
 from shared.data_types.models import (
     TripRequest, TripSection, SectionType,
     FlightRequest, StayRequest, Location, DateRange,
@@ -15,6 +17,13 @@ import unicodedata
 from pathlib import Path
 from typing import List, Dict, Any, Union
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 load_dotenv()
 
 PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
@@ -25,6 +34,14 @@ client = OpenAI(
 )
 
 app = FastAPI()
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration = time.time() - start_time
+    logger.info(f"Handled {request.method} {request.url.path} in {duration:.4f} seconds")
+    return response
 
 # ==========================================
 # API MODELS
@@ -364,8 +381,8 @@ def generate_single_trip_plan(trip_yml: str, previous_vibes: List[str]) -> Dict[
     try:
         return json.loads(content)
     except json.JSONDecodeError:
-        print(f"Failed to decode JSON from LLM: {content}")
-        print("DEBUG: generate_single_trip_plan returning None due to JSONDecodeError")
+        logger.info(f"Failed to decode JSON from LLM: {content}")
+        logger.info("DEBUG: generate_single_trip_plan returning None due to JSONDecodeError")
         return None
 
 
@@ -378,13 +395,13 @@ def generate_trip_plans_from_text(trip_yml: str, count: int = 3) -> List[Dict[st
     previous_vibes = []
     
     for i in range(count):
-        print(f"Generating plan {i+1}/{count}...")
+        logger.info(f"Generating plan {i+1}/{count}...")
         plan = generate_single_trip_plan(trip_yml, previous_vibes)
         if plan and "vibe" in plan:
             plans.append(plan)
             previous_vibes.append(plan["vibe"])
         else:
-            print(f"Warning: Failed to generate plan {i+1}")
+            logger.info(f"Warning: Failed to generate plan {i+1}")
             
     return plans
 
@@ -467,7 +484,7 @@ def edit_trip_plans_with_llm(plans: List[TripPlan], user_text: str) -> List[Trip
             return [TripPlan(**p) for p in data_dict["plans"]]
         return []
     except Exception as e:
-        print(f"Error parsing edited plans: {str(e)}")
+        logger.info(f"Error parsing edited plans: {str(e)}")
         return []
 
 
@@ -493,7 +510,7 @@ def generate_plans(request: GeneratePlansRequest):
                     
         return TripPlansResponse(plans=plans)
     except Exception as e:
-        print(f"Error: {str(e)}")
+        logger.info(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to generate trip plans: {str(e)}")
 
 
@@ -506,7 +523,7 @@ def build_trip_request(request: GenerateTripRequest):
             trip_request=trip_req
         )
     except Exception as e:
-        print(f"Error: {str(e)}")
+        logger.info(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to build trip: {str(e)}")
 
 
@@ -528,7 +545,7 @@ def edit_plans(request: EditTripPlansRequest):
             modified_indices=modified_indices
         )
     except Exception as e:
-        print(f"Error: {str(e)}")
+        logger.info(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to edit trip plans: {str(e)}")
 
 
