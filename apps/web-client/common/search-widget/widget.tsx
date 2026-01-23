@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { DateObject } from "react-multi-date-picker";
 import ReactCountryFlag from "react-country-flag";
 import { useRouter } from "next/router";
@@ -17,6 +17,7 @@ import {
   popularAirportCodes,
   popularCountryCodes,
 } from "./popular-destinations";
+import { resetSession } from "../../lib/session";
 
 type People = { adults: number; children: number };
 type WidgetType = "primary" | "secondary";
@@ -40,9 +41,14 @@ const Widget: React.FC<WidgetProps> = ({
 }): JSX.Element => {
   const router = useRouter();
 
-  const parseDates = (d?: string | undefined): DateObject | DateObject[] | null => {
+  const parseDates = (
+    d?: string | undefined,
+  ): DateObject | DateObject[] | null => {
     if (!d) return null;
-    const parts = d.split(",").map((p) => p.trim()).filter(Boolean);
+    const parts = d
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
     if (parts.length === 0) return null;
     if (parts.length === 1) return new DateObject(parts[0]);
     return parts.map((p) => new DateObject(p));
@@ -53,7 +59,20 @@ const Widget: React.FC<WidgetProps> = ({
   );
   const [fromValue, setFromValue] = useState<string | undefined>(initialFrom);
   const [toValue, setToValue] = useState<string | undefined>(initialTo);
-  const [people, setPeople] = useState<People>({ adults: initialAdults ?? 1, children: initialChildren ?? 0 });
+  const [people, setPeople] = useState<People>({
+    adults: initialAdults ?? 1,
+    children: initialChildren ?? 0,
+  });
+
+  useEffect(() => {
+    setFromValue(initialFrom);
+    setToValue(initialTo);
+    setDateRange(parseDates(initialDates));
+    setPeople({
+      adults: initialAdults ?? 1,
+      children: initialChildren ?? 0,
+    });
+  }, [initialFrom, initialTo, initialDates, initialAdults, initialChildren]);
 
   const airportOptions = useMemo(() => {
     return airports.map((airport) => ({
@@ -136,7 +155,7 @@ const Widget: React.FC<WidgetProps> = ({
     return true;
   };
 
-  const handleSearch = (): void => {
+  const handleSearch = async (): Promise<void> => {
     const from = fromValue;
     const to = toValue;
     const dates = dateRange;
@@ -152,6 +171,8 @@ const Widget: React.FC<WidgetProps> = ({
       return;
     }
 
+    resetSession();
+
     const formattedDates = Array.isArray(dates)
       ? dates.map((dt) =>
           (dt as any).format ? (dt as any).format("YYYY-MM-DD") : String(dt),
@@ -160,7 +181,7 @@ const Widget: React.FC<WidgetProps> = ({
         ? [(dates as any).format("YYYY-MM-DD")]
         : [String(dates)];
 
-    router.push({
+    await router.push({
       pathname: "/results",
       query: {
         from,

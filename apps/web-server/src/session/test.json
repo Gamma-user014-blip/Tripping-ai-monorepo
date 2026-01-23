@@ -1,0 +1,142 @@
+{
+	"meta": {
+		"schema": "trip_intake",
+		"timezone": "Asia/Jerusalem"
+	},
+	"conversation": {
+		"rawPrompt": "Hello I want a trip to rome and naples, the trip will be from May 5th to May 12th. I am departing from Tel aviv airport. Only me and my wife are going",
+		"history": {
+			"lastUserPrompts": [
+				"Hello I want a trip to rome and naples, the trip will be from May 5th to May 12th. I am departing from Tel aviv airport. Only me and my wife are going"
+			],
+			"summary": ""
+		},
+		"messages": [
+			{
+				"role": "user",
+				"content": "Hello I want a trip to rome and naples, the trip will be from May 5th to May 12th. I am departing from Tel aviv airport. Only me and my wife are going",
+				"ts": null
+			}
+		]
+	},
+	"trip": {
+		"essentials": {
+			"travelers": {
+				"adults": 2,
+				"children": 0,
+				"infants": 0,
+				"childrenAges": [],
+				"rooms": 1
+			},
+			"origin": {
+				"kind": "airport_or_city",
+				"iata": "TLV",
+				"city": "Tel Aviv",
+				"countryCode": "IL"
+			},
+			"destinations": [
+				{
+					"kind": "airport_or_city_or_region",
+					"iata": null,
+					"city": "Rome",
+					"countryCode": "IT",
+					"region": null
+				},
+				{
+					"kind": "airport_or_city_or_region",
+					"iata": null,
+					"city": "Naples",
+					"countryCode": "IT",
+					"region": null
+				}
+			],
+			"dates": {
+				"mode": "fixed_or_flexible",
+				"departureDate": "2026-05-05",
+				"returnDate": "2026-05-12",
+				"nights": null,
+				"flex": {
+					"plusMinusDays": 0,
+					"departDOW": [],
+					"returnDOW": []
+				}
+			},
+			"packageScope": {
+				"includeFlight": true,
+				"includeHotel": true,
+				"includeTransfers": null,
+				"includeCarRental": null,
+				"includeActivities": null
+			},
+			"currency": "USD"
+		},
+		"preferences": {
+			"budget": {
+				"mode": "total_or_perPerson_or_perNight",
+				"amount": null,
+				"currency": null,
+				"hardCap": false
+			},
+			"hotel": {
+				"starMin": null,
+				"starMax": null,
+				"board": null,
+				"propertyTypes": [],
+				"amenities": {
+					"wifi": null,
+					"pool": null,
+					"gym": null,
+					"spa": null
+				},
+				"locationPrefs": {
+					"near": [],
+					"areas": [],
+					"avoid": [],
+					"maxDistanceKm": null
+				}
+			}
+		},
+		"classification": {
+			"summary": {
+				"primaryArchetype": null,
+				"secondaryArchetypes": [],
+				"confidence": 0.0,
+				"userConfirmNeeded": false
+			},
+			"labels": {
+				"archetypes": [],
+				"themes": [],
+				"geoIntents": [],
+				"activityIntents": [],
+				"landmarkIntents": []
+			},
+			"derivedConstraints": {
+				"geoConstraints": {
+					"preferCoastal": null,
+					"maxDistanceToCoastKm": null,
+					"preferCityCenter": null,
+					"maxDistanceToCenterKm": null
+				},
+				"activityConstraints": {
+					"foodTourismPriority": null,
+					"museumPriority": null,
+					"hikingPriority": null,
+					"nightlifePriority": null
+				},
+				"routingHints": {
+					"suggestDestinationsAllowed": true,
+					"mustIncludeLandmark": false,
+					"mustBeInSpecificCity": false
+				}
+			},
+			"specialNotes": []
+		},
+		"extraction": {
+			"status": {
+				"state": "collecting_or_ready_or_error",
+				"readyForNextModule": false
+			},
+			"blockingMissing": []
+		}
+	}
+}

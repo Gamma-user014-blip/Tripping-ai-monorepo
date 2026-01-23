@@ -41,7 +41,6 @@
   }
 }
 
-
 .itinerarySection {
   flex: 1;
   width: 100%;
@@ -78,9 +77,8 @@
     order: 1;
     scrollbar-width: none; /* no-scrollbar */
   }
-  
+
   .sidebarSection::-webkit-scrollbar {
     display: none;
   }
 }
-

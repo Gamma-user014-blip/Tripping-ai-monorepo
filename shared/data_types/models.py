@@ -418,7 +418,7 @@ class StayRequest(BaseModel):
 
 class TripSection(BaseModel):
     type: SectionType
-    data: Union[TransferRequest, FlightRequest, StayRequest]
+    data: Union[FlightRequest, StayRequest]
 
 class TripRequest(BaseModel):
     sections: List[TripSection] = Field(default_factory=list)
@@ -435,7 +435,7 @@ class StayResponse(BaseModel):
 
 class TripSectionResponse(BaseModel):
     type: SectionType
-    data: Union[TransferResponse, FlightResponse, StayResponse]
+    data: Union[FlightResponse, StayResponse]
 
 class TripResponse(BaseModel):
     sections: List[TripSectionResponse] = Field(default_factory=list)

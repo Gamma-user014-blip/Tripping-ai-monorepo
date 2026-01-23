@@ -1,24 +1,66 @@
 import React from "react";
-import { TripResult } from "../results/types";
+import toast from "react-hot-toast";
+import type { Trip } from "@shared/types";
 import styles from "./trip-header.module.css";
+import extractTripData from "../../lib/trip-extract";
 
 interface TripHeaderProps {
-  trip: TripResult;
+  trip: Trip;
 }
 
+const getDurationDays = (startDate: string, endDate: string): number => {
+  if (!startDate || !endDate) return 0;
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const diffMs = end.getTime() - start.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  return Math.max(1, diffDays + 1);
+};
+
+const handleShare = async (): Promise<void> => {
+  const url = window.location.href;
+  try {
+    await navigator.clipboard.writeText(url);
+    toast.success("Link copied to clipboard!");
+  } catch {
+    toast.error("Failed to copy link");
+  }
+};
+
 const TripHeader: React.FC<TripHeaderProps> = ({ trip }) => {
-  const getDurationDays = (): number => {
-    return trip.highlights?.length || 5;
+  const { origin, destination, startDate, endDate, firstHotel } =
+    extractTripData(trip);
+
+  const getTitle = (): string => {
+    const destCity = destination.city || firstHotel?.location.city || "Unknown";
+    const destCountry =
+      destination.country || firstHotel?.location.country || "";
+    const origCity = origin.city || "";
+
+    if (!origCity || origCity === destCity) {
+      return destCountry
+        ? `Trip to ${destCity}, ${destCountry}`
+        : `Trip to ${destCity}`;
+    }
+    return `${origCity} to ${destCity}`;
   };
 
-  const title =
-    trip.origin.city === trip.destination.city
-      ? `Trip to ${trip.destination.city}, ${trip.destination.country}`
-      : `${trip.origin.city} to ${trip.destination.city}`;
+  const title = getTitle();
 
   const bgImage =
-    trip.hotels[0]?.image ||
-    "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=2073&ixlib=rb-4.0.3";
+    firstHotel?.image ||
+    (firstHotel
+      ? `https://source.unsplash.com/800x600/?hotel,${firstHotel.location.city}`
+      : "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=2073");
+
+  const formatDate = (dateStr: string): string => {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
 
   return (
     <div className={styles.heroContainer}>
@@ -38,7 +80,19 @@ const TripHeader: React.FC<TripHeaderProps> = ({ trip }) => {
               >
                 calendar_month
               </span>{" "}
-              {getDurationDays()} Days
+              {((): string => {
+                if (!startDate) return "Starts soon";
+                const todayMidnight = new Date(
+                  new Date().getFullYear(),
+                  new Date().getMonth(),
+                  new Date().getDate(),
+                );
+                const start = new Date(startDate);
+                const diffMs = start.getTime() - todayMidnight.getTime();
+                const daysUntil = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                if (daysUntil <= 0) return "Starts today";
+                return `${daysUntil} day${daysUntil !== 1 ? "s" : ""}`;
+              })()}
             </span>
           </div>
           <h1 className={styles.title}>{title}</h1>
@@ -49,7 +103,7 @@ const TripHeader: React.FC<TripHeaderProps> = ({ trip }) => {
             >
               date_range
             </span>{" "}
-            {trip.startDate} - {trip.endDate}
+            {formatDate(startDate)} - {formatDate(endDate)}
             <span style={{ margin: "0 4px" }}>•</span>
             <span
               className="material-symbols-outlined"
@@ -61,7 +115,7 @@ const TripHeader: React.FC<TripHeaderProps> = ({ trip }) => {
           </h2>
         </div>
         <div className={styles.buttonGroup}>
-          <button className={styles.shareButton}>
+          <button className={styles.shareButton} onClick={handleShare}>
             <span className="material-symbols-outlined">share</span>
           </button>
         </div>

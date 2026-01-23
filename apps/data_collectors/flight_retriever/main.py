@@ -38,9 +38,13 @@ async def cache_get(key: str) -> Optional[Dict]:
     try:
         client = await get_redis_client()
         data = await client.get(key)
-        return json.loads(data) if data else None
+        if data:
+            return json.loads(data)
+        print(f"DEBUG: cache_get returning None for key: {key}")
+        return None
     except Exception as e:
         print(f"Cache get error: {e}")
+        print(f"DEBUG: cache_get returning None due to exception for key: {key}")
         return None
 
 async def cache_set(key: str, value: Dict, ttl: int = FLIGHT_CACHE_TTL):
@@ -66,9 +70,13 @@ async def get_provider_offer(unique_id: str) -> Optional[Dict]:
         client = await get_redis_client()
         key = f"map:flight_offer:{unique_id}"
         data = await client.get(key)
-        return json.loads(data) if data else None
+        if data:
+            return json.loads(data)
+        print(f"DEBUG: get_provider_offer returning None for unique_id: {unique_id}")
+        return None
     except Exception as e:
         print(f"Mapping lookup error: {e}")
+        print(f"DEBUG: get_provider_offer returning None due to exception for unique_id: {unique_id}")
         return None
 
 amadeus = Client(
@@ -191,6 +199,15 @@ async def flight_search(request: FlightSearchRequest):
 
         return response
 
+    except ResponseError as e:
+        # Amadeus SDK wraps API errors in ResponseError
+        status_code = getattr(e.response, "status_code", 502)
+        error_body = getattr(e.response, "body", None) or {}
+        errors = error_body.get("errors", []) if isinstance(error_body, dict) else []
+        detail_msg = errors[0].get("detail", str(e)) if errors else str(e)
+        print(f"Amadeus API error [{status_code}]: {detail_msg}")
+        print(f"Full error body: {error_body}")
+        raise HTTPException(status_code=status_code, detail=f"Amadeus error: {detail_msg}")
     except Exception as e:
         print(f"Search error: {e}")
         raise HTTPException(status_code=502, detail=f"Amadeus error: {e}")

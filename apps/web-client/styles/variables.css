@@ -66,7 +66,7 @@
   --color-teal-medium: #b0d0d3;
   --color-card-background: var(--color-white);
   --color-border-dashed: #ccc;
-  
+
   /* App Modernization Variables (Travelia Theme) */
   --color-primary: #13ecec;
   --color-primary-dark: #0fa3a3;
@@ -78,7 +78,7 @@
   --color-card-dark: #1a2c2c;
   --color-border-light: #e7f3f3;
   --color-border-dark: #2a3c3c;
-  
+
   /* Mappings */
   --color-page-background: var(--color-background-light);
   --color-text-dark: var(--color-text-main);
@@ -86,8 +86,7 @@
   --color-text-subtle: var(--color-text-sub);
   --color-teal-primary: var(--color-text-sub);
   --color-teal-dark: var(--color-primary-dark);
-  
+
   --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-card-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
-

@@ -25,10 +25,12 @@ def _safe_float(x: Any, default: float = 0.0) -> float:
 
 def _iso_to_dt(s: str) -> Optional[datetime]:
     if not s:
+        print("DEBUG: _iso_to_dt returning None - input string is empty")
         return None
     try:
         return datetime.fromisoformat(s.replace("Z", "+00:00"))
     except Exception:
+        print(f"DEBUG: _iso_to_dt returning None - failed to parse: {s}")
         return None
 
 def _minutes_between(start_iso: str, end_iso: str) -> int:

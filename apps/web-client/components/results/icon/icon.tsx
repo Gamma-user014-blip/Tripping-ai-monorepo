@@ -39,7 +39,7 @@ export const Icon: React.FC<IconProps> = ({
       const svgMarkup = React.useMemo(() => {
         return svgString.replace(
           /<svg\b/,
-          '<svg width="100%" height="100%" aria-hidden="true" focusable="false"'
+          '<svg width="100%" height="100%" aria-hidden="true" focusable="false"',
         );
       }, [svgString]);
 
@@ -80,7 +80,9 @@ export const Icon: React.FC<IconProps> = ({
 
   // If the import is a React component (SVGR), render it directly
   if (typeof iconSrc === "function") {
-    const SvgComp = iconSrc as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+    const SvgComp = iconSrc as React.ComponentType<
+      React.SVGProps<SVGSVGElement>
+    >;
     return (
       <span
         className={className}
@@ -104,7 +106,7 @@ export const Icon: React.FC<IconProps> = ({
     if (asString && asString.indexOf("<svg") !== -1) {
       const svgMarkup = asString.replace(
         /<svg\b/,
-        '<svg width="100%" height="100%" aria-hidden="true" focusable="false"'
+        '<svg width="100%" height="100%" aria-hidden="true" focusable="false"',
       );
       return (
         <span
