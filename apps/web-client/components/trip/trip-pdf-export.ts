@@ -1,42 +1,64 @@
 'use client';
 
 import html2pdf from 'html2pdf.js';
-import { TripResult, FlightSegment, Hotel, TripHighlight } from '../results/types';
+import { Location, Money, FlightSegment, HotelOption as Hotel } from '@shared/types';
 
+interface TripHighlight {
+  date: string;
+  title: string;
+  type: "flight" | "activity" | "transport";
+  location?: Location;
+}
+
+export interface TripResult {
+  id: string;
+  tripId: string;
+  origin: Location;
+  destination: Location;
+  startDate: string;
+  endDate: string;
+  price: Money;
+  hotels: (Hotel & { dateRange: string })[];
+  highlights: TripHighlight[];
+  outboundFlight: FlightSegment;
+  returnFlight: FlightSegment;
+  mapCenter: { lat: number; lng: number };
+  mapZoom: number;
+  waypoints: { lat: number; lng: number; label?: string }[];
+}
 interface TripPDFOptions {
-    filename?: string;
-    logoUrl?: string;
+  filename?: string;
+  logoUrl?: string;
 }
 
 const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-        weekday: 'short',
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-    });
+  return new Date(dateString).toLocaleDateString('en-US', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
 };
 
-const formatTime = (timeString: string) => {
-    try {
-        const [hours, minutes] = timeString.split(':');
-        return new Date(0, 0, 0, parseInt(hours), parseInt(minutes)).toLocaleTimeString(
-            'en-US',
-            {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true,
-            }
-        );
-    } catch {
-        return timeString;
-    }
+const formatDuration = (minutes: number): string => {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours}h ${mins}m`;
+};
+
+const formatTime = (isoString: string): string => {
+  const date = new Date(isoString);
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 };
 
 const generateFlightHTML = (flight: FlightSegment, type: 'outbound' | 'return') => {
-    const stops = flight.stops === 0 ? 'Non-stop' : `${flight.stops} stop${flight.stops > 1 ? 's' : ''}`;
+  const stops = flight.stops === 0 ? 'Non-stop' : `${flight.stops} stop${flight.stops > 1 ? 's' : ''}`;
 
-    return `
+  return `
     <div style="margin-bottom: 20px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; background-color: #fafafa;">
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
   <div>
@@ -52,13 +74,13 @@ const generateFlightHTML = (flight: FlightSegment, type: 'outbound' | 'return') 
           <p style="margin: 0; color: #666; font-size: 11px; font-weight: 500;">FROM</p>
           <p style="margin: 4px 0 0 0; color: #1a1a1a; font-size: 16px; font-weight: 600;">
             ${flight.origin.city}
-            ${flight.origin.airportCode ? `<span style="color: #666; font-size: 12px;"> (${flight.origin.airportCode})</span>` : ''}
+            ${flight.origin.airport_code ? `<span style="color: #666; font-size: 12px;"> (${flight.origin.airport_code})</span>` : ''}
           </p>
-          <p style="margin: 2px 0 0 0; color: #666; font-size: 13px; font-weight: 500;">${formatTime(flight.departureTime)}</p>
+          <p style="margin: 2px 0 0 0; color: #666; font-size: 13px; font-weight: 500;">${formatTime(flight.departure_time)}</p>
         </div>
 
         <div style="flex: 1; margin: 0 20px; text-align: center;">
-          <p style="margin: 0; color: #666; font-size: 11px; font-weight: 500;">${flight.duration}</p>
+          <p style="margin: 0; color: #666; font-size: 11px; font-weight: 500;">${formatDuration(flight.duration_minutes)}</p>
           <div style="margin: 8px 0; border-bottom: 2px solid #007AFF; position: relative;">
             <div style="position: absolute; left: -6px; top: -7px; width: 12px; height: 12px; background-color: #007AFF; border-radius: 50%; border: 2px solid white;"></div>
             <div style="position: absolute; right: -6px; top: -7px; width: 12px; height: 12px; background-color: #007AFF; border-radius: 50%; border: 2px solid white;"></div>
@@ -70,19 +92,19 @@ const generateFlightHTML = (flight: FlightSegment, type: 'outbound' | 'return') 
           <p style="margin: 0; color: #666; font-size: 11px; font-weight: 500;">TO</p>
           <p style="margin: 4px 0 0 0; color: #1a1a1a; font-size: 16px; font-weight: 600;">
             ${flight.destination.city}
-            ${flight.destination.airportCode ? `<span style="color: #666; font-size: 12px;"> (${flight.destination.airportCode})</span>` : ''}
+            ${flight.destination.airport_code ? `<span style="color: #666; font-size: 12px;"> (${flight.destination.airport_code})</span>` : ''}
           </p>
-          <p style="margin: 2px 0 0 0; color: #666; font-size: 13px; font-weight: 500;">${formatTime(flight.arrivalTime)}</p>
+          <p style="margin: 2px 0 0 0; color: #666; font-size: 13px; font-weight: 500;">${formatTime(flight.arrival_time)}</p>
         </div>
       </div>
     </div>
   `;
 };
 
-const generateHotelHTML = (hotel: Hotel, index: number) => {
-    const amenitiesList = hotel.amenities.slice(0, 4).join(' • ');
+const generateHotelHTML = (hotel: Hotel & { dateRange: string }, index: number) => {
+  const amenitiesList = hotel.amenities.slice(0, 4).join(' • ');
 
-    return `
+  return `
     <div style="margin-bottom: 20px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; background-color: white;">
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 12px 15px; color: white;">
         <h4 style="margin: 0; font-size: 14px; font-weight: 600;">${hotel.name}</h4>
@@ -94,7 +116,7 @@ const generateHotelHTML = (hotel: Hotel, index: number) => {
           <div>
             <p style="margin: 0; color: #666; font-size: 11px; font-weight: 500;">RATING</p>
             <p style="margin: 4px 0 0 0; color: #1a1a1a; font-size: 14px; font-weight: 600;">
-              ⭐ ${hotel.rating}/5 (${hotel.stars} stars)
+              ⭐ ${hotel.rating}/5 (${hotel.star_rating} stars)
             </p>
           </div>
           <div style="text-align: right;">
@@ -104,39 +126,39 @@ const generateHotelHTML = (hotel: Hotel, index: number) => {
         </div>
 
         ${amenitiesList
-            ? `
+      ? `
           <div style="background-color: #f5f5f5; padding: 10px; border-radius: 6px; margin-top: 12px;">
             <p style="margin: 0; color: #666; font-size: 10px; font-weight: 500; margin-bottom: 4px;">AMENITIES</p>
             <p style="margin: 0; color: #1a1a1a; font-size: 12px;">${amenitiesList}</p>
           </div>
         `
-            : ''
-        }
+      : ''
+    }
       </div>
     </div>
   `;
 };
 
 const generateHighlightsHTML = (highlights: any[]) => {
-    if (!highlights || highlights.length === 0) return '';
-    const getHighlightIcon = (highlight: TripHighlight) => {
-        if (highlight.type === 'flight') return '✈️';
-        if (highlight.type === 'activity') return '🎯';
+  if (!highlights || highlights.length === 0) return '';
+  const getHighlightIcon = (highlight: TripHighlight) => {
+    if (highlight.type === 'flight') return '✈️';
+    if (highlight.type === 'activity') return '🎯';
 
-        // type === 'transport'
-        const titleLower = highlight.title.toLowerCase();
-        if (titleLower.includes('train')) return '🚆';
-        if (titleLower.includes('bus')) return '🚌';
-        if (titleLower.includes('ferry') || titleLower.includes('boat')) return '⛴️';
-        return '🚗';
-    };
+    // type === 'transport'
+    const titleLower = highlight.title.toLowerCase();
+    if (titleLower.includes('train')) return '🚆';
+    if (titleLower.includes('bus')) return '🚌';
+    if (titleLower.includes('ferry') || titleLower.includes('boat')) return '⛴️';
+    return '🚗';
+  };
 
-    return `
+  return `
     <div style="margin-top: 25px; page-break-inside: avoid;">
       <h3 style="margin: 0 0 15px 0; color: #1a1a1a; font-size: 16px; font-weight: 700; border-bottom: 3px solid #007AFF; padding-bottom: 8px;">Trip Highlights</h3>
 ${highlights
-            .map(
-                (highlight) => `
+      .map(
+        (highlight) => `
       <div style="display: flex; margin-bottom: 12px; padding: 10px; background-color: #f9f9f9; border-radius: 6px;">
         <div style="min-width: 40px; text-align: center; margin-right: 12px;">
           <div style="width: 36px; height: 36px; background-color: #007AFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px;">
@@ -149,8 +171,8 @@ ${highlights
         </div>
       </div>
     `
-            )
-            .join('')}
+      )
+      .join('')}
 
     </div>
   `;
@@ -158,33 +180,33 @@ ${highlights
 
 
 export const exportTripToPDF = async (
-    trip: TripResult,
-    options: TripPDFOptions = {}
+  trip: TripResult,
+  options: TripPDFOptions = {}
 ) => {
-    const { filename = `trip-${trip.tripId}.pdf`, logoUrl } = options;
+  const { filename = `trip-${trip.tripId}.pdf`, logoUrl } = options;
 
-    if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return;
 
-    const html2pdf = (await import('html2pdf.js')).default;
+  const html2pdf = (await import('html2pdf.js')).default;
 
-    let logoSrc: string | null = null;
-    if (logoUrl) {
-        try {
-            const response = await fetch(logoUrl);
-            if (response.ok) {
-                const blob = await response.blob();
-                logoSrc = await new Promise<string>((resolve) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(reader.result as string);
-                    reader.readAsDataURL(blob);
-                });
-            }
-        } catch (e) {
-            console.error('Failed to load logo:', e);
-        }
+  let logoSrc: string | null = null;
+  if (logoUrl) {
+    try {
+      const response = await fetch(logoUrl);
+      if (response.ok) {
+        const blob = await response.blob();
+        logoSrc = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      }
+    } catch (e) {
+      console.error('Failed to load logo:', e);
     }
+  }
 
-    const htmlContent = `
+  const htmlContent = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -351,9 +373,9 @@ export const exportTripToPDF = async (
               <div class="meta-label">Duration</div>
               <div class="meta-value">
                 ${Math.ceil(
-        (new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) /
-        (1000 * 60 * 60 * 24)
-    )} days
+    (new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) /
+    (1000 * 60 * 60 * 24)
+  )} days
               </div>
             </div>
             <div class="meta-item">
@@ -382,7 +404,7 @@ export const exportTripToPDF = async (
 
         <!-- Hotels Section -->
         ${trip.hotels && trip.hotels.length > 0
-            ? `
+      ? `
           <div class="section">
             <h2>🏨 Accommodations</h2>
             <div class="hotels-container">
@@ -390,8 +412,8 @@ export const exportTripToPDF = async (
             </div>
           </div>
         `
-            : ''
-        }
+      : ''
+    }
 
         <!-- Highlights Section -->
         ${generateHighlightsHTML(trip.highlights)}
@@ -399,12 +421,12 @@ export const exportTripToPDF = async (
         <!-- Footer -->
         <div class="footer">
           <p>Trip itinerary generated on ${new Date().toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-        })}</p>
-          <p>Keep this document safe for your records</p>
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })}</p>
+          <p>By Tripping.ai</p>
         </div>
       </div>
     </body>
@@ -414,22 +436,22 @@ export const exportTripToPDF = async (
 
 
 
-    const element = document.createElement('div');
-    element.innerHTML = htmlContent;
+  const element = document.createElement('div');
+  element.innerHTML = htmlContent;
 
-    const config = {
-        margin: [10, 10, 10, 10] as [number, number, number, number],
-        filename,
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true } as any,
-        jsPDF: {
-            orientation: 'portrait' as const,
-            unit: 'mm' as const,
-            format: 'a4' as const,
-            compress: true as const,
-        },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] as const },
-    } as const;
+  const config = {
+    margin: [10, 10, 10, 10] as [number, number, number, number],
+    filename,
+    image: { type: 'jpeg' as const, quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true } as any,
+    jsPDF: {
+      orientation: 'portrait' as const,
+      unit: 'mm' as const,
+      format: 'a4' as const,
+      compress: true as const,
+    },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] as const },
+  } as const;
 
-    (html2pdf() as any).set(config).from(element).save();
+  (html2pdf() as any).set(config).from(element).save();
 };

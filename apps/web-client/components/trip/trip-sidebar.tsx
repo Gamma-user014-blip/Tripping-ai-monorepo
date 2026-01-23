@@ -1,17 +1,16 @@
 import React from "react";
 import styles from "./trip-sidebar.module.css";
-import type { Trip } from "@shared/types";
 import TripMap from "../results/trip-card/trip-map";
-import extractTripData from "../../lib/trip-extract";
-import { exportTripToPDF } from './trip-pdf-export';
+import { exportTripToPDF, TripResult } from './trip-pdf-export';
 
 interface TripSidebarProps {
-  trip: Trip;
-  bookingRef: string;
+  trip: TripResult;
 }
 
-const TripSidebar = ({ trip, bookingRef }: TripSidebarProps): JSX.Element => {
-  const { totalPrice, waypoints, mapCenter } = extractTripData(trip);
+const TripSidebar = ({ trip }: TripSidebarProps): JSX.Element => {
+  const totalPrice = trip.price;
+  const waypoints = trip.waypoints;
+  const mapCenter = trip.mapCenter;
 
   const formatPrice = (amount: number, currency: string): string => {
     return new Intl.NumberFormat("en-US", {
@@ -64,7 +63,7 @@ const TripSidebar = ({ trip, bookingRef }: TripSidebarProps): JSX.Element => {
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Trip ID</span>
             <span className={`${styles.detailValue} ${styles.detailValueMono}`}>
-              {bookingRef}
+              {trip.tripId}
             </span>
           </div>
           <div className={styles.detailRow}>
@@ -82,14 +81,13 @@ const TripSidebar = ({ trip, bookingRef }: TripSidebarProps): JSX.Element => {
           <div className={`${styles.detailRow} ${styles.priceRow}`}>
             <span className={styles.priceLabel}>Total Cost</span>
             <span className={styles.priceValue}>
-              {formatPrice(totalPrice.amount, totalPrice.currency)}
             </span>
           </div>
         </div>
       </div>
 
       <div className={styles.buttonStack}>
-        <button className={styles.actionButton}>
+        <button className={styles.actionButton} onClick={() => handleExportPDF(trip)}>
           <span
             className="material-symbols-outlined"
             style={{ fontSize: "18px" }}
@@ -99,7 +97,7 @@ const TripSidebar = ({ trip, bookingRef }: TripSidebarProps): JSX.Element => {
           Download PDF
 
         </button>
-        <button className={styles.actionButton}>
+        <button className={styles.actionButton} onClick={() => handleAddToCalendar(trip)}>
           <span
             className="material-symbols-outlined"
             style={{ fontSize: "18px" }}
