@@ -75,7 +75,7 @@ class HotelOption(BaseModel):
     description: str = ""
     location: Location = Field(default_factory=Location)
     distance_to_center_km: float = 0.0
-    
+    image: str = "" # url to image
     # Rating
     rating: float = 0.0  # 0-5 scale
     review_count: int = 0
@@ -293,8 +293,7 @@ class ActivityOption(BaseModel):
 class ActivitySearchRequest(BaseModel):
     location: Location = Field(default_factory=Location)
     dates: DateRange = Field(default_factory=DateRange)
-    preferences: List[PreferenceType] = Field(default_factory=list)
-    categories: List[ActivityCategory] = Field(default_factory=list)
+    description: str = ""  # Replaced preferences and categories
     
     # Filters
     max_results: int = 0
@@ -419,7 +418,7 @@ class StayRequest(BaseModel):
 
 class TripSection(BaseModel):
     type: SectionType
-    data: Union[TransferRequest, FlightRequest, StayRequest]
+    data: Union[FlightRequest, StayRequest]
 
 class TripRequest(BaseModel):
     sections: List[TripSection] = Field(default_factory=list)
@@ -436,7 +435,7 @@ class StayResponse(BaseModel):
 
 class TripSectionResponse(BaseModel):
     type: SectionType
-    data: Union[TransferResponse, FlightResponse, StayResponse]
+    data: Union[FlightResponse, StayResponse]
 
 class TripResponse(BaseModel):
     sections: List[TripSectionResponse] = Field(default_factory=list)
@@ -444,7 +443,7 @@ class TripResponse(BaseModel):
 
 class FinalStayOption(BaseModel):
     hotel: HotelOption = Field(default_factory=HotelOption)
-    activity: List[ActivityOption] = Field(default_factory=list)
+    activities: List[ActivityOption] = Field(default_factory=list)
 
 class FinalTripSection(BaseModel):
     type: SectionType

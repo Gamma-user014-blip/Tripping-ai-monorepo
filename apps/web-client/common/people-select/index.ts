@@ -1,1 +1,1 @@
-export { default } from './people-select';
+export { default } from "./people-select";

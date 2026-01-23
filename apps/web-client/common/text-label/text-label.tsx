@@ -2,7 +2,15 @@ import React from "react";
 import styles from "./text-label.module.css";
 import classnames from "classnames";
 
-type TextType = "P025" | "P050" | "P100" | "P200" | "P300" | "H100" | "H200" | "H300";
+type TextType =
+  | "P025"
+  | "P050"
+  | "P100"
+  | "P200"
+  | "P300"
+  | "H100"
+  | "H200"
+  | "H300";
 
 interface TextLabelProps {
   children: string | React.ReactNode;
@@ -21,14 +29,19 @@ const TextLabel: React.FC<TextLabelProps> = ({
     color === "white"
       ? styles.colorWhite
       : color === "black"
-      ? styles.colorBlack
-      : color === "accent"
-      ? styles.colorAccent
-      : styles.colorGray;
+        ? styles.colorBlack
+        : color === "accent"
+          ? styles.colorAccent
+          : styles.colorGray;
 
   return (
     <span
-      className={classnames(styles.textLabel, styles[type], colorClass, classname)}
+      className={classnames(
+        styles.textLabel,
+        styles[type],
+        colorClass,
+        classname,
+      )}
     >
       {children}
     </span>

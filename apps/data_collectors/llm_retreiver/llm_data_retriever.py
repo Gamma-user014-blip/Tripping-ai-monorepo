@@ -75,7 +75,7 @@ Generate realistic activity options with:
 - Realistic highlights and inclusions
 - Available time slots with ISO 8601 format (date: YYYY-MM-DD, time: HH:MM)
 - Difficulty levels: easy, moderate, challenging
-- Component scores 0.0-1.0 (preference_score: match to requested categories)
+- Component scores 0.0-1.0 (preference_score: match to requested description)
 """,
         "TransportSearchResponse": """
 Generate realistic transport options with:
@@ -108,24 +108,19 @@ def generate_json_from_model(
     service_context = _get_service_context(model_name)
 
     system_prompt = f"""
-OUTPUT ONLY RAW JSON. DO NOT USE MARKDOWN OR CODE BLOCKS.
-DO NOT wrap the response in ```json or ``` markers.
-OUTPUT PURE JSON ONLY.
-
-{system_description or service_context}
-
-The JSON MUST strictly follow this schema:
-{json.dumps(schema, indent=2)}
-
-IMPORTANT INSTRUCTIONS:
-- For "options" arrays, generate exactly {list_size} diverse, realistic items
-- Use realistic names, locations, and pricing appropriate to the context
-- All scores must be between 0.0 and 1.0
-- Use ISO 8601 format for all dates and times
-- Include all required fields from the schema
-- Set "available" to true for all options
-- Generate unique IDs for each option
-"""
+    You are a realistic travel data generator.
+    
+    {system_description or service_context}
+    
+    IMPORTANT INSTRUCTIONS:
+    - For "options" arrays, generate exactly {list_size} diverse, realistic items
+    - Use realistic names, locations, and pricing appropriate to the context
+    - All scores must be between 0.0 and 1.0
+    - Use ISO 8601 format for all dates and times
+    - Include all required fields
+    - Set "available" to true for all options
+    - Generate unique IDs for each option
+    """
 
     if preferences:
         user_prompt = f"""
@@ -139,7 +134,7 @@ Remember: Output ONLY raw JSON, no markdown formatting.
 
     try:
         if provider == LLMProvider.PERPLEXITY:
-            raw_text = _generate_with_perplexity(system_prompt, user_prompt)
+            raw_text = _generate_with_perplexity(system_prompt, user_prompt, response_model=schema)
         else:
             raw_text = _generate_with_gemini(system_prompt, user_prompt, use_grounding)
 

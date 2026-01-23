@@ -35,10 +35,25 @@ services:
     environment:
       - AMADEUS_CLIENT_ID
       - AMADEUS_CLIENT_SECRET
+      - REDIS_URL=redis://flight_redis:6379/0
+    depends_on:
+      - flight_redis
     networks:
       - shared_network
+      - flight_private_network
     ports:
       - "8003:8000"
+
+  flight_redis:
+    image: redis:7-alpine
+    container_name: flight_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - flight_redis_data:/data
+    networks:
+      - flight_private_network
+    expose:
+      - "6379"
 
   llm_retriever:
     build:
@@ -82,6 +97,19 @@ services:
     depends_on:
       - trip_builder
 
+  json_agent:
+    build:
+      context: .
+      dockerfile: ./apps/json_agent/Dockerfile
+    container_name: json_agent
+    environment:
+      - PERPLEXITY_API_KEY
+    networks:
+      - shared_network
+    ports:
+      - "8300:8000"
+
+
 networks:
   shared_network:
     driver: bridge
@@ -94,5 +122,10 @@ networks:
     driver: bridge
     internal: true
 
+  flight_private_network:
+    driver: bridge
+    internal: true
+
 volumes:
   hotel_redis_data:
+  flight_redis_data:

@@ -1,7 +1,49 @@
+.resultsPage {
+  min-height: 100vh;
+  font-family: "Inter", sans-serif;
+}
+
 .mainContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 0 auto;
-    width: 90%
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px 40px;
+}
+
+.widgetContainer {
+  padding: 20px 0;
+}
+
+.resultsAndFilters {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+}
+
+.filterContainer {
+  flex-shrink: 0;
+  width: 320px;
+  box-shadow: var(--shadow-card);
+  border-radius: 12px;
+  padding: 16px;
+  background-color: var(--widget-background-secondary);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.filterContainer:hover {
+  box-shadow: var(--shadow-card);
+}
+
+.resultsContainer {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardsList {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }

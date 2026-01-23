@@ -8,14 +8,25 @@
   align-items: center;
   gap: 12px;
   box-sizing: border-box;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s ease;
+}
+
+.widgetRoot:hover {
+  transform: none;
+  box-shadow: var(--shadow-card-heavy);
+}
+
+.widgetRoot:active {
+  transform: none;
 }
 
 .primary {
-    background: var(--widget-background-primary);
+  background: var(--widget-background-primary);
 }
 
 .secondary {
-    background: var(--widget-background-secondary);
+  background: var(--widget-background-secondary);
 }
 
 .selectWrapper {
@@ -34,13 +45,13 @@
   min-width: fit-content;
 }
 
-.label{
-    font-weight: 700;
-    text-align: left;
+.label {
+  font-weight: 700;
+  text-align: left;
 }
 
-.hidden{
-    visibility: hidden;
+.hidden {
+  visibility: hidden;
 }
 
 .actionArea {
@@ -55,10 +66,10 @@
   flex: 1 1 auto;
 }
 
-.searchButton{
-    width: 100px;    
+.searchButton {
+  width: 100px;
 }
 
 .searchButtonText {
-    font-weight: 700 !important;
+  font-weight: 700 !important;
 }

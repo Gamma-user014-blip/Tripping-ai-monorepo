@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional
 from datetime import datetime
+import uuid
 from shared.data_types import models
 
 
@@ -27,6 +28,12 @@ def get_hotel_category(stars: int, rating: float) -> str:
         return "midscale"
     else:
         return "budget"
+
+
+def generate_unique_hotel_id(name: str, lat: float, lon: float) -> str:
+    """Generate a deterministic unique ID based on hotel name and location"""
+    unique_string = f"{name.strip().lower()}_{lat:.5f}_{lon:.5f}"
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, unique_string))
 
 
 def calculate_scores(
@@ -119,8 +126,13 @@ def transform_hotel_data(
     hotel_option = models.HotelOption()
     
     # Basic info
-    hotel_option.id = hotel_raw.get("id", "")
-    hotel_option.name = hotel_raw.get("name", "")
+    name = hotel_raw.get("name", "")
+    lat = float(hotel_raw.get("latitude", 0.0))
+    lon = float(hotel_raw.get("longitude", 0.0))
+    
+    # Generate unique global ID
+    hotel_option.id = generate_unique_hotel_id(name, lat, lon)
+    hotel_option.name = name
     
     # Clean and truncate description
     description = hotel_raw.get("hotelDescription", "")
@@ -128,12 +140,15 @@ def transform_hotel_data(
     import re
     description = re.sub('<[^<]+?>', '', description)
     hotel_option.description = description[:500]  # Truncate
-    
+    hotel_option.image = hotel_raw.get("main_photo", "")
     # Location
     hotel_option.location.city = hotel_raw.get("city", "")
     hotel_option.location.country = hotel_raw.get("country", "")
-    hotel_option.location.latitude = float(hotel_raw.get("latitude", 0.0))
-    hotel_option.location.longitude = float(hotel_raw.get("longitude", 0.0))
+    hotel_option.location.latitude = lat
+    hotel_option.location.longitude = lon
+    
+    # Image
+    hotel_option.image = hotel_raw.get("main_photo", "")
     
     # Distance to center (mock - in real implementation calculate from coordinates)
     hotel_option.distance_to_center_km = 2.5
@@ -172,7 +187,7 @@ def transform_hotel_data(
         hotel_option.available = rate_info.get("available", True)
         
         # Use actual supplier
-        if "supplier" in rate_info:
+        if rate_info.get("supplier"):
             provider = rate_info["supplier"]
     else:
         # Use mock pricing if no rate info
