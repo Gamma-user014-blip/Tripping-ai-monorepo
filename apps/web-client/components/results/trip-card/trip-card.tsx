@@ -63,10 +63,10 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
 
   let outboundArrivalDate = "";
   let returnDepartureDate = "";
-  let primaryHotel: HotelOption | null = null;
 
   const getIsoDate = (dateTime: string): string => dateTime.split("T")[0];
 
+  // First pass: collect all data and extract dates from flights
   for (const section of trip.layout.sections) {
     const data = section.data as SectionData;
 
@@ -113,10 +113,6 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
     } else if (section.type === SectionType.STAY && isFinalStayOption(data)) {
       hotels.push(data.hotel);
 
-      if (!primaryHotel) {
-        primaryHotel = data.hotel;
-      }
-
       totalPrice += convertToUSD(
         data.hotel.total_price.amount,
         data.hotel.total_price.currency,
@@ -143,17 +139,37 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
     }
   }
 
-  if (primaryHotel && outboundArrivalDate) {
-    const checkInDate = outboundArrivalDate;
-    const checkOutDate = returnDepartureDate || "";
+  // If no dates from flights, try to get dates from activities
+  if (!outboundArrivalDate && activities.length > 0) {
+    const allDates = activities
+      .flatMap((a) => a.available_times?.map((t) => t.date) ?? [])
+      .filter(Boolean)
+      .sort();
+    if (allDates.length > 0) {
+      outboundArrivalDate = allDates[0];
+      returnDepartureDate = allDates[allDates.length - 1];
+    }
+  }
 
+  // Add stay highlights for each hotel
+  for (const hotel of hotels) {
     highlights.push({
-      date: checkInDate,
-      endDate: checkOutDate || undefined,
-      title: `Stay at ${primaryHotel.name}`,
+      date: outboundArrivalDate || "",
+      endDate: returnDepartureDate || undefined,
+      title: `Stay at ${hotel.name}`,
       type: "stay",
-      location: primaryHotel.location,
+      location: hotel.location,
     });
+  }
+
+  // If no origin from flights, use first hotel location
+  if (!origin && hotels.length > 0) {
+    origin = hotels[0].location;
+  }
+
+  // If no destination from flights, use first hotel location
+  if (!mainDestination && hotels.length > 0) {
+    mainDestination = hotels[0].location;
   }
 
   const typeRank: Record<TripHighlight["type"], number> = {
@@ -213,6 +229,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, tripId }) => {
   const {
     hotels,
     flights,
+    activities,
     highlights,
     waypoints,
     totalPrice,
@@ -232,7 +249,8 @@ const TripCard: React.FC<TripCardProps> = ({ trip, tripId }) => {
 
   const handleCardClick = (): void => {
     if (!tripId) return;
-    router.push(`/trip?tripId=${tripId}`);
+    const url = `/trip?tripId=${encodeURIComponent(tripId)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
@@ -258,6 +276,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, tripId }) => {
           destination={destinationStr}
           price={totalPrice}
           vibe={vibe}
+          activities={activities}
         />
         {outboundFlight && (
           <FlightDetails

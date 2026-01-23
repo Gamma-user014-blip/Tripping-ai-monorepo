@@ -76,6 +76,10 @@ Generate realistic activity options with:
 - Available time slots with ISO 8601 format (date: YYYY-MM-DD, time: HH:MM)
 - Difficulty levels: easy, moderate, challenging
 - Component scores 0.0-1.0 (preference_score: match to requested description)
+- IMPORTANT: Set the "category" field to the correct integer based on activity type:
+  0=UNKNOWN (use this in fallback cases), 1=TOUR, 2=MUSEUM, 3=RESTAURANT, 4=SHOW, 5=OUTDOOR, 
+  6=WATER_SPORTS, 7=NIGHTLIFE, 8=SHOPPING, 9=SPA, 10=ADVENTURE, 11=CULTURAL, 12=FOOD_TOUR
+  Examples: Walking tour=1, Art museum=2, Cooking class=12, Hiking=5, Snorkeling=6, Wine tasting=12
 """,
         "TransportSearchResponse": """
 Generate realistic transport options with:

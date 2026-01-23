@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import maplibregl from "maplibre-gl";
 import styles from "./trip-map.module.css";
+
+// Dynamic import to avoid SSR issues with maplibre-gl
+let maplibregl: typeof import("maplibre-gl") | null = null;
+if (typeof window !== "undefined") {
+  maplibregl = require("maplibre-gl");
+}
 
 interface MapWaypoint {
   lat: number;
@@ -28,7 +33,12 @@ const TripMap: React.FC<TripMapProps> = ({
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const isLoadedRef = useRef(false);
   const [hasError, setHasError] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const API_KEY = process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "a";
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const clearMarkers = (): void => {
     for (const marker of markersRef.current) {
@@ -40,6 +50,7 @@ const TripMap: React.FC<TripMapProps> = ({
   const updateRouteAndMarkers = (): void => {
     if (!map.current) return;
     if (!isLoadedRef.current) return;
+    if (!maplibregl) return;
 
     clearMarkers();
 
@@ -142,6 +153,7 @@ const TripMap: React.FC<TripMapProps> = ({
   useEffect(() => {
     if (map.current) return;
     if (!mapContainer.current) return;
+    if (!maplibregl) return;
 
     try {
       map.current = new maplibregl.Map({
@@ -197,7 +209,9 @@ const TripMap: React.FC<TripMapProps> = ({
     <div
       className={`${styles.container} ${variant === "fill" ? styles.fill : ""} ${!interactive ? styles.nonInteractive : ""}`}
     >
-      {!hasError ? (
+      {!isMounted ? (
+        <div className={styles.mapContainer} style={{ width: "100%", height: "100%", background: "#e5e7eb" }} />
+      ) : !hasError ? (
         <div
           ref={mapContainer}
           className={styles.mapContainer}

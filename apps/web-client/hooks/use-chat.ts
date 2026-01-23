@@ -104,6 +104,9 @@ const useChat = ({
       const sessionId = getOrCreateSessionId(sessionIdRef);
 
       stopPollingRef.current = pollForSearchResults(searchId, {
+        onProgress: (trips) => {
+          onTripsLoaded?.(trips);
+        },
         onComplete: (trips) => {
           void (async (): Promise<void> => {
             try {

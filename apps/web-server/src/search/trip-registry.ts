@@ -1,4 +1,4 @@
-import type { Trip } from "../../../../shared/types";
+import type { Trip } from "@monorepo/shared";
 
 interface SearchTripIndex {
   tripIds: string[];

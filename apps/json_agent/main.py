@@ -11,6 +11,8 @@ from openai import OpenAI
 import json
 import os
 import re
+import unicodedata
+from pathlib import Path
 from typing import List, Dict, Any, Union
 
 load_dotenv()
@@ -58,6 +60,76 @@ class EditTripPlansResponse(BaseModel):
 # ==========================================
 # HELPER FUNCTIONS
 # ==========================================
+
+def _normalize_country_key(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value)
+    normalized = "".join(
+        char for char in normalized if not unicodedata.combining(char)
+    )
+    normalized = normalized.lower().strip()
+    normalized = re.sub(r"[^a-z0-9]+", " ", normalized)
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def _load_country_name_to_code_map() -> Dict[str, str]:
+    try:
+        repo_root = Path(__file__).resolve().parents[2]
+        shared_countries_path = (
+            repo_root / "shared" / "metadata" / "countries.json"
+        )
+        legacy_web_countries_path = (
+            repo_root / "apps" / "web-client" / "common" / "countries.json"
+        )
+
+        countries_path = (
+            shared_countries_path
+            if shared_countries_path.exists()
+            else legacy_web_countries_path
+        )
+
+        raw = countries_path.read_text(encoding="utf-8")
+        items = json.loads(raw)
+        if not isinstance(items, list):
+            return {}
+
+        mapping: Dict[str, str] = {}
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            name = item.get("name")
+            code = item.get("code")
+            if not isinstance(name, str) or not isinstance(code, str):
+                continue
+            name = name.strip()
+            code = code.strip()
+            if not name or not code:
+                continue
+            mapping[_normalize_country_key(name)] = code.upper()
+        return mapping
+    except Exception:
+        return {}
+
+
+_COUNTRY_NAME_TO_ISO2: Dict[str, str] = _load_country_name_to_code_map()
+
+
+def normalize_country_to_iso2(country: str) -> str:
+    if not isinstance(country, str):
+        return ""
+
+    country = country.strip()
+    if not country:
+        return country
+
+    if re.fullmatch(r"[A-Za-z]{2}", country):
+        return country.upper()
+
+    key = _normalize_country_key(country)
+    code = _COUNTRY_NAME_TO_ISO2.get(key)
+    if code:
+        return code
+
+    return country
 
 def extract_json_from_text(text: str) -> str:
     """
@@ -166,7 +238,7 @@ def parse_stay_action(args: List[Any]) -> StayRequest:
 
     location = Location(
         city=city,
-        country=country
+        country=normalize_country_to_iso2(country)
     )
     
     dates = DateRange(
@@ -254,7 +326,7 @@ def generate_single_trip_plan(trip_yml: str, previous_vibes: List[str]) -> Dict[
        
     2. STAY
        Format: ["STAY", city, country, start_date, end_date, guests, rooms, description]
-       Note: description is a short string of activity preferences.
+       Note: description is a short string of activity preferences. USE ISO-2 COUNTRY CODES (e.g., "US", "IT", "FR", "GB", "IL").
     
     Rules:
     - Generate EXACTLY ONE option.
@@ -270,8 +342,8 @@ def generate_single_trip_plan(trip_yml: str, previous_vibes: List[str]) -> Dict[
       "vibe": "The Classic Tourist",
       "actions": [
         ["FLIGHT", "NYC", "USA", "JFK", "London", "UK", "LHR", "2024-05-01", "", 1, "economy"],
-        ["STAY", "London", "UK", "2024-05-01", "2024-05-05", 1, 1, "Major landmarks and museums"],
-        ["FLIGHT", "London", "UK", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "economy"]
+        ["STAY", "London", "GB", "2024-05-01", "2024-05-05", 1, 1, "Major landmarks and museums"],
+        ["FLIGHT", "London", "GB", "LHR", "NYC", "USA", "JFK", "2024-05-05", "", 1, "economy"]
       ]
     }}
     """
@@ -360,7 +432,7 @@ def edit_trip_plans_with_llm(plans: List[TripPlan], user_text: str) -> List[Trip
     1. FLIGHT: ["FLIGHT", origin_city, origin_country, origin_code, dest_city, dest_country, dest_code, date, return_date, passengers, cabin]
        - The 'date' is the day of travel.
     2. STAY: ["STAY", city, country, start_date, end_date, guests, rooms, description]
-       - 'start_date' is check-in, 'end_date' is check-out.
+       - 'start_date' is check-in, 'end_date' is check-out. USE ISO-2 COUNTRY CODES.
     
     Constraint & Logic Rules:
     - DATE ARITHMETIC: If a user asks to "shorten X by 1 day and give it to Y", this refers to the transition date BETWEEN X and Y.

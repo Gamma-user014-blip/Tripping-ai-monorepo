@@ -199,6 +199,15 @@ async def flight_search(request: FlightSearchRequest):
 
         return response
 
+    except ResponseError as e:
+        # Amadeus SDK wraps API errors in ResponseError
+        status_code = getattr(e.response, "status_code", 502)
+        error_body = getattr(e.response, "body", None) or {}
+        errors = error_body.get("errors", []) if isinstance(error_body, dict) else []
+        detail_msg = errors[0].get("detail", str(e)) if errors else str(e)
+        print(f"Amadeus API error [{status_code}]: {detail_msg}")
+        print(f"Full error body: {error_body}")
+        raise HTTPException(status_code=status_code, detail=f"Amadeus error: {detail_msg}")
     except Exception as e:
         print(f"Search error: {e}")
         raise HTTPException(status_code=502, detail=f"Amadeus error: {e}")

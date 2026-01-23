@@ -370,7 +370,7 @@ def _get_single_missing_question(
 
     missing = first_missing_essential(decoded)
     if not missing:
-        return FillResponse(yaml="", status=FillStatus.ready, message=None)
+        return FillResponse(yaml=yaml_state_clean, status=FillStatus.ready, message=None)
 
     known = summarize_known_essentials(decoded)
     prompt = build_single_missing_question_prompt(missing, known)
@@ -417,9 +417,12 @@ def update_trip_yaml_state(request: UpdateTripRequest) -> FillResponse:
         raw_user_message=request.raw_user_message,
         current_yaml_state=request.current_yaml_state or None,
     )
+
+    decoded = validate_yaml_root_mapping(result)
+    missing = first_missing_essential(decoded)
     return FillResponse(
         yaml=result,
-        status=FillStatus.needs_more_info,
+        status=FillStatus.needs_more_info if missing else FillStatus.ready,
         message=None,
     )
 
