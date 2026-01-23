@@ -1,92 +1,71 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useRef, useEffect } from "react";
 import styles from "./ai-chat-sidebar.module.css";
+import useChat from "../../../hooks/use-chat";
+import { Trip } from "../../../../../shared/types";
 
-interface Message {
-  id: string;
-  text: string;
-  sender: "user" | "ai";
-  timestamp: number;
+interface AiChatSidebarProps {
+  onTripsLoaded?: (trips: Trip[]) => void;
+  onSearchStart?: () => void;
 }
 
-const AiChatSidebar: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "init",
-      text: "Hello! I'm your AI travel assistant. How can I help you customize your trip today?",
-      sender: "ai",
-      timestamp: Date.now(),
-    },
-  ]);
-  const [inputValue, setInputValue] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+const AiChatSidebar: React.FC<AiChatSidebarProps> = ({
+  onTripsLoaded,
+  onSearchStart,
+}) => {
+  const { messages, isTyping, isSearching, sendMessage, isSending } = useChat({
+    onTripsLoaded,
+    onSearchStart,
+  });
+
+  const [inputValue, setInputValue] = React.useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageListRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (): void => {
+    const messageList = messageListRef.current;
+    if (!messageList) return;
+    messageList.scrollTo({ top: messageList.scrollHeight, behavior: "smooth" });
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
+  const handleSendMessage = async (): Promise<void> => {
+    if (isTyping || isSending || !inputValue.trim()) return;
 
-    const newUserMessage: Message = {
-      id: Date.now().toString(),
-      text: inputValue.trim(),
-      sender: "user",
-      timestamp: Date.now(),
-    };
-
-    setMessages((prev) => [...prev, newUserMessage]);
+    const text = inputValue;
     setInputValue("");
-    setIsTyping(true);
 
-    // Reset textarea height
     if (inputRef.current) {
-      inputRef.current.style.height = '32px';
+      inputRef.current.style.height = "32px";
     }
 
-    // Simulate AI response
-    setTimeout(() => {
-      const newAiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: "Hello! That sounds clearer. Let me see what I can find for you.",
-        sender: "ai",
-        timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, newAiMessage]);
-      setIsTyping(false);
+    await sendMessage(text);
 
-      setTimeout(() => {
-        try {
-          inputRef.current?.focus();
-        } catch (e) {
-          // ignore
-        }
-      }, 0);
-    }, 1500);
+    setTimeout(() => {
+      inputRef.current?.focus({ preventScroll: true });
+    }, 0);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+    if (isTyping || isSending) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
-  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
     setInputValue(e.target.value);
-    e.target.style.height = 'auto';
+    e.target.style.height = "auto";
     e.target.style.height = `${Math.min(e.target.scrollHeight, 100)}px`;
   };
 
-  const handleBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
-    // If empty, reset to default compact height; otherwise clamp to content height
+  const handleBlur = (e: React.FocusEvent<HTMLTextAreaElement>): void => {
     if (!e.target.value || !e.target.value.trim()) {
-      e.target.style.height = '32px';
+      e.target.style.height = "32px";
     } else {
       e.target.style.height = `${Math.min(e.target.scrollHeight, 100)}px`;
     }
@@ -101,7 +80,7 @@ const AiChatSidebar: React.FC = () => {
         <h3 className={styles.title}>AI Planner</h3>
       </div>
 
-      <div className={styles.messageList}>
+      <div className={styles.messageList} ref={messageListRef}>
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -132,12 +111,12 @@ const AiChatSidebar: React.FC = () => {
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           rows={1}
-          disabled={isTyping}
+          disabled={isTyping || isSearching}
         />
         <button
           className={styles.sendButton}
           onClick={handleSendMessage}
-          disabled={!inputValue.trim() || isTyping}
+          disabled={!inputValue.trim() || isTyping || isSearching}
         >
           <span className={`material-symbols-outlined ${styles.sendIcon}`}>
             send

@@ -1,11 +1,48 @@
 import React from "react";
-import { Hotel } from "../../types";
+import { HotelOption } from "../../types";
 import { Icon } from "../../icon";
 import styles from "./hotel-card.module.css";
 
 interface HotelCardProps {
-  hotels: Hotel[];
+  hotels: HotelOption[];
 }
+
+const formatAmenity = (amenity: string): string => {
+  const amenityMap: Record<string, string> = {
+    wifi: "Free Wi-Fi",
+    breakfast: "Breakfast",
+    concierge: "Concierge",
+    pool: "Pool",
+    gym: "Gym",
+    spa: "Spa",
+    parking: "Parking",
+    restaurant: "Restaurant",
+    bar: "Bar",
+    laundry: "Laundry",
+    "room service": "Room Service",
+    "24h reception": "24h Reception",
+    onsen: "Hot Spring",
+    dinner: "Dinner",
+    shuttle: "Shuttle",
+    ac: "AC",
+  };
+
+  const key = amenity.toLowerCase();
+  return amenityMap[key] || amenity.charAt(0).toUpperCase() + amenity.slice(1);
+};
+
+type IconName = React.ComponentProps<typeof Icon>["icon"];
+
+const AmenityIcon: React.FC<{ amenity: string }> = ({ amenity }) => {
+  const iconMap: Record<string, IconName> = {
+    wifi: "wifi",
+    shuttle: "shuttle",
+    ac: "ac",
+  };
+
+  const iconName = iconMap[amenity.toLowerCase()] || "location";
+  return <Icon icon={iconName} height={16} color="var(--color-text-subtle)" />;
+};
 
 const HotelCard: React.FC<HotelCardProps> = ({ hotels }) => {
   return (
@@ -26,12 +63,60 @@ const HotelCard: React.FC<HotelCardProps> = ({ hotels }) => {
   );
 };
 
-const HotelItem: React.FC<{ hotel: Hotel }> = ({ hotel }) => {
+const getHueFromId = (id: string): number => {
+  let hash = 0;
+  for (const char of id) {
+    hash = (hash * 31 + char.charCodeAt(0)) % 360;
+  }
+  return hash;
+};
+
+const HOTEL_GRADIENTS: Array<[string, string]> = [
+  ["hsl(210 70% 55%)", "hsl(232 70% 32%)"],
+  ["hsl(195 70% 52%)", "hsl(214 70% 30%)"],
+  ["hsl(255 65% 58%)", "hsl(275 70% 34%)"],
+  ["hsl(220 24% 62%)", "hsl(232 26% 30%)"],
+  ["hsl(205 65% 54%)", "hsl(255 55% 34%)"],
+];
+
+const getFallbackGradient = (hotel: HotelOption): string => {
+  const index = getHueFromId(hotel.id) % HOTEL_GRADIENTS.length;
+  const [from, to] = HOTEL_GRADIENTS[index];
+  return `linear-gradient(135deg, ${from}, ${to})`;
+};
+
+const getHotelImageStyle = (hotel: HotelOption): React.CSSProperties => {
+  if (hotel.image) {
+    return {
+      backgroundImage: `url(${hotel.image})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+    };
+  }
+  return {
+    backgroundImage: getFallbackGradient(hotel),
+  };
+};
+
+const HotelItem: React.FC<{ hotel: HotelOption }> = ({ hotel }) => {
   const address = `${hotel.location.city}, ${hotel.location.country}`;
+  const priceText =
+    hotel.price_per_night.currency === "USD"
+      ? `$${hotel.price_per_night.amount}/night`
+      : `${hotel.price_per_night.amount} ${hotel.price_per_night.currency}/night`;
+
+  const uniqueAmenities = Array.from(
+    new Map(
+      (hotel.amenities || []).map((amenity) => [
+        amenity.toLowerCase(),
+        amenity,
+      ]),
+    ).values(),
+  );
 
   return (
     <div className={styles.hotelItemWrapper}>
-      <div className={styles.hotelDate}>{hotel.dateRange}</div>
+      <div className={styles.hotelDate}>{priceText}</div>
       <div className={styles.hotelItem}>
         <h4 className={styles.name}>{hotel.name}</h4>
         <div className={styles.addressRow}>
@@ -39,7 +124,7 @@ const HotelItem: React.FC<{ hotel: Hotel }> = ({ hotel }) => {
           <p className={styles.address}>{address}</p>
         </div>
         <div className={styles.stars}>
-          {[...Array(hotel.stars)].map((_, i) => (
+          {[...Array(hotel.star_rating)].map((_, i) => (
             <span key={i} className={styles.star}>
               ★
             </span>
@@ -47,26 +132,28 @@ const HotelItem: React.FC<{ hotel: Hotel }> = ({ hotel }) => {
         </div>
 
         <div className={styles.imageContainer}>
-          <img src={hotel.image} alt={hotel.name} className={styles.image} />
-        </div>
-
-        <div className={styles.amenitiesSection}>
-          <span className={styles.amenityHighlight}>{hotel.amenities[0]}</span>
+          <div
+            className={styles.image}
+            style={getHotelImageStyle(hotel)}
+            role="img"
+            aria-label={hotel.name}
+          >
+            <div className={styles.imageOverlay}>
+              <div className={styles.imageTitle}>{hotel.location.city}</div>
+              <div className={styles.imageSubtitle}>
+                {hotel.rating_category}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className={styles.icons}>
-          <div className={styles.iconItem}>
-            <Icon icon="wifi" height={16} color="var(--color-text-subtle)" />
-            <span>Free Wi-Fi</span>
-          </div>
-          <div className={styles.iconItem}>
-            <Icon icon="shuttle" height={16} color="var(--color-text-subtle)" />
-            <span>Shuttle</span>
-          </div>
-          <div className={styles.iconItem}>
-            <Icon icon="ac" height={16} color="var(--color-text-subtle)" />
-            <span>AC</span>
-          </div>
+          {uniqueAmenities.slice(0, 3).map((amenity, i) => (
+            <div key={i} className={styles.iconItem}>
+              <AmenityIcon amenity={amenity} />
+              <span>{formatAmenity(amenity)}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

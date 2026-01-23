@@ -38,9 +38,13 @@ async def cache_get(key: str) -> Optional[Dict]:
     try:
         client = await get_redis_client()
         data = await client.get(key)
-        return json.loads(data) if data else None
+        if data:
+            return json.loads(data)
+        print(f"DEBUG: cache_get returning None for key: {key}")
+        return None
     except Exception as e:
         print(f"Cache get error: {e}")
+        print(f"DEBUG: cache_get returning None due to exception for key: {key}")
         return None
 
 async def cache_set(key: str, value: Dict, ttl: int = FLIGHT_CACHE_TTL):
@@ -66,9 +70,13 @@ async def get_provider_offer(unique_id: str) -> Optional[Dict]:
         client = await get_redis_client()
         key = f"map:flight_offer:{unique_id}"
         data = await client.get(key)
-        return json.loads(data) if data else None
+        if data:
+            return json.loads(data)
+        print(f"DEBUG: get_provider_offer returning None for unique_id: {unique_id}")
+        return None
     except Exception as e:
         print(f"Mapping lookup error: {e}")
+        print(f"DEBUG: get_provider_offer returning None due to exception for unique_id: {unique_id}")
         return None
 
 amadeus = Client(

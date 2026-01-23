@@ -1,19 +1,45 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import { router } from './routes';
+import express, {
+  type Express,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
+import cors from "cors";
+import cookieSession from "cookie-session";
+import apiRouter from "./routes/api";
 
-dotenv.config();
+const app: Express = express();
+const PORT: number = Number(process.env.PORT) || 3001;
 
-const app = express();
-const port = process.env.PORT || 4000;
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  }),
+);
 
 app.use(express.json());
-app.use('/api', router);
 
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok', service: 'web-server-gateway' });
+app.use(
+  cookieSession({
+    name: "session",
+    keys: [process.env.SESSION_SECRET || "dev-secret-key-change-in-production"],
+    maxAge: 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  }) as any,
+);
+
+app.use((req: Request, res: Response, next: NextFunction): void => {
+  console.log(
+    `[${req.method}] ${req.path}  ${req.body ? JSON.stringify(req.body) : ""}`,
+  );
+  next();
 });
 
-app.listen(port, () => {
-    console.log(`Gateway listening at http://localhost:${port}`);
+app.use("/api", apiRouter);
+
+app.listen(PORT, (): void => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });

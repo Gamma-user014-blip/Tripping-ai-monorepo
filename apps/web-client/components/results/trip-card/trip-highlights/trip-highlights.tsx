@@ -1,20 +1,45 @@
 import React from "react";
-import { TripHighlight, Money } from "../../types";
+import { Money, Location } from "../../types";
 import { Icon } from "../../icon";
 import styles from "./trip-highlights.module.css";
+
+interface TripHighlight {
+  date: string;
+  endDate?: string;
+  title: string;
+  type: "flight" | "stay" | "activity" | "transport";
+  location: Location;
+}
 
 interface TripHighlightsProps {
   highlights: TripHighlight[];
   origin: string;
   destination: string;
   price: Money;
+  vibe?: string;
 }
+
+const formatDate = (dateStr: string): string => {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+};
+
+const formatDateRange = (startDate: string, endDate?: string): string => {
+  if (!startDate) return "";
+  if (!endDate) return formatDate(startDate);
+  return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+};
 
 const TripHighlights: React.FC<TripHighlightsProps> = ({
   highlights,
   origin,
   destination,
   price,
+  vibe = "Adventure",
 }) => {
   const [originCity, originCountry] = origin.split(", ");
   const [destCity, destCountry] = destination.split(", ");
@@ -23,11 +48,12 @@ const TripHighlights: React.FC<TripHighlightsProps> = ({
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.route}>
-          <span className={styles.city}>{originCity}</span>,{originCountry}
+          <span className={styles.city}>{originCity}</span>,
+          {originCountry || ""}
           <span className={styles.arrow}>⟶</span>
-          <span className={styles.city}>{destCity}</span>,{destCountry}
+          <span className={styles.city}>{destCity}</span>,{destCountry || ""}
         </div>
-        <button className={styles.selectButton}>Tropical</button>
+        <button className={styles.selectButton}>{vibe}</button>
       </div>
 
       <div className={styles.highlightsSection}>
@@ -40,7 +66,11 @@ const TripHighlights: React.FC<TripHighlightsProps> = ({
                   <div className={styles.timelineItem}>
                     <div className={styles.itemCard}>
                       <div className={styles.itemHeader}>
-                        <span className={styles.itemDate}>{item.date}</span>
+                        <span className={styles.itemDate}>
+                          {item.endDate
+                            ? formatDateRange(item.date, item.endDate)
+                            : formatDate(item.date)}
+                        </span>
                         <HighlightIcon type={item.type} />
                       </div>
                       <div className={styles.itemTitle}>{item.title}</div>
@@ -75,6 +105,10 @@ const HighlightIcon: React.FC<{ type: string }> = ({ type }) => {
   switch (type) {
     case "flight":
       return <Icon icon="flight" height={12} color="var(--color-text-muted)" />;
+    case "stay":
+      return (
+        <Icon icon="location" height={12} color="var(--color-text-muted)" />
+      );
     case "activity":
       return (
         <Icon icon="activity" height={12} color="var(--color-text-muted)" />

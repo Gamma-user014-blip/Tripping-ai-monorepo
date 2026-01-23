@@ -73,6 +73,7 @@ def calculate_scores(
 def transform_room_data(room_raw: Optional[Dict]) -> Optional[models.RoomInfo]:
     """Transform raw room data to RoomInfo Pydantic model"""
     if not room_raw:
+        print("DEBUG: transform_room_data returning None - room_raw is empty")
         return None
     
     room_info = models.RoomInfo()
