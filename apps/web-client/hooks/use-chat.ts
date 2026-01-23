@@ -28,6 +28,7 @@ interface UseChatOptions {
   onTripsLoaded?: (trips: Trip[]) => void;
   onSearchStart?: () => void;
   onSearchClear?: () => void;
+  onSearchComplete?: () => void;
   onRedirect?: (searchId: string) => void;
   mode?: ChatMode;
 }
@@ -54,6 +55,7 @@ const useChat = ({
   onTripsLoaded,
   onSearchStart,
   onSearchClear,
+  onSearchComplete,
   onRedirect,
   mode = "inline",
 }: UseChatOptions = {}): UseChatReturn => {
@@ -143,14 +145,16 @@ const useChat = ({
           );
           setIsSearching(false);
           onTripsLoaded?.(trips);
+          onSearchComplete?.();
         },
         onError: (error) => {
           setIsSearching(false);
           console.error("Search error:", error);
+          onSearchComplete?.();
         },
       });
     },
-    [onTripsLoaded, onSearchStart, clearSearchData],
+    [onTripsLoaded, onSearchStart, onSearchComplete, clearSearchData],
   );
 
   const startPollingFromSession = useCallback((): void => {

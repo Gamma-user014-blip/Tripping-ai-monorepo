@@ -6,7 +6,7 @@ import {
   Trip,
 } from "../../../shared/types";
 
-const POLL_INTERVAL_MS = 3000;
+const POLL_INTERVAL_MS = Number(process.env.NEXT_PUBLIC_POLL_INTERVAL_MS) || 10000;
 
 interface PollOptions {
   onComplete: (trips: Trip[], tripIds: string[]) => void;

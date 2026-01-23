@@ -71,13 +71,15 @@ const ResultsPage: React.FC = (): JSX.Element => {
     }
 
     setTrips(loadedTrips);
-    setLoadingState("loaded");
+    // Keep loading state as-is. We switch to "loaded" only when polling completes.
   }, []);
 
   const handleSearchStart = useCallback((): void => {
-    // If we already have results (e.g., refresh mid-search), keep them visible
-    // while polling continues.
-    setLoadingState((prev) => (prev === "loaded" ? "loaded" : "loading"));
+    setLoadingState("loading");
+  }, []);
+
+  const handleSearchComplete = useCallback((): void => {
+    setLoadingState("loaded");
   }, []);
 
   const handleSearchClear = useCallback((): void => {
@@ -102,6 +104,7 @@ const ResultsPage: React.FC = (): JSX.Element => {
               onTripsLoaded={handleTripsLoaded}
               onSearchStart={handleSearchStart}
               onSearchClear={handleSearchClear}
+              onSearchComplete={handleSearchComplete}
             />
           </div>
           <div className={styles.resultsContainer}>
@@ -116,82 +119,6 @@ const ResultsPage: React.FC = (): JSX.Element => {
                     perfect options for you!
                   </p>
                 </div>
-              ) : loadingState === "loading" ? (
-                <div className={styles.skeletonsContainer}>
-                  {[1, 2, 3].map((i) => (
-                    <div
-                      className={styles.skeletonCard}
-                      key={i}
-                      role="article"
-                      aria-label="Loading trip option"
-                    >
-                      {/* Hotel column */}
-                      <div className={styles.skeletonHotel}>
-                        <div className={styles.skeletonHotelHeader} />
-                        <div className={styles.skeletonDashedLine} />
-                        <div className={styles.skeletonHotelItem}>
-                          <div className={styles.skeletonHotelDate} />
-                          <div className={styles.skeletonHotelName} />
-                          <div className={styles.skeletonHotelAddress} />
-                          <div className={styles.skeletonHotelStars} />
-                          <div className={styles.skeletonHotelImage} />
-                          <div className={styles.skeletonHotelAmenity} />
-                          <div className={styles.skeletonHotelIcons}>
-                            <div className={styles.skeletonIconBox} />
-                            <div className={styles.skeletonIconBox} />
-                            <div className={styles.skeletonIconBox} />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Middle section */}
-                      <div className={styles.skeletonMiddle}>
-                        {/* Trip Highlights section */}
-                        <div className={styles.skeletonHighlights}>
-                          <div className={styles.skeletonRouteHeader}>
-                            <div className={styles.skeletonRouteText} />
-                            <div className={styles.skeletonChipButton} />
-                          </div>
-                          <div className={styles.skeletonTimelineLabel} />
-                          <div className={styles.skeletonTimeline}>
-                            {[1, 2, 3, 4].map((j) => (
-                              <div
-                                className={styles.skeletonTimelineCard}
-                                key={j}
-                              />
-                            ))}
-                          </div>
-                          <div className={styles.skeletonPrice} />
-                        </div>
-
-                        {/* Flight Details section */}
-                        <div className={styles.skeletonFlights}>
-                          <div className={styles.skeletonFlightRow}>
-                            <div className={styles.skeletonAirlineLogo} />
-                            <div className={styles.skeletonFlightTime} />
-                            <div className={styles.skeletonFlightCode} />
-                            <div className={styles.skeletonFlightPath} />
-                            <div className={styles.skeletonFlightCode} />
-                            <div className={styles.skeletonFlightTime} />
-                            <div className={styles.skeletonBaggage} />
-                          </div>
-                          <div className={styles.skeletonFlightRow}>
-                            <div className={styles.skeletonAirlineLogo} />
-                            <div className={styles.skeletonFlightTime} />
-                            <div className={styles.skeletonFlightCode} />
-                            <div className={styles.skeletonFlightPath} />
-                            <div className={styles.skeletonFlightCode} />
-                            <div className={styles.skeletonFlightTime} />
-                            <div className={styles.skeletonBaggage} />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Map column */}
-                      <div className={styles.skeletonMap} />
-                    </div>
-                  ))}
-                </div>
               ) : (
                 <div className={styles.cardsList}>
                   {trips.map((trip, index) => (
@@ -202,6 +129,81 @@ const ResultsPage: React.FC = (): JSX.Element => {
                       tripIndex={index}
                     />
                   ))}
+                  {Array.from({ length: Math.max(0, 3 - trips.length) }).map(
+                    (_, i) => (
+                      <div
+                        className={styles.skeletonCard}
+                        key={`skeleton-${i}`}
+                        role="article"
+                        aria-label="Loading trip option"
+                      >
+                          {/* Hotel column */}
+                          <div className={styles.skeletonHotel}>
+                            <div className={styles.skeletonHotelHeader} />
+                            <div className={styles.skeletonDashedLine} />
+                            <div className={styles.skeletonHotelItem}>
+                              <div className={styles.skeletonHotelDate} />
+                              <div className={styles.skeletonHotelName} />
+                              <div className={styles.skeletonHotelAddress} />
+                              <div className={styles.skeletonHotelStars} />
+                              <div className={styles.skeletonHotelImage} />
+                              <div className={styles.skeletonHotelAmenity} />
+                              <div className={styles.skeletonHotelIcons}>
+                                <div className={styles.skeletonIconBox} />
+                                <div className={styles.skeletonIconBox} />
+                                <div className={styles.skeletonIconBox} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Middle section */}
+                          <div className={styles.skeletonMiddle}>
+                            {/* Trip Highlights section */}
+                            <div className={styles.skeletonHighlights}>
+                              <div className={styles.skeletonRouteHeader}>
+                                <div className={styles.skeletonRouteText} />
+                                <div className={styles.skeletonChipButton} />
+                              </div>
+                              <div className={styles.skeletonTimelineLabel} />
+                              <div className={styles.skeletonTimeline}>
+                                {[1, 2, 3, 4].map((j) => (
+                                  <div
+                                    className={styles.skeletonTimelineCard}
+                                    key={j}
+                                  />
+                                ))}
+                              </div>
+                              <div className={styles.skeletonPrice} />
+                            </div>
+
+                            {/* Flight Details section */}
+                            <div className={styles.skeletonFlights}>
+                              <div className={styles.skeletonFlightRow}>
+                                <div className={styles.skeletonAirlineLogo} />
+                                <div className={styles.skeletonFlightTime} />
+                                <div className={styles.skeletonFlightCode} />
+                                <div className={styles.skeletonFlightPath} />
+                                <div className={styles.skeletonFlightCode} />
+                                <div className={styles.skeletonFlightTime} />
+                                <div className={styles.skeletonBaggage} />
+                              </div>
+                              <div className={styles.skeletonFlightRow}>
+                                <div className={styles.skeletonAirlineLogo} />
+                                <div className={styles.skeletonFlightTime} />
+                                <div className={styles.skeletonFlightCode} />
+                                <div className={styles.skeletonFlightPath} />
+                                <div className={styles.skeletonFlightCode} />
+                                <div className={styles.skeletonFlightTime} />
+                                <div className={styles.skeletonBaggage} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Map column */}
+                          <div className={styles.skeletonMap} />
+                      </div>
+                    ),
+                  )}
                 </div>
               )}
             </div>

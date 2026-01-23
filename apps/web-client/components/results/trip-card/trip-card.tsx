@@ -23,6 +23,7 @@ import {
 } from "../../../lib/trip-type-guards";
 import { convertToUSD } from "../../../lib/currency";
 import { apiClient } from "../../../lib/api-client";
+import { formatLocationLabel } from "../../../lib/location-format";
 import {
   getOrCreateSessionId,
   SEARCH_ID_KEY_PREFIX,
@@ -67,6 +68,7 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
   const transfers: TransportOption[] = [];
   const highlights: TripHighlight[] = [];
   const staySections: Array<{ hotel: HotelOption; activities: ActivityOption[] }> = [];
+  const stayHighlightRefs: Array<{ highlightIndex: number; stayIndex: number }> = [];
   const orderedPath: Array<{ lat: number; lng: number; label: string }> = [];
   let totalPrice = 0;
   let origin: Location | null = null;
@@ -80,6 +82,13 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
     const base = new Date(`${isoDate}T00:00:00.000Z`);
     base.setUTCDate(base.getUTCDate() + days);
     return base.toISOString().slice(0, 10);
+  };
+
+  const diffNights = (startIso: string, endIso: string): number => {
+    const start = new Date(`${startIso}T00:00:00.000Z`);
+    const end = new Date(`${endIso}T00:00:00.000Z`);
+    const diffMs = end.getTime() - start.getTime();
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24));
   };
 
   // First pass: collect all data and extract dates from flights
@@ -111,15 +120,16 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
         orderedPath.push({
           lat: flightDest.latitude,
           lng: flightDest.longitude,
-          label: flightDest.city,
+          label: formatLocationLabel(flightDest),
         });
       }
 
+      const flightLabel = formatLocationLabel(flightDest);
       highlights.push({
         date: getIsoDate(data.outbound.departure_time),
         title: isReturnFlight
-          ? `Flight back to ${flightDest.city}`
-          : `Flight to ${flightDest.city}`,
+          ? `Flight back to ${flightLabel}`
+          : `Flight to ${flightLabel}`,
         type: "flight",
         location: flightDest,
       });
@@ -130,6 +140,7 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
       }
 
       hotels.push(data.hotel);
+      const stayIndex = staySections.length;
       staySections.push({ hotel: data.hotel, activities: data.activities });
 
       totalPrice += convertToUSD(
@@ -146,6 +157,18 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
       for (const activity of data.activities) {
         activities.push(activity);
       }
+
+      // Preserve highlight order exactly as sections arrive.
+      // Dates will be filled in later once we know tripStartDate/tripEndDate.
+      const highlightIndex = highlights.length;
+      highlights.push({
+        date: "",
+        endDate: undefined,
+        title: `Stay in ${data.hotel.name}, ${data.hotel.location.city}`,
+        type: "stay",
+        location: data.hotel.location,
+      });
+      stayHighlightRefs.push({ highlightIndex, stayIndex });
     } else if (
       section.type === SectionType.TRANSFER &&
       isTransportOption(data)
@@ -158,8 +181,8 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
     }
   }
 
-  // Calculate total nights from all hotels
-  const totalNights = hotels.reduce((sum, h) => {
+  // Calculate total nights from all hotels (fallback)
+  const totalNightsFromHotels = hotels.reduce((sum, h) => {
     if (h.price_per_night.amount > 0) {
       return sum + Math.round(h.total_price.amount / h.price_per_night.amount);
     }
@@ -169,37 +192,57 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
   // Trip dates come from flights only
   const tripStartDate = flightDates.length > 0 ? flightDates[0] : "";
   const tripEndDate = flightDates.length > 1 ? flightDates[flightDates.length - 1] : 
-    (tripStartDate && totalNights > 0 ? addDays(tripStartDate, totalNights) : "");
+    (tripStartDate && totalNightsFromHotels > 0 ? addDays(tripStartDate, totalNightsFromHotels) : "");
 
-  // Add stay highlights - use flight dates as boundaries
-  // Each stay starts after a flight and ends before the next flight
-  if (staySections.length > 0) {
-    for (let i = 0; i < staySections.length; i++) {
-      const stay = staySections[i];
-      const nights =
-        stay.hotel.price_per_night.amount > 0
-          ? Math.max(
-              1,
-              Math.round(
-                stay.hotel.total_price.amount /
-                  stay.hotel.price_per_night.amount,
-              ),
-            )
-          : 1;
+  // Calculate nights from date range (preferred) or fallback to hotel sum
+  const totalNights = (() => {
+    if (tripStartDate && tripEndDate) {
+      const start = new Date(`${tripStartDate}T00:00:00.000Z`);
+      const end = new Date(`${tripEndDate}T00:00:00.000Z`);
+      const diffMs = end.getTime() - start.getTime();
+      const nights = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      return Math.max(nights, 1);
+    }
+    return totalNightsFromHotels;
+  })();
 
-      // Stay starts on the arrival date of the previous flight (flight i for stay i)
-      // and ends on departure of next flight (flight i+1 for stay i)
-      const stayStart = flightDates[i] || "";
-      const stayEnd = flightDates[i + 1] || (stayStart ? addDays(stayStart, nights) : "");
+  // Fill stay highlight dates sequentially between outbound and return flight dates.
+  // This supports multi-city trips with ONLY start/end flights (no in-country flights).
+  if (stayHighlightRefs.length > 0 && tripStartDate && tripEndDate) {
+    let current = tripStartDate;
+    const requestedNightsByStay = staySections.map((stay) => {
+      if (stay.hotel.price_per_night.amount > 0) {
+        return Math.max(
+          1,
+          Math.round(stay.hotel.total_price.amount / stay.hotel.price_per_night.amount),
+        );
+      }
+      return 1;
+    });
 
-      highlights.push({
-        date: stayStart,
-        endDate: stayEnd && stayEnd !== stayStart ? stayEnd : undefined,
-        nights,
-        title: `Stay in ${stay.hotel.location.city}`,
-        type: "stay",
-        location: stay.hotel.location,
-      });
+    for (let i = 0; i < stayHighlightRefs.length; i++) {
+      const { highlightIndex, stayIndex } = stayHighlightRefs[i];
+      const remainingStays = stayHighlightRefs.length - i;
+      const remainingNights = diffNights(current, tripEndDate);
+
+      // Ensure we can allocate at least 1 night per remaining stay.
+      const maxForThis = Math.max(1, remainingNights - (remainingStays - 1));
+      const requested = requestedNightsByStay[stayIndex] ?? 1;
+      const nightsForThis =
+        i === stayHighlightRefs.length - 1
+          ? Math.max(1, remainingNights)
+          : Math.min(requested, maxForThis);
+
+      const stayStart = current;
+      const stayEnd = addDays(stayStart, nightsForThis);
+      current = stayEnd;
+
+      const highlight = highlights[highlightIndex];
+      if (highlight) {
+        highlight.date = stayStart;
+        highlight.endDate = stayEnd !== stayStart ? stayEnd : undefined;
+        highlight.nights = nightsForThis;
+      }
     }
   }
 
@@ -212,18 +255,6 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
   if (!mainDestination && hotels.length > 0) {
     mainDestination = hotels[0].location;
   }
-
-  const typeRank: Record<TripHighlight["type"], number> = {
-    stay: 0,
-    flight: 1,
-    transport: 2,
-    activity: 3,
-  };
-
-  highlights.sort(
-    (a, b) =>
-      a.date.localeCompare(b.date) || typeRank[a.type] - typeRank[b.type],
-  );
 
   const uniqueWaypoints = orderedPath.filter(
     (wp, index, arr) =>
@@ -250,17 +281,12 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
     longitude: 0,
   };
 
-  // Sort all highlights by date and type
-  const sortedHighlights = [...highlights].sort(
-    (a, b) => a.date.localeCompare(b.date) || typeRank[a.type] - typeRank[b.type]
-  );
-
   return {
     hotels,
     flights,
     activities,
     transfers,
-    highlights: sortedHighlights,
+    highlights,
     waypoints: uniqueWaypoints,
     totalPrice: { currency: "USD", amount: Math.round(totalPrice) },
     origin: origin || defaultLocation,
@@ -289,13 +315,13 @@ const TripCard: React.FC<TripCardProps> = ({ trip, tripId, tripIndex }) => {
     vibe,
   } = extractTripData(trip);
 
-  const originStr = origin.city ? `${origin.city}, ${origin.country}` : "";
-  const destinationStr = destination.city
-    ? `${destination.city}, ${destination.country}`
-    : "";
-
   const outboundFlight = flights[0];
   const returnFlight = flights.length > 1 ? flights[flights.length - 1] : null;
+
+  const originStr = formatLocationLabel(outboundFlight?.outbound.origin ?? origin);
+  const destinationStr = formatLocationLabel(
+    outboundFlight?.outbound.destination ?? destination,
+  );
 
   const resolveTripId = async (): Promise<string | null> => {
     if (tripId) return tripId;

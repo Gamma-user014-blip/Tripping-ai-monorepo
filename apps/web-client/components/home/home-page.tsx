@@ -114,14 +114,6 @@ const HomePage: React.FC = (): JSX.Element => {
                   <div className={styles.dot} />
                 </div>
               )}
-              {isSearching && (
-                <div className={styles.searchingIndicator}>
-                  <span className={`material-symbols-outlined ${styles.searchingIcon}`}>
-                    travel_explore
-                  </span>
-                  <span>Finding the best trips for you...</span>
-                </div>
-              )}
               <div ref={messagesEndRef} />
             </div>
           )}

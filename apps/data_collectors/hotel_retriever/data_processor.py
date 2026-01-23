@@ -96,10 +96,16 @@ def transform_room_data(room_raw: Optional[Dict]) -> Optional[models.RoomInfo]:
     return room_info
 
 
-def transform_fees(taxes_and_fees: List[Dict], currency: str) -> List[models.Fee]:
-    """Transform taxes and fees to Fee model list"""
-    fees = []
+def transform_fees(
+    taxes_and_fees: Optional[List[Dict]],
+    currency: str,
+) -> List[models.Fee]:
+    """Transform taxes and fees to Fee model list."""
+    fees: List[models.Fee] = []
     
+    if taxes_and_fees is None:
+        return fees
+
     for tax_fee in taxes_and_fees:
         if not tax_fee.get("included", True):  # Only add non-included fees
             fee = models.Fee()
@@ -167,9 +173,10 @@ def transform_hotel_data(
     # Pricing - use rate_info if available, otherwise use defaults
     currency = hotel_raw.get("currency", "USD")
     
-    if rate_info and "price" in rate_info:
+    price_data = rate_info.get("price") if rate_info else None
+
+    if isinstance(price_data, dict):
         # Use actual rate data from availability check
-        price_data = rate_info["price"]
         total_amount = float(price_data.get("amount", 0.0))
         price_per_night = total_amount / nights if nights > 0 else total_amount
         
@@ -180,7 +187,7 @@ def transform_hotel_data(
         hotel_option.total_price.amount = total_amount
         
         # Add fees from rate info
-        taxes_and_fees = rate_info.get("taxes_and_fees", [])
+        taxes_and_fees = rate_info.get("taxes_and_fees") if rate_info else None
         fees = transform_fees(taxes_and_fees, price_data.get("currency", currency))
         hotel_option.additional_fees.extend(fees)
         
@@ -209,7 +216,7 @@ def transform_hotel_data(
             hotel_option.room = room_info
     
     # Amenities (map facility IDs to simple labels)
-    facility_ids = hotel_raw.get("facilityIds", [])
+    facility_ids = hotel_raw.get("facilityIds") or []
     for fid in facility_ids[:10]:  # Limit to 10
         hotel_option.amenities.append(f"Facility_{fid}")
     

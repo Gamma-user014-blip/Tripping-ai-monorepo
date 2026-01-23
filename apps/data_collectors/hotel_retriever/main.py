@@ -1,6 +1,5 @@
 from fastapi import FastAPI, HTTPException, Body
-import base64
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 from datetime import datetime, timezone
 from .data_processor import transform_hotel_data, generate_unique_hotel_id
 import redis.asyncio as redis
@@ -281,7 +280,7 @@ def extract_best_rate(availability_data: Dict) -> Optional[Dict]:
         "price": best_room.get("offerRetailRate"),
         "suggested_price": best_room.get("suggestedSellingPrice"),
         "initial_price": best_room.get("offerInitialPrice"),
-        "taxes_and_fees": first_rate.get("retailRate", {}).get("taxesAndFees", []),
+        "taxes_and_fees": first_rate.get("retailRate", {}).get("taxesAndFees") if first_rate.get("retailRate", {}).get("taxesAndFees") else [],
         "cancellation_policies": first_rate.get("cancellationPolicies"),
         "rate_id": first_rate.get("rateId"),
         "offer_id": best_room.get("offerId"),
@@ -437,7 +436,7 @@ async def search_hotels(
             
             # Validate hotel has essential data before caching
             if not hotel_option.id or not hotel_option.name:
-                print(f"Skipping invalid hotel with missing id or name")
+                print("Skipping invalid hotel with missing id or name")
                 continue
             
             # Cache the transformed hotel option
