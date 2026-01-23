@@ -84,6 +84,7 @@ async def process_sections(request: TripRequest) -> TripResponse:
                 return TripSectionResponse(type=SectionType.STAY, data=data)
             
             # Fallback for unknown types if needed, or raise
+            print(f"DEBUG: process_section returning None for unknown section type: {section.type}")
             return None
 
         # Create tasks for all sections
