@@ -122,6 +122,7 @@ services:
       - SESSION_SECRET=${SESSION_SECRET:-dev-secret-key-change-in-production}
       - NODE_ENV=production
       - JSON_AGENT_URL=http://json_agent:8000
+      - LLM_CHAT_ESSENTIALS_URL=http://llm_chat_essentials:8000
     networks:
       - shared_network
       - web_private_network
@@ -129,6 +130,7 @@ services:
       - "3001:3001"
     depends_on:
       - mongo
+      - llm_chat_essentials
 
   json_agent:
     build:
@@ -141,6 +143,18 @@ services:
       - shared_network
     ports:
       - "8300:8000"
+
+  llm_chat_essentials:
+    build:
+      context: .
+      dockerfile: ./apps/llm_chat_essentials/Dockerfile
+    container_name: llm_chat_essentials
+    environment:
+      - PERPLEXITY_API_KEY
+    networks:
+      - shared_network
+    ports:
+      - "8400:8000"
 
 networks:
   shared_network:
