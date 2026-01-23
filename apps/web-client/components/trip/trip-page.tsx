@@ -7,6 +7,7 @@ import TripItinerary from "./trip-itinerary";
 import TripSidebar from "./trip-sidebar";
 import type { Trip } from "@shared/types";
 import { apiClient } from "../../lib/api-client";
+import { tripToResult } from "../../lib/trip-to-result";
 
 const TripPage: React.FC = (): JSX.Element => {
   const router = useRouter();
@@ -93,7 +94,7 @@ const TripPage: React.FC = (): JSX.Element => {
           </div>
 
           <div className={styles.sidebarSection}>
-            <TripSidebar trip={trip} bookingRef={normalizedTripId || ""} />
+            <TripSidebar trip={tripToResult(trip, normalizedTripId || "")} />
           </div>
         </div>
       </div>
