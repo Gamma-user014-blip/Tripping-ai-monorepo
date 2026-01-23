@@ -3,32 +3,20 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 
-class ChatRole(str, Enum):
-    SYSTEM = "system"
-    USER = "user"
-    ASSISTANT = "assistant"
+class FillStatus(str, Enum):
+    ready = "ready"
+    needs_more_info = "needs_more_info"
+    error = "error"
 
 
-class ChatMessage(BaseModel):
-    role: ChatRole = ChatRole.USER
-    content: str = ""
+class UpdateTripRequest(BaseModel):
+    raw_user_message: str = Field(..., description="The raw user message to use for updating the trip YAML.")
+    current_yaml_state: str = Field(default="", description="The current YAML state, or empty string for fresh start.")
 
+class ReadyResponse(BaseModel):
+    user_details: str = Field(..., description="The filled/updated YAML output.")
 
-class ChatRequest(BaseModel):
-    """Represents a chat request.
-
-    - `raw_message` is a convenience single raw text message (user),
-      used when the caller just wants to send plain text.
-    - `messages` is the full list of structured messages (role + content).
-    """
-    raw_message: Optional[str] = ""
-    messages: List[ChatMessage] = Field(default_factory=list)
-    model: str = "sonar-pro"
-    max_tokens: int = 512
-    temperature: float = 0.0
-
-
-class ChatResponse(BaseModel):
-    answer: str = ""
-    # raw provider response (kept for debugging / downstream consumers)
-    raw: dict = Field(default_factory=dict)
+class FillResponse(BaseModel):
+    yaml: str = Field(..., description="The filled/updated YAML output.")
+    status: FillStatus = Field(..., description="Whether the YAML is ready or needs more info.")
+    message: Optional[str] = Field(None, description="Optional explanation or follow-up question if not ready.")
