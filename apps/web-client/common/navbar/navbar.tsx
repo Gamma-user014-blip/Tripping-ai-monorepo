@@ -72,12 +72,16 @@ const Navbar: React.FC = (): JSX.Element => {
       </div>
 
       <div className={styles.actions}>
+        <a className={styles.btn} href="/about-us" target="_blank" rel="noreferrer">
+          About us
+        </a>
+
         <a className={styles.btn} href="/#how-it-works" onClick={handleHowItWorksClick}>
           How it works
         </a>
 
         {isHomePage ? (
-          <a className={`${styles.btn} ${styles.btnPrimary}`} href="#chat" onClick={handleStartPlanningClick}>
+          <a className={`${styles.btn} ${styles.btnPrimary}`} href="/" onClick={handleStartPlanningClick}>
             Start planning
           </a>
         ) : (
