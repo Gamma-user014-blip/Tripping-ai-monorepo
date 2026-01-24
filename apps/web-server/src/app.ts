@@ -1,9 +1,3 @@
-import dotenv from "dotenv";
-import path from "path";
-
-// __dirname = folder of app.ts
-dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
-
 import express, {
   type Express,
   type NextFunction,
