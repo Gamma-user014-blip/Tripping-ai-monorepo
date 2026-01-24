@@ -156,6 +156,22 @@ services:
     ports:
       - "8400:8000"
 
+  web_client:
+    build:
+      context: .
+      dockerfile: ./apps/web-client/Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+    container_name: web_client
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+    networks:
+      - shared_network
+    ports:
+      - "3000:3000"
+    depends_on:
+      - web_server
+
 networks:
   shared_network:
     driver: bridge
