@@ -93,16 +93,21 @@ router.post("/add-trip-to-calendar", requireAuth, async (req: Request, res: Resp
     oauth2Client.setCredentials(req.userTokens!.googleTokens);
     console.log("[Calendar] Set credentials:", req.userTokens!.googleTokens);
 
-    // Refresh token if expired
-    if (req.userTokens!.googleTokens.expiry_date && req.userTokens!.googleTokens.expiry_date < Date.now()) {
-      console.log("[Calendar] Access token expired. Refreshing...");
-      const { credentials } = await oauth2Client.refreshAccessToken();
-      oauth2Client.setCredentials(credentials);
-      console.log("[Calendar] Token refreshed:", credentials);
-      // Update in DB
-      await saveUserTokens(req.session!.id, credentials);
-      console.log("[Calendar] Saved refreshed tokens to DB");
-    }
+// Refresh token if expired
+if (req.userTokens!.googleTokens.expiry_date && req.userTokens!.googleTokens.expiry_date < Date.now()) {
+  if (!req.userTokens!.googleTokens.refresh_token) {
+    console.log("[Calendar] Cannot refresh token, no refresh token available.");
+    // Optionally: send a 401 so user can re-auth
+    return res.status(401).json({ error: "Google token expired, please re-authenticate." });
+  } else {
+    const { credentials } = await oauth2Client.refreshAccessToken();
+    oauth2Client.setCredentials(credentials);
+    await saveUserTokens(req.session!.id, credentials);
+    console.log("[Calendar] Token refreshed and saved to DB");
+  }
+}
+
+
 
     const calendar = google.calendar({ version: "v3", auth: oauth2Client });
     const createdEventIds: string[] = [];

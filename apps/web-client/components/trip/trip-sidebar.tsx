@@ -3,10 +3,14 @@ import styles from "./trip-sidebar.module.css";
 import TripMap from "../results/trip-card/trip-map";
 import { exportTripToPDF, TripResult } from './trip-pdf-export';
 import { useState } from 'react';
+import { Snackbar, Alert } from "@mui/material";
 
 interface TripSidebarProps {
   trip: TripResult;
 }
+
+
+
 
 const TripSidebar = ({ trip }: TripSidebarProps): JSX.Element => {
   const totalPrice = trip.price;
@@ -14,7 +18,16 @@ const TripSidebar = ({ trip }: TripSidebarProps): JSX.Element => {
   const mapCenter = trip.mapCenter;
   const [calendarEventIds, setCalendarEventIds] = useState<string[]>([]);
 
+  // Snackbar state
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
 
+    const handleSnackbar = (message: string, severity: "success" | "error" = "success") => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
   const formatPrice = (amount: number, currency: string): string => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -36,14 +49,14 @@ const TripSidebar = ({ trip }: TripSidebarProps): JSX.Element => {
   });
 
   if (!res.ok) {
-    console.error('Failed to remove trip from calendar');
+      handleSnackbar('Failed to remove trip from calendar', "error");
     return;
   }
 
   const data = await res.json();
   console.log('Deleted event IDs:', data.deletedEventIds);
   setCalendarEventIds([]); // clear after deletion
-  alert('Trip removed from calendar successfully!');
+    handleSnackbar('Trip removed from calendar successfully!', "success");
 };
   const handleAddToCalendar = async (trip: TripResult) => {
   try {
@@ -64,7 +77,7 @@ const TripSidebar = ({ trip }: TripSidebarProps): JSX.Element => {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       console.error('Failed to add trip to Google Calendar', err);
-      alert('Failed to add trip to calendar. Please try again.');
+        handleSnackbar('Failed to add trip to calendar. Please try again.', "error");
       return;
     }
 
@@ -74,10 +87,10 @@ const TripSidebar = ({ trip }: TripSidebarProps): JSX.Element => {
     // Save the IDs in state so you can remove later
     setCalendarEventIds(data.createdEventIds);
 
-    alert('Trip added to calendar successfully!');
+      handleSnackbar('Trip added to calendar successfully!', "success");
   } catch (error) {
     console.error('Error adding to calendar:', error);
-    alert('An error occurred. Please try again.');
+      handleSnackbar('An error occurred. Please try again.', "error");
   }
 };
 
@@ -179,6 +192,17 @@ const TripSidebar = ({ trip }: TripSidebarProps): JSX.Element => {
           variant="fill"
         />
       </div>
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </aside>
   );
 };
