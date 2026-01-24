@@ -8,6 +8,7 @@ import galImage from "../assets/founders/gal.png";
 import gleizerImage from "../assets/founders/gleizer.png";
 import aliceImage from "../assets/founders/alice.png";
 import ofirImage from "../assets/founders/ofir.png";
+import logoImage from "../assets/logo.png";
 import hilaImage from "../assets/founders/hila.png";
 import shalevImage from "../assets/founders/shalev.png";
 
@@ -45,7 +46,7 @@ const AboutUsPage: React.FC = (): JSX.Element => {
     {
       name: "Ofir Reuven",
       title: "Chief Religion Officer",
-      bio: "Prays constantly — if he isn't at his desk he's probably at the bet knesset. Ofir spends large parts of the week in prayer and Torah study, has prayed the project into existence more than once, and routinely asks for timely deliverables from above. His calendar is half meetings, half prayer; we suspect the project's deadlines survive because he prayed them into being.",
+      bio: "Prays constantly — if he isn't at his desk he's probably at the beit knesset. Ofir spends large parts of the week in prayer and Torah study, has prayed the project into existence more than once, and routinely asks for timely deliverables from above. His calendar is half meetings, half prayer; we suspect the project's deadlines survive because he prayed them into being.",
       work: "God's servant, Praying team lead, Senior Torah reader",
       image: ofirImage,
     },
@@ -79,6 +80,9 @@ const AboutUsPage: React.FC = (): JSX.Element => {
         <div className={styles.contentWrapper}>
           <section className={styles.hero}>
             <div className={styles.heroInner}>
+              <div className={styles.logoWrapper}>
+                <Image src={logoImage} alt="Tripping.ai" className={styles.logoLarge} priority />
+              </div>
               <div className={styles.heroCard}>
                 <div className={styles.kicker}>About us</div>
                 <h1 className={styles.title}>
