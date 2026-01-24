@@ -15,6 +15,12 @@ export interface TripDocument {
   updatedAt: Date;
 }
 
+export interface UserTokens {
+  userId: string; // Use session ID or user ID
+  googleTokens: any; // Tokens from Google
+  updatedAt: Date;
+}
+
 export async function getDb(): Promise<Db> {
   if (db) return db;
 
@@ -62,6 +68,36 @@ export async function getTripPlans(
     database.collection("trip_plans");
 
   return await collection.findOne({ sessionId });
+}
+
+export async function saveUserTokens(
+  userId: string,
+  googleTokens: any,
+): Promise<void> {
+  const database = await getDb();
+  const collection: Collection<UserTokens> =
+    database.collection("user_tokens");
+
+  await collection.updateOne(
+    { userId },
+    {
+      $set: {
+        googleTokens,
+        updatedAt: new Date(),
+      },
+    },
+    { upsert: true },
+  );
+}
+
+export async function getUserTokens(
+  userId: string,
+): Promise<UserTokens | null> {
+  const database = await getDb();
+  const collection: Collection<UserTokens> =
+    database.collection("user_tokens");
+
+  return await collection.findOne({ userId });
 }
 
 export async function closeConnection(): Promise<void> {
