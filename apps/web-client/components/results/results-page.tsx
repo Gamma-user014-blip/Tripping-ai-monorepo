@@ -120,7 +120,24 @@ const ResultsPage: React.FC = (): JSX.Element => {
                   </p>
                 </div>
               ) : (
-                <div className={styles.cardsList}>
+                <div>
+                  {loadingState === "loading" && trips.length === 0 && (
+                    <div className={styles.loadingBanner} role="status">
+                      <div className={styles.loadingEmoji} aria-hidden>
+                        🧭
+                      </div>
+                      <div className={styles.loadingText}>
+                        <div className={styles.loadingTitle}>Finding the perfect trip for you</div>
+                        <div className={styles.loadingSubtitle}>Searching and assembling great options — hang tight ✨</div>
+                      </div>
+                      <div className={styles.loadingStars} aria-hidden>
+                        <span className={styles.star} />
+                        <span className={styles.star} />
+                        <span className={styles.star} />
+                      </div>
+                    </div>
+                  )}
+                  <div className={styles.cardsList}>
                   {trips.map((trip, index) => (
                     <TripCard
                       key={index}
@@ -205,6 +222,7 @@ const ResultsPage: React.FC = (): JSX.Element => {
                     ),
                   )}
                 </div>
+              </div>
               )}
             </div>
           </div>
