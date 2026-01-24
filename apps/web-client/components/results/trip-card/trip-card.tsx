@@ -128,7 +128,7 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
       highlights.push({
         date: getIsoDate(data.outbound.departure_time),
         title: isReturnFlight
-          ? `Flight back to ${flightLabel}`
+          ? `Flight to ${flightLabel}`
           : `Flight to ${flightLabel}`,
         type: "flight",
         location: flightDest,
@@ -191,7 +191,7 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
 
   // Trip dates come from flights only
   const tripStartDate = flightDates.length > 0 ? flightDates[0] : "";
-  const tripEndDate = flightDates.length > 1 ? flightDates[flightDates.length - 1] : 
+  const tripEndDate = flightDates.length > 1 ? flightDates[flightDates.length - 1] :
     (tripStartDate && totalNightsFromHotels > 0 ? addDays(tripStartDate, totalNightsFromHotels) : "");
 
   // Calculate nights from date range (preferred) or fallback to hotel sum
@@ -264,13 +264,13 @@ const extractTripData = (trip: Trip): ExtractedTripData => {
   const mapCenter =
     uniqueWaypoints.length > 0
       ? {
-          lat:
-            uniqueWaypoints.reduce((sum, wp) => sum + wp.lat, 0) /
-            uniqueWaypoints.length,
-          lng:
-            uniqueWaypoints.reduce((sum, wp) => sum + wp.lng, 0) /
-            uniqueWaypoints.length,
-        }
+        lat:
+          uniqueWaypoints.reduce((sum, wp) => sum + wp.lat, 0) /
+          uniqueWaypoints.length,
+        lng:
+          uniqueWaypoints.reduce((sum, wp) => sum + wp.lng, 0) /
+          uniqueWaypoints.length,
+      }
       : { lat: 51.5, lng: -0.1 };
 
   const defaultLocation: Location = {
@@ -388,6 +388,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, tripId, tripIndex }) => {
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
+      data-trip-card="true"
     >
       <HotelCard hotels={hotels} />
       <div className={styles.middleSection}>
