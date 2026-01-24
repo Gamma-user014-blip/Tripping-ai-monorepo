@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import styles from "./trip-itinerary.module.css";
 import {
   SectionType,
@@ -7,6 +7,7 @@ import {
   ActivityOption,
   Trip,
 } from "../results/types";
+import ActivityDetailsModal from "../results/trip-card/trip-highlights/activity-details-modal";
 import { Icon } from "../results/icon";
 import {
   SectionData,
@@ -56,6 +57,8 @@ const formatDuration = (minutes: number): string => {
 
 const TripItinerary = ({ trip }: TripItineraryProps): JSX.Element => {
   const rendered: JSX.Element[] = [];
+  const [selectedActivity, setSelectedActivity] = useState<ActivityOption | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   let flightCount = 0;
   let stayCount = 0;
   let lastSectionType: SectionType | null = null;
@@ -114,11 +117,15 @@ const TripItinerary = ({ trip }: TripItineraryProps): JSX.Element => {
       stayCount += 1;
       rendered.push(
         <StayCard
-          key={`stay-${data.hotel.id}`}
-          hotel={data.hotel}
-          activities={data.activities}
-          isPrimary={stayCount === 1}
-        />,
+            key={`stay-${data.hotel.id}`}
+            hotel={data.hotel}
+            activities={data.activities}
+            isPrimary={stayCount === 1}
+            onActivityClick={(act: ActivityOption) => {
+              setSelectedActivity(act);
+              setIsModalOpen(true);
+            }}
+          />,
       );
       lastSectionType = SectionType.STAY;
       lastCity = data.hotel.location.city;
@@ -137,7 +144,12 @@ const TripItinerary = ({ trip }: TripItineraryProps): JSX.Element => {
     }
   }
 
-  return <main className={styles.timelineContainer}>{rendered}</main>;
+  return (
+    <>
+      <ActivityDetailsModal activity={selectedActivity} isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setSelectedActivity(null); }} />
+      <main className={styles.timelineContainer}>{rendered}</main>
+    </>
+  );
 };
 
 const FlightCard = ({
@@ -251,10 +263,12 @@ const StayCard = ({
   hotel,
   activities,
   isPrimary,
+  onActivityClick,
 }: {
   hotel: HotelOption;
   activities: ActivityOption[];
   isPrimary: boolean;
+  onActivityClick?: (act: ActivityOption) => void;
 }): JSX.Element => {
   const gradientBg = getStayGradient(hotel.id);
   const bgStyle = hotel.image
@@ -334,23 +348,42 @@ const StayCard = ({
               Planned Activities
             </h4>
             <div className={styles.activitiesGrid}>
-              {hotelActivities.map((act) => (
-                <div key={act.id} className={styles.activityCard}>
-                  <div className={styles.activityIcon}>
-                    <span className="material-symbols-outlined">
-                      attractions
-                    </span>
+              {hotelActivities.map((act) => {
+                const handleClick = (): void => {
+                  if (onActivityClick) onActivityClick(act);
+                };
+
+                const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleClick();
+                  }
+                };
+
+                return (
+                  <div
+                    key={act.id}
+                    className={styles.activityCard}
+                    role="button"
+                    tabIndex={0}
+                    onClick={handleClick}
+                    onKeyDown={handleKeyDown}
+                    style={{ cursor: onActivityClick ? "pointer" : "default" }}
+                  >
+                    <div className={styles.activityIcon}>
+                      <Icon icon="shuttle" height={20} color="#0d9488" />
+                    </div>
+                    <div className={styles.activityInfo}>
+                      <h5 className={styles.activityName}>{act.name}</h5>
+                      <span className={styles.activityMeta}>
+                        {act.available_times[0]?.date
+                          ? formatDate(act.available_times[0].date)
+                          : "TBD"}
+                      </span>
+                    </div>
                   </div>
-                  <div className={styles.activityInfo}>
-                    <h5 className={styles.activityName}>{act.name}</h5>
-                    <span className={styles.activityMeta}>
-                      {act.available_times[0]?.date
-                        ? formatDate(act.available_times[0].date)
-                        : "TBD"}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

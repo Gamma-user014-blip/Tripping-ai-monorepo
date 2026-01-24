@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Money, Location, ActivityOption, ActivityCategory } from "../../types";
 import { Icon } from "../../icon";
+import ActivityDetailsModal from "./activity-details-modal";
 import styles from "./trip-highlights.module.css";
 
 interface TripHighlight {
@@ -40,41 +41,41 @@ const formatDateRange = (startDate: string, endDate?: string): string => {
 
 // Map ActivityCategory enum to display strings
 const categoryDisplayMap: Record<ActivityCategory, string> = {
-  [ActivityCategory.CATEGORY_UNKNOWN]: "✨ Experience",
-  [ActivityCategory.TOUR]: "🚶 Tour",
-  [ActivityCategory.MUSEUM]: "🎨 Museum",
-  [ActivityCategory.RESTAURANT]: "🍴 Dining",
-  [ActivityCategory.SHOW]: "🎭 Show",
-  [ActivityCategory.OUTDOOR]: "🏔️ Outdoor",
-  [ActivityCategory.WATER_SPORTS]: "🚤 Water",
-  [ActivityCategory.NIGHTLIFE]: "🌙 Nightlife",
-  [ActivityCategory.SHOPPING]: "🛍️ Shopping",
-  [ActivityCategory.SPA]: "💆 Wellness",
-  [ActivityCategory.ADVENTURE]: "🧗 Adventure",
-  [ActivityCategory.CULTURAL]: "🏛️ Culture",
-  [ActivityCategory.FOOD_TOUR]: "🍕 Food Tour",
+  [ActivityCategory.CATEGORY_UNKNOWN]: "Experience",
+  [ActivityCategory.TOUR]: "Tour",
+  [ActivityCategory.MUSEUM]: "Museum",
+  [ActivityCategory.RESTAURANT]: "Dining",
+  [ActivityCategory.SHOW]: "Show",
+  [ActivityCategory.OUTDOOR]: "Outdoor",
+  [ActivityCategory.WATER_SPORTS]: "Water",
+  [ActivityCategory.NIGHTLIFE]: "Nightlife",
+  [ActivityCategory.SHOPPING]: "Shopping",
+  [ActivityCategory.SPA]: "Wellness",
+  [ActivityCategory.ADVENTURE]: "Adventure",
+  [ActivityCategory.CULTURAL]: "Culture",
+  [ActivityCategory.FOOD_TOUR]: "Food Tour",
 };
 
 // Fallback: guess category from name if category is UNKNOWN
 const guessCategoryFromName = (name: string): string => {
   const lowerName = name.toLowerCase();
-  if (lowerName.includes("food") || lowerName.includes("tasting") || lowerName.includes("culinary") || lowerName.includes("cooking") || lowerName.includes("wine") || lowerName.includes("pizza")) return "🍕 Food Tour";
-  if (lowerName.includes("museum") || lowerName.includes("gallery")) return "🎨 Museum";
-  if (lowerName.includes("boat") || lowerName.includes("cruise") || lowerName.includes("sailing") || lowerName.includes("kayak") || lowerName.includes("snorkel") || lowerName.includes("dive")) return "🚤 Water";
-  if (lowerName.includes("hike") || lowerName.includes("trek") || lowerName.includes("mountain") || lowerName.includes("nature")) return "🏔️ Outdoor";
-  if (lowerName.includes("show") || lowerName.includes("performance") || lowerName.includes("concert") || lowerName.includes("theater")) return "🎭 Show";
-  if (lowerName.includes("spa") || lowerName.includes("wellness") || lowerName.includes("massage")) return "💆 Wellness";
-  if (lowerName.includes("market") || lowerName.includes("shopping")) return "🛍️ Shopping";
-  if (lowerName.includes("bar") || lowerName.includes("club") || lowerName.includes("nightlife")) return "🌙 Nightlife";
-  if (lowerName.includes("tour") || lowerName.includes("walking") || lowerName.includes("guided")) return "🚶 Tour";
-  return "✨ Experience";
+  if (lowerName.includes("food") || lowerName.includes("tasting") || lowerName.includes("culinary") || lowerName.includes("cooking") || lowerName.includes("wine") || lowerName.includes("pizza")) return "Food Tour";
+  if (lowerName.includes("museum") || lowerName.includes("gallery")) return "Museum";
+  if (lowerName.includes("boat") || lowerName.includes("cruise") || lowerName.includes("sailing") || lowerName.includes("kayak") || lowerName.includes("snorkel") || lowerName.includes("dive")) return "Water";
+  if (lowerName.includes("hike") || lowerName.includes("trek") || lowerName.includes("mountain") || lowerName.includes("nature")) return "Outdoor";
+  if (lowerName.includes("show") || lowerName.includes("performance") || lowerName.includes("concert") || lowerName.includes("theater")) return "Show";
+  if (lowerName.includes("spa") || lowerName.includes("wellness") || lowerName.includes("massage")) return "Wellness";
+  if (lowerName.includes("market") || lowerName.includes("shopping")) return "Shopping";
+  if (lowerName.includes("bar") || lowerName.includes("club") || lowerName.includes("nightlife")) return "Nightlife";
+  if (lowerName.includes("tour") || lowerName.includes("walking") || lowerName.includes("guided")) return "Tour";
+  return "Experience";
 };
 
 const getActivityCategoryDisplay = (activity: ActivityOption): string => {
   const cat = activity.category as number;
   // Use actual category if it's set and not UNKNOWN (0)
   if (cat > 0) {
-    return categoryDisplayMap[activity.category] || "✨ Experience";
+    return categoryDisplayMap[activity.category] || "Experience";
   }
   // Fallback to name-based guessing
   return guessCategoryFromName(activity.name);
@@ -90,6 +91,19 @@ const TripHighlights: React.FC<TripHighlightsProps> = ({
   tripStartDate,
   tripEndDate,
 }) => {
+  const [selectedActivity, setSelectedActivity] = useState<ActivityOption | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleActivityClick = (activity: ActivityOption): void => {
+    setSelectedActivity(activity);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = (): void => {
+    setIsModalOpen(false);
+    setSelectedActivity(null);
+  };
+
   const [originCity, originCountry] = origin ? origin.split(", ") : ["", ""];
   const [destCity, destCountry] = destination ? destination.split(", ") : ["", ""];
   
@@ -100,7 +114,7 @@ const TripHighlights: React.FC<TripHighlightsProps> = ({
     categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
   }
   // Generic categories to deprioritize
-  const genericCategories = ["🚶 Tour", "✨ Experience"];
+  const genericCategories = ["Tour", "Experience"];
   const topCategories = [...categoryCounts.entries()]
     .sort((a, b) => {
       const aIsGeneric = genericCategories.includes(a[0]) ? 1 : 0;
@@ -119,6 +133,11 @@ const TripHighlights: React.FC<TripHighlightsProps> = ({
 
   return (
     <div className={styles.container}>
+      <ActivityDetailsModal
+        activity={selectedActivity}
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+      />
       <div className={styles.header}>
         <div className={styles.route}>
           {showRoute && (
@@ -194,7 +213,19 @@ const TripHighlights: React.FC<TripHighlightsProps> = ({
                       {category}
                     </span>
                   ))}
-                  <span className={styles.activityCount}>{activities.length} activities</span>
+                  <button
+                    className={styles.activityCount}
+                    onClick={() => {
+                      const randomActivity =
+                        activities[
+                          Math.floor(Math.random() * activities.length)
+                        ];
+                      handleActivityClick(randomActivity);
+                    }}
+                    title="Click to see activity details"
+                  >
+                    {activities.length} activities
+                  </button>
                 </div>
               </div>
             )}
