@@ -8,6 +8,7 @@ import galImage from "../assets/founders/gal.png";
 import gleizerImage from "../assets/founders/gleizer.png";
 import aliceImage from "../assets/founders/alice.png";
 import ofirImage from "../assets/founders/ofir.png";
+import hilaImage from "../assets/founders/hila.png";
 import shalevImage from "../assets/founders/shalev.png";
 
 interface Founder {
@@ -19,43 +20,50 @@ interface Founder {
 }
 
 const AboutUsPage: React.FC = (): JSX.Element => {
-const founders: Founder[] = [
+  const founders: Founder[] = [
     {
-        name: "Gal Izhaky",
-        title: "Chief Nabaz Officer",
-        bio: "Officially 'Senior Frontend Engineer / UI Whisperer', unofficially a full‑time Skyblock player — ships great UI and animations, then disappears to play skyblock for days. If a pixel looks wrong, blame the nabaz, he only fixes it after a long Skyblock session or a 40 minute refreshment.",
-        work: "Senior prompt engineer, Frontend team lead, Backend developer",
-        image: galImage,
+      name: "Gal Izhaky",
+      title: "Chief Nabaz Officer",
+      bio: "Officially 'Senior Frontend Engineer / UI Whisperer', unofficially a full‑time Skyblock player — ships great UI and animations, then disappears to play skyblock for days. If a pixel looks wrong, blame the nabaz, he only fixes it after a long Skyblock session or a 40 minute refreshment.",
+      work: "Senior prompt engineer, Frontend team lead, Backend developer",
+      image: galImage,
     },
     {
-        name: "Lior Gleizer",
-        title: "Chief Prompting Officer",
-        bio: "Prompt wizard and backend wrangler — cajoles models into behaving, composes prompt symphonies, and keeps a secret library of templates that mysteriously fix edge cases. He treats prompt engineering like instrument tuning: tiny adjustments, astonishing results, and an air of smug satisfaction when the model finally sings. Precise, a little theatrical, and dangerously proud of his prompt folder.",
-        work: "Principal prompt engineer, Backend team lead",
-        image: gleizerImage,
+      name: "Lior Gleizer",
+      title: "Chief Prompting Officer",
+      bio: "Prompt wizard and backend wrangler — cajoles models into behaving, composes prompt symphonies, and keeps a secret library of templates that mysteriously fix edge cases. He treats prompt engineering like instrument tuning: tiny adjustments, astonishing results, and an air of smug satisfaction when the model finally sings. Precise, a little theatrical, and dangerously proud of his prompt folder.",
+      work: "Principal prompt engineer, Backend team lead",
+      image: gleizerImage,
     },
     {
-        name: "Alice Shpunt",
-        title: "Chief Woman Officer",
-        bio: "Design sage, proud Haladyetz enthusiast, and people whisperer — she maps humane journeys, mediates tricky team moments, and will happily defend a UX decision while nibbling Haladyetz. A woman who builds product empathy by day and tends human relations by night; she brings warmth, fierce clarity, and an unapologetic love of Haladyetz to everything she touches.",
-        work: "Senior UX designer, Lead human relations, Microservices developer",
-        image: aliceImage,
+      name: "Alice Shpunt",
+      title: "Chief Woman Officer",
+      bio: "Design sage, proud Haladyetz enthusiast, and people whisperer — she maps humane journeys, mediates tricky team moments, and will happily defend a UX decision while nibbling Haladyetz. A woman who builds product empathy by day and tends human relations by night; she brings warmth, fierce clarity, and an unapologetic love of Haladyetz to everything she touches.",
+      work: "Senior UX designer, Lead human relations, Microservices developer",
+      image: aliceImage,
     },
     {
-        name: "Ofir Reuven",
-        title: "Chief Religion Officer",
-        bio: "Prays constantly — if he isn't at his desk he's probably at the bet knesset. Ofir spends large parts of the week in prayer and Torah study, has prayed the project into existence more than once, and routinely asks for timely deliverables from above. His calendar is half meetings, half prayer; we suspect the project's deadlines survive because he prayed them into being.",
-        work: "God's servant, Praying team lead, Senior Torah reader",
-        image: ofirImage,
+      name: "Ofir Reuven",
+      title: "Chief Religion Officer",
+      bio: "Prays constantly — if he isn't at his desk he's probably at the bet knesset. Ofir spends large parts of the week in prayer and Torah study, has prayed the project into existence more than once, and routinely asks for timely deliverables from above. His calendar is half meetings, half prayer; we suspect the project's deadlines survive because he prayed them into being.",
+      work: "God's servant, Praying team lead, Senior Torah reader",
+      image: ofirImage,
     },
     {
-        name: "Shalev Don Meiri",
-        title: "Spiritual Mentor",
-        bio: "Provides regular reflection and resilience sessions that help the team recharge, clarify priorities, and make more considered product decisions. As a product manager he bridges strategic planning with human-centered facilitation, mentoring PMs and running alignment workshops that translate shared values into actionable roadmaps. Practical, grounded, and focused on measurable improvements in team clarity and collaboration.",
-        work: "Lead Product Manager, Senior Spiritual Advisor",
-        image: shalevImage,
+      name: "Hila Shmuel",
+      title: "Spiritual Mentor",
+      bio: "Our spiritual mentor who guides and steadies the team. She joins our 'Arameetings' every Tuesday to affirm the project and keep us focused. We don't know what she did in the army.",
+      work: "Lead Product Manager, Senior Spiritual Advisor",
+      image: hilaImage,
     },
-];
+    {
+      name: "Shalev Don Meiri",
+      title: "Product manager",
+      bio: "Hands-on product manager who helps the team prioritize, run alignment sessions, and turn strategy into clear roadmaps. Practical and focused on shipping outcomes and improving team coordination.",
+      work: "Lead Product Manager, Senior Spiritual Advisor",
+      image: shalevImage,
+    },
+  ];
 
   return (
     <div className={styles.page}>
@@ -73,10 +81,13 @@ const founders: Founder[] = [
             <div className={styles.heroInner}>
               <div className={styles.heroCard}>
                 <div className={styles.kicker}>About us</div>
-                <h1 className={styles.title}>We’re building the fastest way to plan a trip.</h1>
+                <h1 className={styles.title}>
+                  We’re building the fastest way to plan a trip.
+                </h1>
                 <p className={styles.subtitle}>
-                  Tripping.ai turns a single message into complete, comparable trip options — flights, stays, and highlights —
-                  with a chat loop that helps you refine in seconds.
+                  Tripping.ai turns a single message into complete, comparable
+                  trip options — flights, stays, and highlights — with a chat
+                  loop that helps you refine in seconds.
                 </p>
 
                 <div className={styles.statRow}>
@@ -86,7 +97,9 @@ const founders: Founder[] = [
                   </div>
                   <div className={styles.statCard}>
                     <div className={styles.statValue}>1</div>
-                    <div className={styles.statLabel}>conversation to start</div>
+                    <div className={styles.statLabel}>
+                      conversation to start
+                    </div>
                   </div>
                   <div className={styles.statCard}>
                     <div className={styles.statValue}>∞</div>
@@ -131,7 +144,9 @@ const founders: Founder[] = [
           <section className={styles.cta}>
             <div className={styles.ctaInner}>
               <h3 className={styles.ctaTitle}>Ready to plan?</h3>
-              <p className={styles.ctaSubtitle}>Start a chat and get options you can actually compare.</p>
+              <p className={styles.ctaSubtitle}>
+                Start a chat and get options you can actually compare.
+              </p>
               <a className={styles.ctaButton} href="/">
                 Start planning
               </a>
