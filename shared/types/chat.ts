@@ -4,6 +4,7 @@ export enum ChatResponseStatus {
   COMPLETE = 200,
   INCOMPLETE = 202,
   FOLLOWUP = 201,
+  EDITING = 203,
   DUPLICATE_SEARCH = 204,
   ERROR = 500,
 }

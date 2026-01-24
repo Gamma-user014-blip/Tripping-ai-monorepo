@@ -383,7 +383,7 @@ def generate_single_trip_plan(
     
     1. FLIGHT
        Format: ["FLIGHT", origin_city, origin_country, origin_code, dest_city, dest_country, dest_code, date, return_date, passengers, cabin]
-       Note: origin_code/dest_code can be empty string if unknown. return_date empty if one-way.
+       Note: YOU MUST PROVIDE IATA CODES. If a city does not have an airport, find and use the nearest major hub airport code.
        
     2. STAY
        Format: ["STAY", city, country, start_date, end_date, guests, rooms, description]
@@ -397,6 +397,8 @@ def generate_single_trip_plan(
       * STAYS: Rome, then Florence, then Venice (consecutive)
       * ONE return flight: Venice -> TLV
       * NO flights between Rome->Florence or Florence->Venice!
+    - HUB RESOLUTION: If the destination is a place without a major airport (e.g. Positano, Monaco, Gozo), you MUST use the nearest major international airport (hub) and its IATA code (e.g. NAP for Positano, NCE for Monaco, MLA for Gozo).
+    - MANDATORY RETURN: Every single trip plan MUST include a return flight from the final destination back to the original starting city.
     
     Rules:
     - Generate EXACTLY ONE option.
@@ -405,6 +407,7 @@ def generate_single_trip_plan(
     - Do not include any additional text or comments.
 
     Creativity guidance (still must follow Trip Description):
+    - GEOGRAPHIC REALISM: Only suggest multiple cities if they are geographically close enough to be easily visited within the trip duration. For example, if a trip is 5 days, don't pick cities on opposite sides of a country (e.g. don't do Berlin and Munich in 3 days) unless explicitly requested. Travel time between cities should be reasonable.
     - Choose cities that make sense geographically (contiguous travel by ground is plausible).
     - Vary the experience focus (food, history, outdoors, nightlife, wellness) in line with the "vibe".
     - If the Trip Description is underspecified, take initiative and propose a clear, distinct route.
@@ -535,13 +538,14 @@ def edit_trip_plans_with_llm(plans: List[TripPlan], user_text: str) -> List[Trip
     
     Protocol for Actions:
     1. FLIGHT: ["FLIGHT", origin_city, origin_country, origin_code, dest_city, dest_country, dest_code, date, return_date, passengers, cabin]
-       - The 'date' is the day of travel.
+       - YOU MUST PROVIDE IATA CODES. If a city does not have an airport, find and use the nearest major hub airport code (e.g. NAP for Positano).
     2. STAY: ["STAY", city, country, start_date, end_date, guests, rooms, description]
        - 'start_date' is check-in, 'end_date' is check-out. USE ISO-2 COUNTRY CODES.
     
     CRITICAL FLIGHT RULES:
-    - Each trip has EXACTLY TWO FLIGHTS: one OUTBOUND and one RETURN. NEVER add intermediate flights.
+    - Each trip has EXACTLY TWO FLIGHTS: one OUTBOUND (origin to first city) and one RETURN (last city back to origin). EVERY trip must have both.
     - Travel between cities during a trip is by ground transport (automatic, no action needed).
+    - GEOGRAPHIC REALISM: Ensure destinations are reasonably close together for the trip's duration.
     
     Constraint & Logic Rules:
     - DATE ARITHMETIC: If a user asks to "shorten X by 1 day and give it to Y", this refers to the transition date BETWEEN X and Y.
@@ -552,7 +556,8 @@ def edit_trip_plans_with_llm(plans: List[TripPlan], user_text: str) -> List[Trip
     - PHRASING: Interpret "shorten in one day" as "shorten by one day" (duration - 1).
     - CONTIGUITY: Stays and flights must remain contiguous. A check-out date for one city should generally match the check-in date for the next city and the flight date between them.
     - SPECIFICITY: Only modify the specific plan(s) mentioned (e.g., "first option"). Leave others UNCHANGED.
-    - VISUAL INTEGRITY: Do not modify the JSON structure or the "vibe" name unless explicitly asked.
+    - VIBE: You MAY change the "vibe" name if the user request implies a change in the overall theme, or if they explicitly ask for it.
+    - VISUAL INTEGRITY: Do not modify the JSON structure unless explicitly asked.
     
     Return the FULL updated list of plans in the specified output format.
     """
