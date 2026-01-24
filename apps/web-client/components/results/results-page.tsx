@@ -16,6 +16,9 @@ const ResultsPage: React.FC = (): JSX.Element => {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [tripIds, setTripIds] = useState<string[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingState>("idle");
+  const TOTAL_SLOTS = 3;
+  const loadedCount = trips.length;
+  const remainingCount = Math.max(0, TOTAL_SLOTS - loadedCount);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -121,22 +124,42 @@ const ResultsPage: React.FC = (): JSX.Element => {
                 </div>
               ) : (
                 <div>
-                  {loadingState === "loading" && trips.length === 0 && (
-                    <div className={styles.loadingBanner} role="status">
-                      <div className={styles.loadingEmoji} aria-hidden>
-                        🧭
+                  <div className={styles.loadingBanner} role="region">
+                    {loadingState === "loading" && remainingCount > 0 ? (
+                      <>
+                        <div className={styles.loadingEmoji} aria-hidden>🧭</div>
+                        <div className={styles.loadingText}>
+                          <div className={styles.loadingTitle}>Finding the perfect trips for you</div>
+                          <div className={styles.loadingSubtitle}>Assembling personalized options — {loadedCount}/{TOTAL_SLOTS} ready</div>
+                        </div>
+                        <div className={styles.loadingStars} aria-hidden>
+                          <span className={styles.star} />
+                          <span className={styles.star} />
+                          <span className={styles.star} />
+                        </div>
+                      </>
+                    ) : (
+                      <div className={styles.bannerHeader}>
+                        <div className={styles.bannerHeaderLeft}>
+                          <div className={styles.bannerEmoji} aria-hidden>✨</div>
+                          <div>
+                            <div className={styles.bannerHeaderTitle}>Trip ideas</div>
+                            <div className={styles.bannerHeaderSubtitle}>
+                              {loadedCount > 0
+                                ? `${loadedCount} suggestion${loadedCount > 1 ? "s" : ""} — tailored from your chat`
+                                : "Personalized options will appear here as the AI finalizes them"}
+                            </div>
+                          </div>
+                        </div>
+                        {loadingState === "loading" && remainingCount === 0 && (
+                          <div className={styles.loadingStarsSmall} aria-hidden>
+                            <span className={styles.star} />
+                            <span className={styles.star} />
+                          </div>
+                        )}
                       </div>
-                      <div className={styles.loadingText}>
-                        <div className={styles.loadingTitle}>Finding the perfect trip for you</div>
-                        <div className={styles.loadingSubtitle}>Searching and assembling great options — hang tight ✨</div>
-                      </div>
-                      <div className={styles.loadingStars} aria-hidden>
-                        <span className={styles.star} />
-                        <span className={styles.star} />
-                        <span className={styles.star} />
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                   <div className={styles.cardsList}>
                   {trips.map((trip, index) => (
                     <TripCard

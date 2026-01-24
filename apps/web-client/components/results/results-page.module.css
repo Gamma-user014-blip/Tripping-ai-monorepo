@@ -37,7 +37,7 @@
 .mainContainer {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 24px 24px 40px;
+  padding: 20px 24px 40px;
 }
 
 .resultsAndFilters {
@@ -69,6 +69,25 @@
   flex-direction: column;
   min-height: 500px;
   overflow-anchor: none;
+}
+
+.resultsHeaderRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.resultsTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-dark);
+}
+
+.resultsMeta {
+  font-size: 13px;
+  color: var(--color-text-muted);
 }
 
 .cardsList {
@@ -152,6 +171,40 @@
   font-size: 13px;
   color: var(--color-text-muted);
   margin-top: 2px;
+}
+
+.bannerHeader {
+  display: flex;
+  flex-direction: column;
+}
+
+.bannerHeaderTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+}
+
+.bannerHeaderSubtitle {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.bannerHeaderLeft {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.bannerEmoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.loadingStarsSmall {
+  display: flex;
+  gap: 6px;
+  align-items: center;
 }
 
 /* Animated stars for AI-generating effect */
