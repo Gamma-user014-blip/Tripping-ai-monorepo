@@ -32,6 +32,9 @@
 }
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--color-white);
   border: 1px solid var(--border-muted);
   padding: 8px 14px;
@@ -41,10 +44,57 @@
   cursor: pointer;
   min-width: 92px;
   text-align: center;
+  text-decoration: none;
+  line-height: 1;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  border-color: rgba(20, 184, 166, 0.35);
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.18);
 }
 
 .btnPrimary {
   background: var(--color-teal-400);
   color: var(--color-white);
   border: none;
+}
+
+.betaBadge {
+  margin-left: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(20, 184, 166, 0.14);
+  color: var(--color-teal-400);
+  border: 1px solid rgba(20, 184, 166, 0.22);
+}
+
+@media (max-width: 520px) {
+  .container {
+    padding: 8px 16px;
+  }
+
+  .actions {
+    gap: 8px;
+  }
+
+  .btn {
+    min-width: auto;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .betaBadge {
+    display: none;
+  }
 }
