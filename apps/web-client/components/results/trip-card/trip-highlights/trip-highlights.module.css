@@ -204,6 +204,16 @@
   color: var(--color-text-subtle);
   font-weight: 500;
   white-space: nowrap;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+.activityCount:hover {
+  color: var(--color-teal-dark);
+  text-decoration: underline;
 }
 
 .moreActivities {
