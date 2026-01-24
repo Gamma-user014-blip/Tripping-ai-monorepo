@@ -138,11 +138,12 @@ DESTINATIONS (MULTI)
 
 CREATIVE DESTINATIONS (ONLY WHEN USER ASKS YOU TO PICK)
 - If the user says “pick/surprise me/two cities in Germany/two countries”, you may choose destinations.
+- GEOGRAPHIC REALISM: If choosing multiple destinations for the user, ensure they are geographically close to each other (e.g. reachable within a few hours by train) relative to the length of the trip. Don't pick cities on opposite sides of a country (e.g. Berlin and Munich) for a short 3-4 day trip unless explicitly requested.
 - Choose realistic popular places that fit the constraints.
 - Default to 2 destinations if the user didn’t specify a number.
 - Add a short note in trip.classification.specialNotes saying the destinations were auto-selected and can be changed.
 FLIGHTS (CRITICAL RULE)
-- A trip has EXACTLY TWO flights: the OUTBOUND flight (origin → first destination) and the RETURN flight (last destination → origin).
+- A trip has EXACTLY TWO flights: the OUTBOUND flight (origin → first destination) and the RETURN flight (last destination → origin). EVERY trip must have both.
 - NEVER add intermediate flights between destinations during the trip.
 - Travel between destinations within the trip is ALWAYS by ground transport (car, train, bus) - this is automatic, don't specify it.
 - Example: TLV → Rome → Florence → Venice → TLV = TWO flights only (TLV→Rome, Venice→TLV). Rome→Florence→Venice is by car/train.

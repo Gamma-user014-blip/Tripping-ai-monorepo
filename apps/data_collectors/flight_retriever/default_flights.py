@@ -379,5 +379,15 @@ def get_default_flight_by_id(flight_id: str) -> Dict[str, Any] | None:
 def get_all_default_flights() -> List[Dict[str, Any]]:
     return ny_to_london_flights
 
+def get_airport_code_for_city(city_name: str) -> Optional[str]:
+    """Find an airport code for a city name from the static mapping."""
+    if not city_name:
+        return None
+    city = city_name.lower().strip()
+    for code, name in AIRPORT_CITIES.items():
+        if name.lower().strip() == city:
+            return code
+    return None
+
 def get_available_routes() -> List[tuple[str, str]]:
     return [("New York", "London")]

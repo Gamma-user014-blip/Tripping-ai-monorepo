@@ -97,19 +97,19 @@ services:
     depends_on:
       - trip_builder
 
-  mongo:
-    image: mongo:7
-    container_name: mongo
-    command: mongod --quiet
-    volumes:
-      - mongo_data:/data/db
-    networks:
-      - shared_network
-      - web_private_network
-    expose:
-      - "27017"
-    ports:
-      - "27017:27017"
+  # mongo:
+  #   image: mongo:7
+  #   container_name: mongo
+  #   command: mongod --quiet
+  #   volumes:
+  #     - mongo_data:/data/db
+  #   networks:
+  #     - shared_network
+  #     - web_private_network
+  #   expose:
+  #     - "27017"
+  #   ports:
+  #     - "27017:27017"
 
   web_server:
     build:
@@ -129,7 +129,7 @@ services:
     ports:
       - "3001:3001"
     depends_on:
-      - mongo
+      # - mongo
       - llm_chat_essentials
 
   json_agent:
@@ -194,5 +194,5 @@ networks:
 
 volumes:
   hotel_redis_data:
-  mongo_data:
+  # mongo_data:
   flight_redis_data:
