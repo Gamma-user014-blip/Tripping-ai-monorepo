@@ -161,7 +161,7 @@ const processMockPlans = async (searchId: string): Promise<void> => {
     if (!entry || entry.status === SearchStatus.ERROR) break;
 
     // Simulate some delay to show progressive loading
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 3000));
 
     const current = searchStore.get(searchId);
     if (!current) break;
