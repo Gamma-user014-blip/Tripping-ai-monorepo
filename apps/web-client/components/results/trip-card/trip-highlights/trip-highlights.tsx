@@ -199,8 +199,9 @@ const TripHighlights: React.FC<TripHighlightsProps> = ({
               </div>
             )}
             <div className={styles.priceTag}>
-              {Math.ceil(price.amount).toLocaleString()}
-              {price.currency === "USD" ? "$" : price.currency}
+              {price.currency === "USD"
+                ? `$${Math.ceil(price.amount).toLocaleString()}`
+                : `${price.currency} ${Math.ceil(price.amount).toLocaleString()}`}
             </div>
           </div>
         </div>

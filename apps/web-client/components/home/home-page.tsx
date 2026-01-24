@@ -24,6 +24,12 @@ const HomePage: React.FC = (): JSX.Element => {
   const messageListRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  const suggestedPrompts: string[] = [
+    "7 days in June in Italy for my wife and me — food, museums, and a relaxed beach day",
+    "Tokyo + Kyoto: 10 days in October, mid-range budget, family of 5, lots of ramen",
+    "Long weekend in Barcelona in May for 2 people — lively nightlife and tapas",
+  ];
+
   const scrollToBottom = (): void => {
     const messageList = messageListRef.current;
     if (!messageList) return;
@@ -77,13 +83,25 @@ const HomePage: React.FC = (): JSX.Element => {
     }
   };
 
+  const handleSuggestedPromptClick = (prompt: string): void => {
+    setInputValue(prompt);
+    setTimeout(() => {
+      const el = inputRef.current;
+      if (!el) return;
+      el.focus({ preventScroll: true });
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+    }, 0);
+  };
+
   return (
     <div className={styles.homePage}>
       <div className={styles.navContainer}>
         <Navbar />
       </div>
 
-      <div className={styles.chatContainer}>
+      <div className={styles.contentWrapper}>
+      <div className={styles.chatContainer} id="chat">
         <div className={styles.chatContent}>
           {messages.length <= 1 && !isTyping ? (
             <div className={styles.welcomeState}>
@@ -92,8 +110,21 @@ const HomePage: React.FC = (): JSX.Element => {
               </div>
               <h1 className={styles.welcomeTitle}>Where do you want to go?</h1>
               <p className={styles.welcomeSubtitle}>
-                Tell me about your dream trip and I'll find the perfect options for you
+                Tell me about your dream trip and we'll find the perfect options for you
               </p>
+
+              <div className={styles.suggestedPrompts}>
+                {suggestedPrompts.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    className={styles.promptChip}
+                    onClick={() => handleSuggestedPromptClick(prompt)}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             <div className={styles.messageList} ref={messageListRef}>
@@ -146,7 +177,7 @@ const HomePage: React.FC = (): JSX.Element => {
       </div>
 
       {/* Features Section - always visible */}
-      <div className={styles.featuresSection}>
+      <div className={styles.featuresSection} id="how-it-works">
         <div className={styles.featuresSectionHeader}>
           <h2 className={styles.featuresSectionTitle}>How Tripping.ai Works</h2>
           <p className={styles.featuresSectionSubtitle}>
@@ -171,7 +202,7 @@ const HomePage: React.FC = (): JSX.Element => {
             </div>
             <h3 className={styles.featureTitle}>We Find Options</h3>
             <p className={styles.featureText}>
-              Our AI searches thousands of flights, hotels, and activities to build complete trip packages.
+              Our system searches thousands of flights, hotels, and activities to build complete trip packages.
             </p>
           </div>
 
@@ -201,7 +232,7 @@ const HomePage: React.FC = (): JSX.Element => {
             </div>
             <h3 className={styles.featureTitle}>Smart Flight Combos</h3>
             <p className={styles.featureText}>
-              Find the best flight combinations with optimal layovers, pricing, and travel times.
+              We find the best flight combinations with optimal layovers, pricing, and travel times.
             </p>
           </div>
 
@@ -239,6 +270,22 @@ const HomePage: React.FC = (): JSX.Element => {
             <p className={styles.stepText}>Browse detailed itineraries and pick your favorite</p>
           </div>
         </div>
+
+        <div className={styles.trustBadges}>
+          <div className={styles.trustBadge}>
+            <span className="material-symbols-outlined">bolt</span>
+            <span>Get 3 options fast</span>
+          </div>
+          <div className={styles.trustBadge}>
+            <span className="material-symbols-outlined">tune</span>
+            <span>Refine with chat</span>
+          </div>
+          <div className={styles.trustBadge}>
+            <span className="material-symbols-outlined">compare</span>
+            <span>Compare side-by-side</span>
+          </div>
+        </div>
+      </div>
       </div>
     </div>
   );

@@ -125,6 +125,9 @@ const TripSidebar = ({ trip }: TripSidebarProps): JSX.Element => {
           <div className={`${styles.detailRow} ${styles.priceRow}`}>
             <span className={styles.priceLabel}>Total Cost</span>
             <span className={styles.priceValue}>
+              {typeof totalPrice === "number"
+              ? formatPrice(totalPrice, "USD")
+              : formatPrice(totalPrice.amount ?? 0, totalPrice.currency ?? "USD")}
             </span>
           </div>
         </div>
