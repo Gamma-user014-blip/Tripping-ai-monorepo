@@ -157,6 +157,46 @@ const useChat = ({
     [onTripsLoaded, onSearchStart, onSearchComplete, clearSearchData],
   );
 
+  const startEditPolling = useCallback(
+    (searchId: string): void => {
+      stopPollingRef.current?.();
+
+      // DO NOT clear search data - preserve existing trips for edit mode
+      setIsSearching(true);
+      onSearchStart?.();
+
+      const sessionId = getOrCreateSessionId(sessionIdRef);
+
+      // Store the new search ID
+      sessionStorage.setItem(`${SEARCH_ID_KEY_PREFIX}${sessionId}`, searchId);
+
+      stopPollingRef.current = pollForSearchResults(searchId, {
+        onProgress: (trips, tripIds) => {
+          sessionStorage.setItem(
+            `${TRIP_IDS_KEY_PREFIX}${sessionId}`,
+            JSON.stringify(tripIds),
+          );
+          onTripsLoaded?.(trips);
+        },
+        onComplete: (trips, tripIds) => {
+          sessionStorage.setItem(
+            `${TRIP_IDS_KEY_PREFIX}${sessionId}`,
+            JSON.stringify(tripIds),
+          );
+          setIsSearching(false);
+          onTripsLoaded?.(trips);
+          onSearchComplete?.();
+        },
+        onError: (error) => {
+          setIsSearching(false);
+          console.error("Search error:", error);
+          onSearchComplete?.();
+        },
+      });
+    },
+    [onTripsLoaded, onSearchStart, onSearchComplete],
+  );
+
   const startPollingFromSession = useCallback((): void => {
     const sessionId = getOrCreateSessionId(sessionIdRef);
     const storedSearchId = sessionStorage.getItem(
@@ -208,9 +248,25 @@ const useChat = ({
         setMessages((prev) => [...prev, newAiMessage]);
 
         if (
+          response.status === ChatResponseStatus.EDITING &&
+          response.searchId
+        ) {
+          // Edit mode: preserve existing trips and poll for updates
+          if (mode === "redirect") {
+            sessionStorage.setItem(
+              `${SEARCH_ID_KEY_PREFIX}${sessionId}`,
+              response.searchId,
+            );
+            setIsSearching(true);
+            onRedirect?.(response.searchId);
+          } else {
+            startEditPolling(response.searchId);
+          }
+        } else if (
           response.status === ChatResponseStatus.COMPLETE &&
           response.searchId
         ) {
+          // New search: clear old data and start fresh
           if (mode === "redirect") {
             // Store searchId in session and redirect
             sessionStorage.setItem(
@@ -238,7 +294,7 @@ const useChat = ({
         setIsSending(false);
       }
     },
-    [isTyping, isSending, startPolling, mode, onRedirect],
+    [isTyping, isSending, startPolling, startEditPolling, mode, onRedirect],
   );
 
   return {

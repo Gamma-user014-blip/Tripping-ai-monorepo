@@ -1,6 +1,10 @@
 import type { Trip } from "@monorepo/shared";
 import { SearchStatus } from "@monorepo/shared";
-import { generatePlans, buildTripRequest } from "../chat/json-agent-util";
+import {
+  generatePlans,
+  buildTripRequest,
+  type TripPlan,
+} from "../chat/json-agent-util";
 import { createTrip } from "../chat/trip-builder-util";
 import mockData from "./mock-data";
 
@@ -17,6 +21,8 @@ export interface SearchEntry {
   error?: string;
   createdAtMs: number;
   updatedAtMs: number;
+  tripPlans?: TripPlan[];
+  onPlansGenerated?: (plans: TripPlan[]) => void;
 }
 
 const searchStore: Map<string, SearchEntry> = new Map();
@@ -50,14 +56,33 @@ const updateEntry = (
   return updated;
 };
 
-const processPlans = async (searchId: string, tripYaml: string): Promise<void> => {
-  const plans = await generatePlans(tripYaml);
+const processPlans = async (
+  searchId: string,
+  tripYaml: string,
+  existingPlans?: TripPlan[],
+  indices_to_generate: number[] = [0, 1, 2],
+  onSearchComplete?: (trips: Trip[]) => void,
+): Promise<void> => {
+  const plans = existingPlans || (await generatePlans(tripYaml));
+
+  // Store plans in the search entry
+  const entry = searchStore.get(searchId);
+  if (entry) {
+    entry.tripPlans = plans;
+
+    // Call the callback if plans were just generated (not provided)
+    if (!existingPlans && entry.onPlansGenerated) {
+      entry.onPlansGenerated(plans);
+    }
+  }
 
   updateEntry(searchId, {
     progress: { totalPlans: plans.length, completedPlans: 0 },
   });
 
-  for (const plan of plans) {
+  for (const index of indices_to_generate) {
+    const plan = plans[index];
+
     const entry = searchStore.get(searchId);
     if (!entry || entry.status === SearchStatus.ERROR) break;
 
@@ -82,9 +107,13 @@ const processPlans = async (searchId: string, tripYaml: string): Promise<void> =
 
       const newCompletedCount = current.progress.completedPlans + 1;
 
+      // Replace the trip at the specific index instead of appending
+      const updatedResults = [...current.results];
+      updatedResults[index] = trip;
+
       updateEntry(searchId, {
         status: SearchStatus.IN_PROGRESS,
-        results: [...current.results, trip],
+        results: updatedResults,
         progress: {
           totalPlans: plans.length,
           completedPlans: newCompletedCount,
@@ -110,14 +139,34 @@ const processPlans = async (searchId: string, tripYaml: string): Promise<void> =
   const final = searchStore.get(searchId);
   if (final && final.status !== SearchStatus.ERROR) {
     updateEntry(searchId, { status: SearchStatus.COMPLETED });
+
+    // Call the completion callback with the final results
+    if (onSearchComplete && final.results) {
+      onSearchComplete(final.results);
+    }
   }
 };
 
-export const startSearch = (tripYaml: string): string => {
+export const startSearch = (
+  tripYaml: string,
+  existingPlans?: TripPlan[],
+  indices_to_generate: number[] = [0, 1, 2],
+  onPlansGenerated?: (plans: TripPlan[]) => void,
+  baseResults?: Trip[],
+  onSearchComplete?: (trips: Trip[]) => void,
+): string => {
   const searchId = generateSearchId();
-  searchStore.set(searchId, createInitialEntry());
+  const entry = createInitialEntry();
+  entry.onPlansGenerated = onPlansGenerated;
 
-  processPlans(searchId, tripYaml).catch((error: Error) => {
+  // Initialize with base results if provided (for edit mode)
+  if (baseResults) {
+    entry.results = [...baseResults];
+  }
+
+  searchStore.set(searchId, entry);
+
+  processPlans(searchId, tripYaml, existingPlans, indices_to_generate, onSearchComplete).catch((error: Error) => {
     console.error(`Search ${searchId} failed:`, error);
     updateEntry(searchId, {
       status: SearchStatus.ERROR,
