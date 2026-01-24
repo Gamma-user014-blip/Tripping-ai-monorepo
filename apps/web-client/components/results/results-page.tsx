@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import styles from "./results-page.module.css";
+import confetti from "canvas-confetti";
 import Navbar from "../../common/navbar";
 import AiChatSidebar from "./ai-chat-sidebar";
 import TripCard from "./trip-card";
@@ -25,6 +26,66 @@ const ResultsPage: React.FC = (): JSX.Element => {
     window.scrollTo(0, 0);
   }, []);
 
+  const prevTripsCountRef = useRef(0);
+  const cardsContainerRef = useRef<HTMLDivElement>(null);
+
+  const playSuccessSound = useCallback(() => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const playNote = (freq: number, start: number, duration: number) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.2, start);
+        gain.gain.exponentialRampToValueAtTime(0.01, start + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(start);
+        osc.stop(start + duration);
+      };
+      const now = audioCtx.currentTime;
+      playNote(523.25, now, 0.1); // C5
+      playNote(659.25, now + 0.1, 0.1); // E5
+      playNote(783.99, now + 0.2, 0.3); // G5
+    } catch (err) {
+      console.warn("AudioContext failed:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (trips.length > prevTripsCountRef.current && cardsContainerRef.current) {
+      // Find the last trip card added (using the data attribute)
+      const cards = cardsContainerRef.current.querySelectorAll('[data-trip-card="true"]');
+      const lastCard = Array.from(cards).pop() as HTMLElement;
+
+      if (lastCard) {
+        const rect = lastCard.getBoundingClientRect();
+        const x = (rect.left + rect.width / 2) / window.innerWidth;
+        const y = (rect.top + rect.height / 2) / window.innerHeight;
+
+        // Trigger confetti at the card's position
+        confetti({
+          particleCount: 80,
+          spread: 80,
+          origin: { x, y },
+          colors: ["#26ccff", "#a259ff", "#ff2121", "#25ff56", "#ffa502", "#ff0068"],
+          zIndex: 10001,
+        });
+      } else {
+        // Fallback to center if card not found
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+        });
+      }
+
+      playSuccessSound();
+    }
+    prevTripsCountRef.current = trips.length;
+  }, [trips.length, playSuccessSound]);
+
   useEffect(() => {
     const sessionId = getOrCreateSessionId();
     const storedTripsJson = sessionStorage.getItem(
@@ -38,7 +99,9 @@ const ResultsPage: React.FC = (): JSX.Element => {
     try {
       const parsed = JSON.parse(storedTripsJson) as unknown;
       if (!Array.isArray(parsed)) return;
-      setTrips(parsed as Trip[]);
+      const loadedTrips = parsed as Trip[];
+      setTrips(loadedTrips);
+      prevTripsCountRef.current = loadedTrips.length; // Don't fire on initial load from session
 
       if (storedTripIdsJson) {
         const parsedTripIds = JSON.parse(storedTripIdsJson) as unknown;
@@ -184,7 +247,7 @@ const ResultsPage: React.FC = (): JSX.Element => {
                       </div>
                     )}
                   </div>
-                  <div className={styles.cardsList}>
+                  <div className={styles.cardsList} ref={cardsContainerRef}>
                     {trips.map((trip, index) => (
                       <TripCard
                         key={index}
