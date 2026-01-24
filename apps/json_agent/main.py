@@ -398,6 +398,7 @@ def generate_single_trip_plan(
       * ONE return flight: Venice -> TLV
       * NO flights between Rome->Florence or Florence->Venice!
     - HUB RESOLUTION: If the destination is a place without a major airport (e.g. Positano, Monaco, Gozo), you MUST use the nearest major international airport (hub) and its IATA code (e.g. NAP for Positano, NCE for Monaco, MLA for Gozo).
+    - MANDATORY RETURN: Every single trip plan MUST include a return flight from the final destination back to the original starting city.
     
     Rules:
     - Generate EXACTLY ONE option.
@@ -406,6 +407,7 @@ def generate_single_trip_plan(
     - Do not include any additional text or comments.
 
     Creativity guidance (still must follow Trip Description):
+    - GEOGRAPHIC REALISM: Only suggest multiple cities if they are geographically close enough to be easily visited within the trip duration. For example, if a trip is 5 days, don't pick cities on opposite sides of a country (e.g. don't do Berlin and Munich in 3 days) unless explicitly requested. Travel time between cities should be reasonable.
     - Choose cities that make sense geographically (contiguous travel by ground is plausible).
     - Vary the experience focus (food, history, outdoors, nightlife, wellness) in line with the "vibe".
     - If the Trip Description is underspecified, take initiative and propose a clear, distinct route.
@@ -541,8 +543,9 @@ def edit_trip_plans_with_llm(plans: List[TripPlan], user_text: str) -> List[Trip
        - 'start_date' is check-in, 'end_date' is check-out. USE ISO-2 COUNTRY CODES.
     
     CRITICAL FLIGHT RULES:
-    - Each trip has EXACTLY TWO FLIGHTS: one OUTBOUND and one RETURN. NEVER add intermediate flights.
+    - Each trip has EXACTLY TWO FLIGHTS: one OUTBOUND (origin to first city) and one RETURN (last city back to origin). EVERY trip must have both.
     - Travel between cities during a trip is by ground transport (automatic, no action needed).
+    - GEOGRAPHIC REALISM: Ensure destinations are reasonably close together for the trip's duration.
     
     Constraint & Logic Rules:
     - DATE ARITHMETIC: If a user asks to "shorten X by 1 day and give it to Y", this refers to the transition date BETWEEN X and Y.
