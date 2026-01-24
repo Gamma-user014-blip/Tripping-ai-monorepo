@@ -16,6 +16,7 @@ const ResultsPage: React.FC = (): JSX.Element => {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [tripIds, setTripIds] = useState<string[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingState>("idle");
+  const [isEditing, setIsEditing] = useState(false);
   const TOTAL_SLOTS = 3;
   const loadedCount = trips.length;
   const remainingCount = Math.max(0, TOTAL_SLOTS - loadedCount);
@@ -81,8 +82,13 @@ const ResultsPage: React.FC = (): JSX.Element => {
     setLoadingState("loading");
   }, []);
 
+  const handleEditStart = useCallback((): void => {
+    setIsEditing(true);
+  }, []);
+
   const handleSearchComplete = useCallback((): void => {
     setLoadingState("loaded");
+    setIsEditing(false);
   }, []);
 
   const handleSearchClear = useCallback((): void => {
@@ -90,10 +96,27 @@ const ResultsPage: React.FC = (): JSX.Element => {
     setTrips([]);
     setTripIds([]);
     setLoadingState("loading");
+    setIsEditing(false);
   }, []);
 
   return (
-    <div className={styles.resultsPage}>
+    <div className={`${styles.resultsPage} ${isEditing ? styles.isEditing : ""}`}>
+      {isEditing && (
+        <div className={styles.editOverlay}>
+          <div className={styles.editOverlayContent}>
+            <div className={styles.editStars}>
+              <span className={styles.editStarLarge} />
+              <span className={styles.editStarLarge} />
+              <span className={styles.editStarLarge} />
+            </div>
+            <h2 className={styles.editTitle}>Editing your trip</h2>
+            <div className={styles.editPulseBadge}>
+              <span className={styles.pulseDot} />
+              Refining details...
+            </div>
+          </div>
+        </div>
+      )}
       <div className={styles.navContainer}>
         <Navbar />
       </div>
@@ -108,6 +131,7 @@ const ResultsPage: React.FC = (): JSX.Element => {
               onSearchStart={handleSearchStart}
               onSearchClear={handleSearchClear}
               onSearchComplete={handleSearchComplete}
+              onEditStart={handleEditStart}
             />
           </div>
           <div className={styles.resultsContainer}>
@@ -161,91 +185,91 @@ const ResultsPage: React.FC = (): JSX.Element => {
                     )}
                   </div>
                   <div className={styles.cardsList}>
-                  {trips.map((trip, index) => (
-                    <TripCard
-                      key={index}
-                      trip={trip}
-                      tripId={tripIds[index]}
-                      tripIndex={index}
-                    />
-                  ))}
-                  {Array.from({ length: Math.max(0, 3 - trips.length) }).map(
-                    (_, i) => (
-                      <div
-                        className={styles.skeletonCard}
-                        key={`skeleton-${i}`}
-                        role="article"
-                        aria-label="Loading trip option"
-                      >
-                        {/* Hotel column */}
-                        <div className={styles.skeletonHotel}>
-                          <div className={styles.skeletonHotelHeader} />
-                          <div className={styles.skeletonDashedLine} />
-                          <div className={styles.skeletonHotelItem}>
-                            <div className={styles.skeletonHotelDate} />
-                            <div className={styles.skeletonHotelName} />
-                            <div className={styles.skeletonHotelAddress} />
-                            <div className={styles.skeletonHotelStars} />
-                            <div className={styles.skeletonHotelImage} />
-                            <div className={styles.skeletonHotelAmenity} />
-                            <div className={styles.skeletonHotelIcons}>
-                              <div className={styles.skeletonIconBox} />
-                              <div className={styles.skeletonIconBox} />
-                              <div className={styles.skeletonIconBox} />
+                    {trips.map((trip, index) => (
+                      <TripCard
+                        key={index}
+                        trip={trip}
+                        tripId={tripIds[index]}
+                        tripIndex={index}
+                      />
+                    ))}
+                    {Array.from({ length: Math.max(0, 3 - trips.length) }).map(
+                      (_, i) => (
+                        <div
+                          className={styles.skeletonCard}
+                          key={`skeleton-${i}`}
+                          role="article"
+                          aria-label="Loading trip option"
+                        >
+                          {/* Hotel column */}
+                          <div className={styles.skeletonHotel}>
+                            <div className={styles.skeletonHotelHeader} />
+                            <div className={styles.skeletonDashedLine} />
+                            <div className={styles.skeletonHotelItem}>
+                              <div className={styles.skeletonHotelDate} />
+                              <div className={styles.skeletonHotelName} />
+                              <div className={styles.skeletonHotelAddress} />
+                              <div className={styles.skeletonHotelStars} />
+                              <div className={styles.skeletonHotelImage} />
+                              <div className={styles.skeletonHotelAmenity} />
+                              <div className={styles.skeletonHotelIcons}>
+                                <div className={styles.skeletonIconBox} />
+                                <div className={styles.skeletonIconBox} />
+                                <div className={styles.skeletonIconBox} />
+                              </div>
                             </div>
                           </div>
+
+                          {/* Middle section */}
+                          <div className={styles.skeletonMiddle}>
+                            {/* Trip Highlights section */}
+                            <div className={styles.skeletonHighlights}>
+                              <div className={styles.skeletonRouteHeader}>
+                                <div className={styles.skeletonRouteText} />
+                                <div className={styles.skeletonChipButton} />
+                              </div>
+                              <div className={styles.skeletonTimelineLabel} />
+                              <div className={styles.skeletonTimeline}>
+                                {[1, 2, 3, 4].map((j) => (
+                                  <div
+                                    className={styles.skeletonTimelineCard}
+                                    key={j}
+                                  />
+                                ))}
+                              </div>
+                              <div className={styles.skeletonPrice} />
+                            </div>
+
+                            {/* Flight Details section */}
+                            <div className={styles.skeletonFlights}>
+                              <div className={styles.skeletonFlightRow}>
+                                <div className={styles.skeletonAirlineLogo} />
+                                <div className={styles.skeletonFlightTime} />
+                                <div className={styles.skeletonFlightCode} />
+                                <div className={styles.skeletonFlightPath} />
+                                <div className={styles.skeletonFlightCode} />
+                                <div className={styles.skeletonFlightTime} />
+                                <div className={styles.skeletonBaggage} />
+                              </div>
+                              <div className={styles.skeletonFlightRow}>
+                                <div className={styles.skeletonAirlineLogo} />
+                                <div className={styles.skeletonFlightTime} />
+                                <div className={styles.skeletonFlightCode} />
+                                <div className={styles.skeletonFlightPath} />
+                                <div className={styles.skeletonFlightCode} />
+                                <div className={styles.skeletonFlightTime} />
+                                <div className={styles.skeletonBaggage} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Map column */}
+                          <div className={styles.skeletonMap} />
                         </div>
-
-                        {/* Middle section */}
-                        <div className={styles.skeletonMiddle}>
-                          {/* Trip Highlights section */}
-                          <div className={styles.skeletonHighlights}>
-                            <div className={styles.skeletonRouteHeader}>
-                              <div className={styles.skeletonRouteText} />
-                              <div className={styles.skeletonChipButton} />
-                            </div>
-                            <div className={styles.skeletonTimelineLabel} />
-                            <div className={styles.skeletonTimeline}>
-                              {[1, 2, 3, 4].map((j) => (
-                                <div
-                                  className={styles.skeletonTimelineCard}
-                                  key={j}
-                                />
-                              ))}
-                            </div>
-                            <div className={styles.skeletonPrice} />
-                          </div>
-
-                          {/* Flight Details section */}
-                          <div className={styles.skeletonFlights}>
-                            <div className={styles.skeletonFlightRow}>
-                              <div className={styles.skeletonAirlineLogo} />
-                              <div className={styles.skeletonFlightTime} />
-                              <div className={styles.skeletonFlightCode} />
-                              <div className={styles.skeletonFlightPath} />
-                              <div className={styles.skeletonFlightCode} />
-                              <div className={styles.skeletonFlightTime} />
-                              <div className={styles.skeletonBaggage} />
-                            </div>
-                            <div className={styles.skeletonFlightRow}>
-                              <div className={styles.skeletonAirlineLogo} />
-                              <div className={styles.skeletonFlightTime} />
-                              <div className={styles.skeletonFlightCode} />
-                              <div className={styles.skeletonFlightPath} />
-                              <div className={styles.skeletonFlightCode} />
-                              <div className={styles.skeletonFlightTime} />
-                              <div className={styles.skeletonBaggage} />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Map column */}
-                        <div className={styles.skeletonMap} />
-                      </div>
-                    ),
-                  )}
+                      ),
+                    )}
+                  </div>
                 </div>
-              </div>
               )}
             </div>
           </div>

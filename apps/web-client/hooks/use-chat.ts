@@ -29,6 +29,7 @@ interface UseChatOptions {
   onSearchStart?: () => void;
   onSearchClear?: () => void;
   onSearchComplete?: () => void;
+  onEditStart?: () => void;
   onRedirect?: (searchId: string) => void;
   mode?: ChatMode;
 }
@@ -56,6 +57,7 @@ const useChat = ({
   onSearchStart,
   onSearchClear,
   onSearchComplete,
+  onEditStart,
   onRedirect,
   mode = "inline",
 }: UseChatOptions = {}): UseChatReturn => {
@@ -260,6 +262,7 @@ const useChat = ({
             setIsSearching(true);
             onRedirect?.(response.searchId);
           } else {
+            onEditStart?.();
             startEditPolling(response.searchId);
           }
         } else if (
