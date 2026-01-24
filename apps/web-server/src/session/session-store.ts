@@ -1,3 +1,5 @@
+import type { TripPlan } from "../chat/json-agent-util";
+
 export type ChatMessageRole = "user" | "assistant";
 
 export type ChatMessage = {
@@ -19,6 +21,8 @@ export type SessionData = {
   chat: SessionChatState;
   lastSearchYaml?: string;
   hasCompletedSearch?: boolean;
+  tripPlans?: TripPlan[];
+  builtTrips?: import("@monorepo/shared").Trip[];
 };
 
 export const DEFAULT_TRIP_YAML: string = `
@@ -240,4 +244,44 @@ export const resetSessionForNewSearch = (
   const session = getOrCreateSession(sessionId, defaultTripYaml);
   session.tripYaml = defaultTripYaml;
   session.hasCompletedSearch = false;
+};
+
+export const setTripPlans = (
+  sessionId: string,
+  defaultTripYaml: string,
+  tripPlans: TripPlan[],
+): SessionData => {
+  const nowMs = Date.now();
+  const session = getOrCreateSession(sessionId, defaultTripYaml);
+  session.tripPlans = tripPlans;
+  touchSession(session, nowMs);
+  return session;
+};
+
+export const getTripPlans = (
+  sessionId: string,
+  defaultTripYaml: string,
+): TripPlan[] | undefined => {
+  const session = getOrCreateSession(sessionId, defaultTripYaml);
+  return session.tripPlans;
+};
+
+export const setBuiltTrips = (
+  sessionId: string,
+  defaultTripYaml: string,
+  builtTrips: import("@monorepo/shared").Trip[],
+): SessionData => {
+  const nowMs = Date.now();
+  const session = getOrCreateSession(sessionId, defaultTripYaml);
+  session.builtTrips = builtTrips;
+  touchSession(session, nowMs);
+  return session;
+};
+
+export const getBuiltTrips = (
+  sessionId: string,
+  defaultTripYaml: string,
+): import("@monorepo/shared").Trip[] | undefined => {
+  const session = getOrCreateSession(sessionId, defaultTripYaml);
+  return session.builtTrips;
 };

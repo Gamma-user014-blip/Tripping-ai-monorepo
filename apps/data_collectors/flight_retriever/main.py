@@ -134,19 +134,22 @@ async def shutdown():
 @app.post("/api/flight_retriever/search", response_model=FlightSearchResponse)
 async def flight_search(request: FlightSearchRequest):
 
-    if not request.origin.airport_code or not request.destination.airport_code or not request.departure_date:
-        raise HTTPException(
-            status_code=400,
-            detail="origin.airport_code, destination.airport_code, and departure_date are required",
-        )
-
-    origin_code = request.origin.airport_code.strip().upper()
-    dest_code = request.destination.airport_code.strip().upper()
-    departure_date = request.departure_date.strip()
+    origin_code = (request.origin.airport_code or "").strip().upper()
+    dest_code = (request.destination.airport_code or "").strip().upper()
+    departure_date = (request.departure_date or "").strip()
     adults = max(1, int(request.passengers or 1))
 
-    # Try API if configured
-    if amadeus:
+    # Try to resolve codes from city names if missing
+    if not origin_code and request.origin.city:
+        from .default_flights import get_airport_code_for_city
+        origin_code = (get_airport_code_for_city(request.origin.city) or "").upper()
+        
+    if not dest_code and request.destination.city:
+        from .default_flights import get_airport_code_for_city
+        dest_code = (get_airport_code_for_city(request.destination.city) or "").upper()
+
+    # Try API if configured and codes are present
+    if amadeus and origin_code and dest_code and departure_date:
         try:
             # Check if entire search is cached
             search_cache_key = f"flight_search:{origin_code}:{dest_code}:{departure_date}:{adults}"

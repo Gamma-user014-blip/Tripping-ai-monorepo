@@ -8,6 +8,7 @@ interface AiChatSidebarProps {
   onSearchStart?: () => void;
   onSearchClear?: () => void;
   onSearchComplete?: () => void;
+  onEditStart?: () => void;
 }
 
 const AiChatSidebar: React.FC<AiChatSidebarProps> = ({
@@ -15,6 +16,7 @@ const AiChatSidebar: React.FC<AiChatSidebarProps> = ({
   onSearchStart,
   onSearchClear,
   onSearchComplete,
+  onEditStart,
 }) => {
   const {
     messages,
@@ -28,6 +30,7 @@ const AiChatSidebar: React.FC<AiChatSidebarProps> = ({
     onSearchStart,
     onSearchClear,
     onSearchComplete,
+    onEditStart,
     mode: "inline",
   });
 
@@ -106,9 +109,8 @@ const AiChatSidebar: React.FC<AiChatSidebarProps> = ({
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`${styles.message} ${
-              msg.sender === "user" ? styles.userMessage : styles.aiMessage
-            }`}
+            className={`${styles.message} ${msg.sender === "user" ? styles.userMessage : styles.aiMessage
+              }`}
           >
             {msg.text}
           </div>
