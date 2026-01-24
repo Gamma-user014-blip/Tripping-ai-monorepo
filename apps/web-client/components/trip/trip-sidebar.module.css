@@ -18,6 +18,12 @@
     box-shadow 160ms ease;
 }
 
+
+.actionButton:disabled {
+  opacity: 0.5;           /* makes it look inactive */
+  cursor: not-allowed;    /* changes cursor to show it can't be clicked */
+  pointer-events: none;   /* ensures no hover/click */
+}
 .detailsCard:hover {
   border-color: var(--color-primary-dark);
   box-shadow: var(--shadow-card-hover);
