@@ -5,7 +5,7 @@ WORKDIR /app
 # Copy workspace configuration and lockfile
 COPY package*.json ./
 
-# Copy shared and web-server package definitions
+# Copy shared and all apps package definitions to ensure workspace awareness
 COPY shared/package*.json ./shared/
 COPY apps/web-server/package*.json ./apps/web-server/
 
