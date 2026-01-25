@@ -41,6 +41,8 @@ COPY --from=builder /app/apps/web-server/dist/shared/ ./
 WORKDIR /app
 COPY --from=builder /app/apps/web-server/package*.json ./
 
+COPY .env .
+
 EXPOSE 3001
 
 CMD ["npm", "start"]
