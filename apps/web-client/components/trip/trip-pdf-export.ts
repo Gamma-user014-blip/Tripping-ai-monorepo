@@ -235,7 +235,8 @@ export const exportTripToPDF = async (
   if (typeof window === 'undefined') return;
 
   const html2pdf = (await import('html2pdf.js')).default;
-
+  console.log('Trip origin:', trip.origin);
+  console.log('Trip destination:', trip.destination);
   let logoSrc: string | null = null;
   if (logoUrl) {
     try {
